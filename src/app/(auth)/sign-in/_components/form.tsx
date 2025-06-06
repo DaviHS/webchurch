@@ -39,7 +39,7 @@ export const SignInForm = () => {
       if (responseAuth?.error) {
         return toastError({
           title: "Ocorreu um erro ao tentar se autenticar",
-          description: responseAuth.code,
+          description: responseAuth.error,
         });
       }
 
