@@ -33,10 +33,6 @@ class AuthorizationLoginError extends Error {
 // Extensão de tipos para JWT
 declare module "@auth/core/jwt" {
   interface JWT {
-    usure: number;
-    usucodigo: number;
-    usudpto: string;
-    treatment: string;
     id?: string;
     role?: string;
   }
