@@ -1,6 +1,7 @@
 import Link from "next/link"
-import Logo from "./logo"
-import { Facebook, Instagram, Youtube } from "lucide-react"
+import { Instagram } from "lucide-react"
+import Image from "next/image"
+import { mapsUrl } from "@/lib/contants"
 
 export default function Footer() {
   return (
@@ -8,28 +9,30 @@ export default function Footer() {
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Logo className="h-10 w-auto bg-white rounded-md p-1" />
-              <span className="text-xl font-bold">Igreja Central</span>
-            </div>
-            <p className="text-white/80">Um lugar de fé, comunhão e crescimento espiritual para toda a família.</p>
+            <div className="flex items-center gap-4">
+                <div className="relative w-24 h-24 flex-shrink-0">
+                  <Image
+                    src="/logo.png"
+                    alt="Logo da Igreja Central"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold">Igreja Central</span>
+                  <span className="text-secondary/90 text-base">Vida Com Propósito</span>
+                </div>
+              </div>
             <div className="flex space-x-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary">
-                <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
-              </a>
               <a
-                href="https://instagram.com"
+                href="https://instagram.com/igrejacentralvcp/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-secondary"
               >
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
-              </a>
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary">
-                <Youtube className="h-5 w-5" />
-                <span className="sr-only">YouTube</span>
               </a>
             </div>
           </div>
@@ -74,16 +77,15 @@ export default function Footer() {
             <h3 className="text-lg font-bold mb-4">Horários de Culto</h3>
             <ul className="space-y-2">
               <li className="text-white/80">
-                <span className="font-medium">Domingo:</span> 10:00 e 18:00
+                <span className="font-medium">Domingo:</span> 18:00
               </li>
               <li className="text-white/80">
                 <span className="font-medium">Quarta-feira:</span> 19:30
               </li>
               <li className="text-white/80">
-                <span className="font-medium">Sexta-feira:</span> 19:30
-              </li>
-              <li className="text-white/80">
-                <span className="font-medium">Sábado:</span> 19:00 (Jovens)
+                <li className="text-white/80">
+                  <span className="font-medium">Demais cultos com dias e horários variados.</span> Entre em contato para mais informações.
+                </li>
               </li>
             </ul>
           </div>
@@ -91,10 +93,20 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-bold mb-4">Contato</h3>
             <address className="not-italic space-y-2 text-white/80">
-              <p>Av. Principal, 1000 - Centro</p>
-              <p>Sua Cidade - Estado, CEP 00000-000</p>
-              <p>Telefone: (00) 1234-5678</p>
-              <p>E-mail: contato@igrejacentral.com</p>
+              <a 
+                href={mapsUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group"
+              >
+                <p className="group-hover:text-secondary/90 transition-colors duration-200">
+                  Rua Jamil João Zarif, 1408 - Jardim Santa Vicencia
+                </p>
+                <p className="group-hover:text-secondary/90 transition-colors duration-200">
+                  Guarulhos - São Paulo, CEP 07143-000
+                </p>
+              </a>
+              <p>E-mail: Indisponível</p>
             </address>
           </div>
         </div>

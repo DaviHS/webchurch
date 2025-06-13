@@ -4,6 +4,13 @@ export interface ResponseAPI<T> {
   message: string;
 }
 
+export interface UserAPI {
+  userId: number;
+  name: string;
+  email: string; 
+  role: string;
+}
+
 export interface Field {
   label: string;
   description?: string;

@@ -2,8 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@/server/auth";
-import { db } from "@/lib/prisma"; // 👈 importa prisma
+import { auth } from "@/server/auth";// 👈 importa prisma
 
 /**
  * 1. CONTEXT
@@ -14,8 +13,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
 
   return {
-    session,
-    db: db, // 👈 adiciona prisma ao contexto
+    session, // 👈 adiciona prisma ao contexto
     ...opts,
   };
 };
@@ -69,7 +67,6 @@ export const protectedProcedure = t.procedure
     return next({
       ctx: {
         session: { ...ctx.session, user: ctx.session.user },
-        db: ctx.db, // 👈 garante acesso a prisma no contexto "autenticado"
       },
     });
   });

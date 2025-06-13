@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Facebook, Instagram, Youtube, MapPin, Phone, Mail } from "lucide-react"
+import { mapsUrl } from "@/lib/contants"
+import { Instagram, MapPin, Mail } from "lucide-react"
 
 export default function Contact() {
   return (
@@ -26,17 +27,27 @@ export default function Contact() {
                   <MapPin className="h-5 w-5 text-primary mr-3 mt-1" />
                   <div>
                     <p className="font-medium">Endereço</p>
-                    <p className="text-gray-600">Rua Jamil João Zarif, 1408 - Jardim Santa Vicencia</p>
-                    <p className="text-gray-600">Guarulhos - São Paulo, CEP 07143-000</p>
+                     <a 
+                        href={mapsUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="group"
+                      > 
+                        <p className="text-gray-600 group-hover:text-secondary/90 transition-colors duration-200">
+                          Rua Jamil João Zarif, 1408 - Jardim Santa Vicencia
+                        </p>
+                        <p className="text-gray-600 group-hover:text-secondary/90 transition-colors duration-200">
+                          Guarulhos - São Paulo, CEP 07143-000
+                        </p>
+                      </a>
                   </div>
                 </div>
 
-                
                 <div className="flex items-start">
                   <Mail className="h-5 w-5 text-primary mr-3 mt-1" />
                   <div>
                     <p className="font-medium">E-mail</p>
-                    <p className="text-gray-600">contato@igrejacentral.com</p>
+                    <p className="text-gray-600">Indisponível</p>
                   </div>
                 </div>
               </div>
@@ -46,31 +57,13 @@ export default function Contact() {
               <h3 className="text-2xl font-bold text-primary mb-4">Redes Sociais</h3>
               <div className="flex space-x-4">
                 <a
-                  href="https://facebook.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-primary hover:bg-primary/90 text-white p-3 rounded-full"
-                >
-                  <Facebook className="h-6 w-6" />
-                  <span className="sr-only">Facebook</span>
-                </a>
-                <a
-                  href="https://instagram.com"
+                  href="https://instagram.com/igrejacentralvcp/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-primary hover:bg-primary/90 text-white p-3 rounded-full"
                 >
                   <Instagram className="h-6 w-6" />
                   <span className="sr-only">Instagram</span>
-                </a>
-                <a
-                  href="https://youtube.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-primary hover:bg-primary/90 text-white p-3 rounded-full"
-                >
-                  <Youtube className="h-6 w-6" />
-                  <span className="sr-only">YouTube</span>
                 </a>
               </div>
             </div>

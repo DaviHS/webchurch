@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-//import Logo from "@/components/logo"
+import Image from "next/image"
 
 export default function SignIn() {
   const router = useRouter()
@@ -41,15 +41,22 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-6">
+    <div className="min-h-screen flex flex-col items-center bg-[#e6f3ef] p-4 pt-0 sm:pt-4 md:pt-10">
+      <div className="w-full max-w-md -mt-20 sm:mt-0 md:mt-10">
+        <div className="relative w-80 h-80 mx-auto -mb-20 z-10">
+          <Image
+            src="/logo.png"
+            alt="Logo da Igreja Central"
+            fill
+            className="object-contain"
+            priority
+          />
         </div>
-
-        <Card className="w-full">
+        <Card className="relative w-full z-0">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center text-primary">Área do Membro</CardTitle>
             <CardDescription className="text-center">Entre com suas credenciais para acessar sua conta</CardDescription>
+            <CardDescription className="text-center text-red-800">Em Desenvolvimento</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && <div className="p-3 bg-red-100 text-red-600 text-sm rounded">{error}</div>}

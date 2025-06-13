@@ -27,27 +27,21 @@ export default function History() {
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-primary">Fundação</h3>
               <p className="text-gray-600">
-                A Igreja Central foi fundada em 1995 por um pequeno grupo de famílias que se reuniam em uma casa para
-                estudar a Bíblia e orar. Com o passar do tempo, o grupo cresceu e sentiu o chamado de Deus para
-                estabelecer uma igreja que pudesse alcançar mais pessoas com a mensagem do evangelho.
+                Em Desenvolvimento.
               </p>
             </div>
 
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-primary">Crescimento</h3>
               <p className="text-gray-600">
-                Em 2000, adquirimos nosso primeiro templo e começamos a expandir nossos ministérios. Ao longo dos anos,
-                Deus tem abençoado nossa congregação com crescimento numérico e espiritual, permitindo que alcancemos
-                mais pessoas e façamos a diferença em nossa comunidade.
+                Em Desenvolvimento.
               </p>
             </div>
 
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-primary">Atualidade</h3>
               <p className="text-gray-600">
-                Hoje, a Igreja Central é uma comunidade vibrante com diversos ministérios e programas que atendem
-                pessoas de todas as idades e contextos sociais. Continuamos comprometidos com nossa missão original de
-                proclamar o evangelho e fazer discípulos de Jesus Cristo.
+                Em Desenvolvimento.
               </p>
             </div>
           </div>

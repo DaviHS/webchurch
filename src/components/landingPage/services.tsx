@@ -34,7 +34,7 @@ export default function Services() {
                 </div>
               </div>
               <p className="mt-4 text-gray-600">
-                Momentos de louvor, adoração e pregação da Palavra de Deus para toda a família.
+                Culto de celebração e adoração, onde nos reunimos para louvar a Deus, ouvir a Palavra e fortalecer nossa fé em comunhão.
               </p>
             </CardContent>
           </Card>
@@ -57,7 +57,7 @@ export default function Services() {
                 </div>
               </div>
               <p className="mt-4 text-gray-600">
-                Um tempo dedicado à intercessão e busca da presença de Deus através da oração.
+                Um momento dedicado à intercessão e à busca da presença de Deus, fortalecendo a fé.
               </p>
             </CardContent>
           </Card>
@@ -80,7 +80,7 @@ export default function Services() {
                 </div>
               </div>
               <p className="mt-4 text-gray-600">
-                Momento de estudo e dedicação a palavra de Deus em intimidade.
+                Um encontro próximo para compartilhar, estudar e viver a Palavra de Deus juntos, em intimidade e comunhão.
               </p>
             </CardContent>
           </Card>

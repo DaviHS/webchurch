@@ -1,105 +1,180 @@
-import EmailProvider from "next-auth/providers/email";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { db } from "@/lib/prisma";
-import { env } from "@/env";
-import type { DefaultSession, NextAuthOptions } from "next-auth";
+import {
+  type User,
+  type DefaultSession,
+  type NextAuthConfig,
+  CredentialsSignin,
+} from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { type JWT } from "next-auth/jwt";
 
-// Classes de erro personalizadas
-class InvalidLoginError extends Error {
+import { api } from "@/lib/api";
+import type { ResponseAPI, UserAPI } from "@/types";
+import { signInSchema } from "@/validators/auth";
+import { z } from "zod";
+import axios from "axios";
+
+class InvalidLoginError extends CredentialsSignin {
+  code = "Invalid identifier or password";
+
   constructor(message: string) {
     super(message);
-    this.name = "InvalidLoginError";
+
+    this.code = message;
   }
 }
 
-class AuthorizationLoginError extends Error {
+class AuthorizationLoginError extends CredentialsSignin {
+  code = "O usuário não tem permissão pra acessar o aplicativo!";
+
   constructor(message: string) {
     super(message);
-    this.name = "AuthorizationLoginError";
+
+    this.code = message;
   }
 }
 
-// Extensão de tipos
+declare module "@auth/core/jwt" {
+  interface JWT {
+    userId: number;
+    name: string;
+    role: string;
+    email: string,
+  }
+}
+
+/**
+ * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
+ * object and keep type safety.
+ *
+ * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
+ */
 declare module "next-auth" {
-  interface Session {
+  interface Session extends DefaultSession {
     user: {
       id: string;
-      role: string;
+      // ...other properties
+      // role: UserRole;
     } & DefaultSession["user"];
   }
-  
+
   interface User {
+    userId: number;
+    name: string;
     role: string;
+    email: string,
+    // ...other properties
+    // role: UserRole;
   }
 }
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    id?: string;
-    role?: string;
-  }
-}
-
-export const authConfig: NextAuthOptions = {
-  adapter: PrismaAdapter(db),
+/**
+ * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
+ *
+ * @see https://next-auth.js.org/configuration/options
+ */
+export const authConfig = {
   pages: {
-    signIn: "/sign-in",
+    signOut: `/sign-in`,
+    signIn: `/app`,
   },
-  session: {
+  trustHost: true,
+  session: { 
     strategy: "jwt",
     maxAge: 60 * 60 * 24 * 7,
   },
   providers: [
-    EmailProvider({
-      server: {
-        host: env.EMAIL_SERVER_HOST,
-        port: env.EMAIL_SERVER_PORT,
-        auth: {
-          user: env.EMAIL_SERVER_USER,
-          pass: env.EMAIL_SERVER_PASSWORD,
-        },
-      },
-      from: env.EMAIL_FROM,
-    }),
-    CredentialsProvider({
-      name: "Credentials",
+    Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Senha", type: "password" },
+        userLogin: {},
+        password: {},
       },
       async authorize(credentials) {
-        if (
-          credentials?.email === "admin@igrejacentral.com" &&
-          credentials?.password === "senha123"
-        ) {
-          return {
-            id: "admin-id",
-            name: "Administrador",
-            email: "admin@igrejacentral.com",
-            role: "admin",
-          };
-        }
+        console.log("[authorize]: ", credentials);
+        if (!credentials)
+          throw new Error("Necessário informar as credenciais!");
 
-        throw new InvalidLoginError("Email ou senha incorretos.");
+        const { userLogin, password, auth_type } = await signInSchema
+          .extend({
+            auth_type: z.enum(["re_auth", "email_auth", "facial_auth"]),
+            app_id: z.string()
+          })
+          .parseAsync(credentials);
+
+        try {
+          const response = await api.post<ResponseAPI<UserAPI>>("/auth/login", {
+            userLogin,
+            password,
+          });
+
+          console.log("[LOGIN RES STATUS]:", response.status);
+          console.log("[LOGIN RES DATA]:", response.data);
+
+          if (response.data.error)
+            throw new InvalidLoginError(response.data.message);
+
+          const { data } = response.data;
+
+          const user: User = {
+            userId: data.userId,
+            name: data.name,
+            email: data.email,
+            role: data.role
+          };
+
+          return user;
+        } catch (err) {
+          if (axios.isAxiosError(err)) {
+            console.error("[LOGIN ERROR - AXIOS]:", err.response?.status, await err.response?.data);
+          } else {
+            console.error("[LOGIN ERROR - GENERIC]:", err);
+          }
+          throw err;
+        }
       },
     }),
+    /**
+     * ...add more providers here.
+     *
+     * Most other providers require a bit more work than the Discord provider. For example, the
+     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
+     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
+     *
+     * @see https://next-auth.js.org/providers/github
+     */
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
+      if (trigger === "update" && session) {
+        token = {
+          ...token,
+          ...session,
+        } as JWT;
+      }
+
+      // console.log("[token:1]: ", token);
+
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
+        token = {
+          ...token,
+          ...user,
+        };
       }
       return token;
     },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-      }
-      return session;
+    session: ({ session, token }) => {
+      // console.log("[token:2]: ", token);
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          userId: token.userId,
+          name: token.name,
+          email: token.email,
+          role: token.role,
+          id: token.sub,
+        },
+      };
     },
   },
-  secret: env.AUTH_SECRET,
-};
+} satisfies NextAuthConfig;

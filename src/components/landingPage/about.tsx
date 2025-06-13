@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookIcon as Bible, Heart, Users } from "lucide-react"
+import Link from "next/link"
 
 export default function About() {
   return (
@@ -58,7 +59,9 @@ export default function About() {
         </div>
 
         <div className="flex justify-center">
-          <Button className="bg-primary hover:bg-primary/90">Saiba Mais Sobre Nós</Button>
+          <Link href="#historia">
+            <Button className="bg-primary hover:bg-primary/90">Saiba Mais Sobre Nós</Button>
+          </Link>
         </div>
       </div>
     </section>

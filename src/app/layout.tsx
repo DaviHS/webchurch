@@ -15,7 +15,7 @@ export default function RootLayout({ children }: Readonly<PropsWithChildren>) {
     <html lang="pt-BR" className={`${fontSans.className}`}>
       <body>
         <TRPCReactProvider>
-          <SessionProvider basePath={`/api/auth`}>{children}</SessionProvider>
+          <SessionProvider>{children}</SessionProvider>
         </TRPCReactProvider>
         <Sonner />
         <Toaster />
