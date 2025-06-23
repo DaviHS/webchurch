@@ -1,44 +1,45 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import Image from "next/image"
+import { useState } from "react";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
+import { useToast } from "@/hooks/use-toast"
 
 export default function SignIn() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const { toast, toastError } = useToast();
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
         redirect: false,
         email,
         password,
-      })
+      });
 
       if (result?.error) {
-        setError("Credenciais inválidas. Por favor, tente novamente.")
+        toastError({title: "Credenciais inválidas. Por favor, tente novamente."});
       } else {
-        router.push("/dashboard")
+        toast({title: "Login realizado com sucesso!"});
+        router.push("/dashboard");
       }
-    } catch (error) {
-      setError("Ocorreu um erro ao fazer login. Por favor, tente novamente.")
+    } catch {
+      toastError({title: "Ocorreu um erro ao fazer login. Por favor, tente novamente."});
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#e6f3ef] p-4 pt-0 sm:pt-4 md:pt-10">
@@ -59,16 +60,15 @@ export default function SignIn() {
             <CardDescription className="text-center text-red-800">Em Desenvolvimento</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {error && <div className="p-3 bg-red-100 text-red-600 text-sm rounded">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
                   E-mail
                 </label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="seu@email.com" 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -83,16 +83,16 @@ export default function SignIn() {
                     Esqueceu a senha?
                   </Link>
                 </div>
-                <Input 
-                  id="password" 
+                <Input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
                 disabled={isLoading}
               >
@@ -117,5 +117,5 @@ export default function SignIn() {
         </div>
       </div>
     </div>
-  )
+  );
 }

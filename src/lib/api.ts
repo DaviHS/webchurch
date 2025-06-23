@@ -1,7 +1,4 @@
-import axios from "axios";
+import { createTRPCReact } from "@trpc/react-query";
+import type { AppRouter } from "@/server/api/root";
 
-import { env } from "@/env";
-
-const api = axios.create({ baseURL: env.DATABASE_URL });
-
-export { api };
+export const api = createTRPCReact<AppRouter>();

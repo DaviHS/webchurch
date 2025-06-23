@@ -10,20 +10,21 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-                <div className="relative w-24 h-24 flex-shrink-0">
-                  <Image
-                    src="/logo.png"
-                    alt="Logo da Igreja Central"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold">Igreja Central</span>
-                  <span className="text-secondary/90 text-base">Vida Com Propósito</span>
-                </div>
+              <div className="relative w-24 h-24 flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Logo da Igreja Central"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold">Igreja Central</span>
+                <span className="text-secondary/90 text-base">Vida Com Propósito</span>
+              </div>
+            </div>
+
             <div className="flex space-x-4">
               <a
                 href="https://instagram.com/igrejacentralvcp/"

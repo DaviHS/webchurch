@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const signInSchema = z.object({
-  userLogin: z.string(),
+  email: z.string(),
   password: z.string().min(6, "A senha deve possuir no mínimo 6 caracteres!"),
 });
 
