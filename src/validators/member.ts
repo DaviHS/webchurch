@@ -40,7 +40,7 @@ export const memberSchema = z.object({
     .array(
       z.object({
         ministryId: z.number(),
-        role: z.string().nullable().optional(),
+        functionId: z.number()
       }),
     )
     .optional(),

@@ -1,16 +1,22 @@
 import { pgTableCreator, pgEnum } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
-// Criador de tabelas com convenção de nomes simples
 export const createTable = pgTableCreator((name) => name)
 
-// Enums
 export const memberStatusEnum = pgEnum("member_status", ["active", "inactive", "visiting", "transferred"])
 export const maritalStatusEnum = pgEnum("marital_status", ["single", "married", "divorced", "widowed"])
 export const genderEnum = pgEnum("gender", ["male", "female"])
 
-// Ministérios
 export const ministries = createTable("ministries", (d) => ({
+  id: d.serial("id").primaryKey(),
+  name: d.varchar("name", { length: 100 }).notNull().unique(),
+  description: d.text("description"),
+  isActive: d.boolean("is_active").notNull().default(true),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}))
+
+export const functions = createTable("functions", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull().unique(),
   description: d.text("description"),
@@ -51,10 +57,10 @@ export const memberMinistries = createTable("member_ministries", (d) => ({
   id: d.serial("id").primaryKey(),
   memberId: d.integer("member_id").notNull().references(() => members.id),
   ministryId: d.integer("ministry_id").notNull().references(() => ministries.id),
+  functionId: d.integer("function_id").references(() => functions.id),
   joinedAt: d.timestamp("joined_at").notNull().defaultNow(),
   leftAt: d.timestamp("left_at"),
   isActive: d.boolean("is_active").notNull().default(true),
-  role: d.varchar("role", { length: 50 }),
   notes: d.text("notes"),
 }))
 
@@ -96,6 +102,10 @@ export const memberMinistriesRelations = relations(memberMinistries, ({ one }) =
   ministry: one(ministries, {
     fields: [memberMinistries.ministryId],
     references: [ministries.id],
+  }),
+  function: one(functions, {
+    fields: [memberMinistries.functionId],
+    references: [functions.id],
   }),
 }))
 

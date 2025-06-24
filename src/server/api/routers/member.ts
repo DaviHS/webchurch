@@ -17,7 +17,7 @@ export const membersRouter = createTRPCRouter({
       const memberMinistryData = ministries.map((ministry) => ({
         memberId: newMember!.id,
         ministryId: ministry.ministryId,
-        role: ministry.role || null,
+        functionId: ministry.functionId || null,
       }))
 
       await db.insert(memberMinistries).values(memberMinistryData)
@@ -72,7 +72,7 @@ export const membersRouter = createTRPCRouter({
     const memberMinistriesData = await db
       .select({
         ministryId: memberMinistries.ministryId,
-        role: memberMinistries.role,
+        functionId: memberMinistries.functionId,
         joinedAt: memberMinistries.joinedAt,
         isActive: memberMinistries.isActive,
       })
@@ -114,7 +114,7 @@ export const membersRouter = createTRPCRouter({
         const memberMinistryData = ministries.map((ministry) => ({
           memberId: input.id,
           ministryId: ministry.ministryId,
-          role: ministry.role || null,
+          functionId: ministry.functionId,
         }))
 
         await db.insert(memberMinistries).values(memberMinistryData)

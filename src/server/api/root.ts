@@ -2,6 +2,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { membersRouter } from "./routers/member";
 import { ministriesRouter } from './routers/ministries';
 import { userRouter } from "./routers/user";
+import { functionsRouter } from "./routers/functions";
 
 /**
  * This is the primary router for your server.
@@ -9,6 +10,7 @@ import { userRouter } from "./routers/user";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  functions: functionsRouter,
   user: userRouter,
   member: membersRouter,
   ministry: ministriesRouter,
