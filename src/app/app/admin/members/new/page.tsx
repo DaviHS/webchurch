@@ -37,6 +37,7 @@ export default function NewMemberPage() {
   const [activeTab, setActiveTab] = useState("pessoais")
 
   const { data: ministries = [] } = api.ministry.getAll.useQuery()
+  const { data: functions = [] } = api.functions.getAll.useQuery()
 
   const {
     register,
@@ -105,20 +106,18 @@ export default function NewMemberPage() {
   const handleMinistryChange = (ministryId: number, checked: boolean) => {
     const current = selectedMinistries
     if (checked) {
-      setValue("ministries", [...current, { ministryId, role: "" }])
+      setValue("ministries", [...current, { ministryId, functionId: 0}])
     } else {
-      setValue(
-        "ministries",
-        current.filter((m) => m.ministryId !== ministryId),
-      )
+      setValue("ministries", current.filter((m) => m.ministryId !== ministryId))
     }
   }
 
-  const handleRoleChange = (ministryId: number, role: string) => {
-    const current = selectedMinistries
+  const handleFunctionChange = (ministryId: number, functionId: number) => {
     setValue(
       "ministries",
-      current.map((m) => (m.ministryId === ministryId ? { ...m, role } : m)),
+      selectedMinistries.map((m) =>
+        m.ministryId === ministryId ? { ...m, functionId } : m
+      )
     )
   }
 
@@ -175,7 +174,6 @@ export default function NewMemberPage() {
               </TabsTrigger>
             ))}
           </TabsList>
-
 
           <TabsContent value="pessoais" className="space-y-6">
             <Card>
@@ -370,12 +368,8 @@ export default function NewMemberPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {ministries.map((ministry) => {
-                  const isSelected = selectedMinistries.some(
-                    (m) => m.ministryId === ministry.id,
-                  )
-                  const role = selectedMinistries.find(
-                    (m) => m.ministryId === ministry.id,
-                  )?.role
+                  const isSelected = selectedMinistries.some((m) => m.ministryId === ministry.id)
+                  const selectedFunctionId = selectedMinistries.find((m) => m.ministryId === ministry.id)?.functionId
 
                   return (
                     <div key={ministry.id} className="flex items-center gap-4 mb-2">
@@ -391,15 +385,25 @@ export default function NewMemberPage() {
                       </Label>
 
                       {isSelected && (
-                        <Input
-                          placeholder="Função"
-                          value={role || ""}
-                          onChange={(e) =>
-                            handleRoleChange(ministry.id, e.target.value)
+                        <Select
+                          value={selectedFunctionId ? String(selectedFunctionId) : ""}
+                          onValueChange={(value) =>
+                            handleFunctionChange(ministry.id, Number(value))
                           }
-                          className="w-40"
-                        />
+                        >
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Função" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {functions.map((fn) => (
+                              <SelectItem key={fn.id} value={String(fn.id)}>
+                                {fn.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       )}
+
                     </div>
                   )
                 })}

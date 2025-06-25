@@ -8,7 +8,18 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Filter, Eye, Edit } from "lucide-react"
 import { api } from "@/lib/api"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toGender, toHasAccess, toStatus } from "@/lib/clean"
 
 export default function MembrosPage() {
@@ -44,7 +55,11 @@ export default function MembrosPage() {
       transferred: "Transferido",
     }
 
-    return <Badge className={variants[status as keyof typeof variants]}>{labels[status as keyof typeof labels]}</Badge>
+    return (
+      <Badge className={variants[status as keyof typeof variants]}>
+        {labels[status as keyof typeof labels]}
+      </Badge>
+    )
   }
 
   return (
@@ -52,7 +67,9 @@ export default function MembrosPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-primary">Membros</h1>
-          <p className="text-muted-foreground">Gerencie os membros da igreja</p>
+          <p className="text-muted-foreground">
+            Gerencie os membros da igreja
+          </p>
         </div>
         <Button asChild className="bg-primary hover:bg-primary/90">
           <Link href="/admin/members/new">
@@ -82,43 +99,61 @@ export default function MembrosPage() {
           <PopoverContent className="w-64 space-y-4">
             <div className="space-y-1">
               <label className="text-sm font-medium">Status</label>
-              <select
-                className="w-full border rounded p-2"
+              <Select
                 value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, status: value }))
+                }
               >
-                <option value="">Todos</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-                <option value="visiting">Visitante</option>
-                <option value="transferred">Transferido</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                  <SelectItem value="visiting">Visitante</SelectItem>
+                  <SelectItem value="transferred">Transferido</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">Gênero</label>
-              <select
-                className="w-full border rounded p-2"
+              <Select
                 value={filters.gender}
-                onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, gender: value }))
+                }
               >
-                <option value="">Todos</option>
-                <option value="male">Masculino</option>
-                <option value="female">Feminino</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="male">Masculino</SelectItem>
+                  <SelectItem value="female">Feminino</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">Acesso</label>
-              <select
-                className="w-full border rounded p-2"
+              <Select
                 value={filters.hasAccess}
-                onChange={(e) => setFilters({ ...filters, hasAccess: e.target.value })}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, hasAccess: value }))
+                }
               >
-                <option value="">Todos</option>
-                <option value="true">Com Acesso</option>
-                <option value="false">Sem Acesso</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="true">Com Acesso</SelectItem>
+                  <SelectItem value="false">Sem Acesso</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </PopoverContent>
         </Popover>
@@ -143,7 +178,10 @@ export default function MembrosPage() {
                       {m.email && <p>📧 {m.email}</p>}
                       {m.phone && <p>📱 {m.phone}</p>}
                       {m.memberSince && (
-                        <p>📅 Membro desde: {new Date(m.memberSince).toLocaleDateString()}</p>
+                        <p>
+                          📅 Membro desde:{" "}
+                          {new Date(m.memberSince).toLocaleDateString()}
+                        </p>
                       )}
                       <p>{u ? "🔐 Com acesso" : "🔒 Sem acesso"}</p>
                     </div>
