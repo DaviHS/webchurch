@@ -174,18 +174,38 @@ export default function MembrosPage() {
                       </h3>
                       {getStatusBadge(m.status)}
                     </div>
+
                     <div className="text-sm text-muted-foreground space-y-1">
                       {m.email && <p>📧 {m.email}</p>}
                       {m.phone && <p>📱 {m.phone}</p>}
                       {m.memberSince && (
                         <p>
-                          📅 Membro desde:{" "}
-                          {new Date(m.memberSince).toLocaleDateString()}
+                          📅 Membro desde: {new Date(m.memberSince).toLocaleDateString()}
                         </p>
                       )}
                       <p>{u ? "🔐 Com acesso" : "🔒 Sem acesso"}</p>
                     </div>
+
+                    {Array.isArray((m as any).ministries) && (m as any).ministries.length > 0 && (
+                      <div className="pt-2">
+                        <p className="text-sm font-semibold">Ministérios:</p>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+                          {(m as any).ministries.map(
+                            (
+                              min: { ministryName: string; functionName: string | null },
+                              idx: number
+                            ) => (
+                              <li key={idx}>
+                                {min.ministryName}
+                                {min.functionName ? ` — ${min.functionName}` : ""}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
+
                   <div className="flex sm:flex-col justify-end items-end gap-2">
                     <Link href={`/admin/member/${m.id}`}>
                       <Button

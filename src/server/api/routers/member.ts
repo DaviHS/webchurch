@@ -86,48 +86,50 @@ export const membersRouter = createTRPCRouter({
 
       const memberIds = result.map((r) => r.members.id);
 
-// Substitua este trecho dentro do método getAll:
+    const ministriesData = await db
+      .select({
+        memberId: memberMinistries.memberId,
+        ministryName: ministries.name,
+        functionName: functions.name,
+      })
+      .from(memberMinistries)
+      .leftJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
+      .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
+      .where(
+        and(
+          inArray(memberMinistries.memberId, memberIds), // Corrigido aqui
+          eq(memberMinistries.isActive, true),
+        ),
+      )
+      .execute()
 
-const ministriesData = await db
-  .select({
-    memberId: memberMinistries.memberId,
-    ministryName: ministries.name,
-    functionName: functions.name,
-  })
-  .from(memberMinistries)
-  .leftJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
-  .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
-  .where(
-    and(
-      inArray(memberMinistries.memberId, memberIds), // Corrigido aqui
-      eq(memberMinistries.isActive, true),
-    ),
-  )
-  .execute()
+      const ministriesByMember = ministriesData.reduce((acc, cur) => {
+        const memberId = cur?.memberId;
 
-const ministriesByMember = ministriesData.reduce((acc, cur) => {
-  if (typeof cur.memberId !== "number") {
-    // Se não tem memberId válido, simplesmente ignora esse registro
-    return acc;
-  }
+        if (typeof memberId !== "number") return acc;
 
-  if (!acc[cur.memberId]) acc[cur.memberId] = [];
+        if (!acc[memberId]) {
+          acc[memberId] = [];
+        }
 
-  acc[cur!.memberId].push({
-    ministryName: cur.ministryName ?? "",
-    functionName: cur.functionName,
-  });
+        acc[memberId].push({
+          ministryName: cur.ministryName ?? "",
+          functionName: cur.functionName,
+        });
 
-  return acc;
-}, {} as Record<number, { ministryName: string; functionName: string | null }[]>);
+        return acc;
+      }, {} as Record<number, { ministryName: string; functionName: string | null }[]>);
 
+      return result.map((r) => ({
+        members: {
+          ...r.members,
+          ministries: ministriesByMember[r.members.id] || [],
+        },
+        users: r.users,
+      }));
 
-return result.map((r) => ({
-  ...r,
-  ministries: ministriesByMember[r.members?.id ?? 0] || [], // evita undefined
-}))
-;
-    }),
+    }
+  ),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))

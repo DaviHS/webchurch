@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/sidebar"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
 
@@ -32,6 +31,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Início",
       url: `/app`,
     },
+    // Menu Administrativo - apenas para admins
     {
       icon: Shield,
       title: "Administração",
@@ -49,7 +49,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           resource: "members",
           action: "read",
         },
-       
+        {
+          title: "Funções e Ministérios",
+          url: "/admin/ministeries-functions",
+          resource: "settings",
+          action: "update",
+        },
+        {
+          title: "Relatórios",
+          url: "/admin/reports",
+          resource: "reports",
+          action: "read",
+        },
+        {
+          title: "Configurações",
+          url: "/admin/settings",
+          resource: "settings",
+          action: "read",
+        },
       ],
     },
   ]
@@ -63,13 +80,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <Link href={`/app`}>
                 <div className="flex h-14 items-center gap-3">
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={`/1.png`} alt="Company logo" />
-                    <AvatarFallback>RS</AvatarFallback>
+                    <AvatarImage src={`/1.png`} alt="Church logo" />
+                    <AvatarFallback>IC</AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Igreja Central</span>
-                  <span className="truncate text-xs">Vida Com Propósito</span>
+                  <span className="truncate text-xs">Vida Com Próposito</span>
                 </div>
               </Link>
             </SidebarMenuButton>

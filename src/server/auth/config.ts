@@ -65,7 +65,7 @@ export const authConfig: NextAuthConfig = {
         return {
           userId: user.userId,
           email: user.email,
-          fullName,
+          name: fullName,
           memberId: user.memberId,
         };
       },
@@ -77,7 +77,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.userId = user.userId;
         token.email = user.email;
-        token.fullName = user.fullName;
+        token.name = user.name;
         token.memberId = user.memberId;
         token.sub = String(user.userId); // sempre string
       }
@@ -92,7 +92,7 @@ export const authConfig: NextAuthConfig = {
           id: token.sub ?? "", // id deve ser string
           userId: token.userId,
           email: token.email,
-          fullName: token.fullName,
+          name: token.name,
           memberId: token.memberId,
         },
       };

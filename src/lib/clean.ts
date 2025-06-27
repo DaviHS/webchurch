@@ -18,3 +18,26 @@ export function toHasAccess(value: string | undefined): "true" | "false" | undef
   if (value === "true" || value === "false") return value;
   return undefined;
 }
+
+export function cleanNulls<T extends object>(obj: T): T {
+  const cleaned = {} as T
+
+  for (const key in obj) {
+    const value = obj[key]
+
+    if (value === null) {
+      cleaned[key] = undefined as any
+    } else if (Array.isArray(value)) {
+      cleaned[key] = value.map((item) =>
+        typeof item === "object" && item !== null ? cleanNulls(item) : item
+      ) as any
+    } else if (typeof value === "object" && value !== null) {
+      cleaned[key] = cleanNulls(value) as any
+    } else {
+      cleaned[key] = value
+    }
+  }
+
+  return cleaned
+}
+

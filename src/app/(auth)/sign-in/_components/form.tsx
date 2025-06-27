@@ -22,7 +22,7 @@ export const SignInForm = () => {
   const form = useForm<SignInSchema>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      userLogin: "",
+      email: "",
       password: "",
     },
   });
@@ -31,8 +31,6 @@ export const SignInForm = () => {
     startTransaction(async () => {
       const responseAuth = await signIn("credentials", {
         ...d,
-        auth_type: "email_auth",
-        app_id: "4",
         redirect: false,
       });
 
