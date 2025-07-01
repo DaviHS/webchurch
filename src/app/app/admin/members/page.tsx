@@ -207,7 +207,7 @@ export default function MembrosPage() {
                   </div>
 
                   <div className="flex sm:flex-col justify-end items-end gap-2">
-                    <Link href={`/admin/member/${m.id}`}>
+                    <Link href={`/admin/members/${m.id}`}>
                       <Button
                         variant="outline"
                         size="sm"
@@ -216,7 +216,7 @@ export default function MembrosPage() {
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Link href={`/admin/member/${m.id}/edit`}>
+                    <Link href={`/admin/members/${m.id}/edit`}>
                       <Button
                         variant="outline"
                         size="sm"

@@ -21,13 +21,13 @@ export function sanitizeMemberForForm(member: RawMember): MemberFormData {
     phone: member.phone ?? undefined,
     whatsapp: member.whatsapp ?? undefined,
     birthDate: member.birthDate ?? undefined,
-    gender: member.gender ?? undefined,
-    maritalStatus: member.maritalStatus ?? undefined,
+    gender: member.gender ?? "",           // string vazia se undefined
+    maritalStatus: member.maritalStatus ?? "",
     address: member.address ?? undefined,
     city: member.city ?? undefined,
     state: member.state ?? undefined,
     zipCode: member.zipCode ?? undefined,
-    baptized: member.baptized ?? undefined,
+    baptized: !!member.baptized,           // boolean, não undefined nem string
     churchRole: member.churchRole ?? undefined,
     baptismDate: member.baptismDate ?? undefined,
     memberSince: member.memberSince ?? undefined,

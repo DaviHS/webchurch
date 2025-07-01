@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Edit } from "lucide-react"
+import { Edit } from "lucide-react"
 import Link from "next/link"
 
 export default function MemberProfilePage() {
@@ -23,6 +23,7 @@ export default function MemberProfilePage() {
       transferred: "bg-yellow-100 text-yellow-800",
     }
 
+    console.log(member)
     const labels = {
       active: "Ativo",
       inactive: "Inativo",
@@ -35,6 +36,16 @@ export default function MemberProfilePage() {
         {labels[status as keyof typeof labels]}
       </Badge>
     )
+  }
+
+  const getMaritalStatusLabel = (status?: string) => {
+    const map = {
+      single: "Solteiro(a)",
+      married: "Casado(a)",
+      divorced: "Divorciado(a)",
+      widowed: "Viúvo(a)",
+    } as const
+    return status ? map[status as keyof typeof map] || "—" : "—"
   }
 
   if (isLoading || !member) {
@@ -57,14 +68,12 @@ export default function MemberProfilePage() {
           </h1>
           <p className="text-muted-foreground">Perfil do membro</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary">
-            <Link href={`/admin/members/${member.id}/edit`}>
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
-            </Link>
-          </Button>
-        </div>
+        <Button asChild variant="secondary">
+          <Link href={`/admin/members/${member.id}/edit`}>
+            <Edit className="w-4 h-4 mr-2" />
+            Editar
+          </Link>
+        </Button>
       </div>
 
       <Card>
@@ -79,6 +88,10 @@ export default function MemberProfilePage() {
               <p className="text-muted-foreground text-sm">{member.phone || "—"}</p>
             </div>
             <div>
+              <p className="font-medium">WhatsApp</p>
+              <p className="text-muted-foreground text-sm">{member.whatsapp || "—"}</p>
+            </div>
+            <div>
               <p className="font-medium">Status</p>
               {getStatusBadge(member.status)}
             </div>
@@ -89,10 +102,22 @@ export default function MemberProfilePage() {
               </p>
             </div>
             <div>
+              <p className="font-medium">Estado Civil</p>
+              <p className="text-muted-foreground text-sm">{getMaritalStatusLabel(member!.maritalStatus!)}</p>
+            </div>
+            <div>
               <p className="font-medium">Nascimento</p>
               <p className="text-muted-foreground text-sm">
                 {member.birthDate
                   ? new Date(member.birthDate).toLocaleDateString()
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium">Batismo</p>
+              <p className="text-muted-foreground text-sm">
+                {member.baptismDate
+                  ? new Date(member.baptismDate).toLocaleDateString()
                   : "—"}
               </p>
             </div>
@@ -104,6 +129,18 @@ export default function MemberProfilePage() {
                   : "—"}
               </p>
             </div>
+            <div>
+              <p className="font-medium">Profissão</p>
+              <p className="text-muted-foreground text-sm">{member.profession || "—"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Contato de Emergência</p>
+              <p className="text-muted-foreground text-sm">{member.emergencyContact || "—"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Telefone de Emergência</p>
+              <p className="text-muted-foreground text-sm">{member.emergencyPhone || "—"}</p>
+            </div>
           </div>
 
           <div>
@@ -113,6 +150,15 @@ export default function MemberProfilePage() {
               {member.zipCode || "—"}
             </p>
           </div>
+
+          {member.notes && (
+            <div>
+              <p className="font-medium mb-1">Observações</p>
+              <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                {member.notes}
+              </p>
+            </div>
+          )}
 
           {member.ministries?.length > 0 && (
             <div>

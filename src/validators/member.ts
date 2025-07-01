@@ -12,7 +12,7 @@ export const memberSchema = z.object({
   // Dados pessoais complementares
   birthDate: z.string().optional(),
   gender: z.enum(["male", "female"]).optional(),
-  maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).optional(),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).optional().default("single"),
 
   // Endereço
   address: z.string().optional(),
@@ -21,10 +21,10 @@ export const memberSchema = z.object({
   zipCode: z.string().max(10).optional(),
 
   // Dados da igreja
-  baptized: z.string().optional(),
+  baptized: z.boolean().optional(),
   churchRole: z.string().optional(),
-  baptismDate: z.string().optional(),
-  memberSince: z.string().optional(),
+  baptismDate: z.string().optional().nullable(),
+  memberSince: z.string().optional().nullable(),
   status: z.enum(["active", "inactive", "visiting", "transferred"]).default("active"),
 
   // Informações adicionais
@@ -40,7 +40,7 @@ export const memberSchema = z.object({
     .array(
       z.object({
         ministryId: z.number(),
-        functionId: z.number()
+        functionId: z.number().optional()
       }),
     )
     .optional(),
