@@ -2,9 +2,9 @@
 
 import { useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useForm, useFieldArray, Controller } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { api } from "@/lib/api"
+import { api } from "@/trpc/react"
 import { memberSchema, type MemberFormData } from "@/validators/member"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -74,6 +74,12 @@ export default function EditMemberPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex items-center gap-4 mb-8">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin/membros">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Voltar
+          </Link>
+        </Button>
         <div>
           <h1 className="text-3xl font-bold text-primary">Editar Membro</h1>
           <p className="text-muted-foreground">
@@ -126,43 +132,39 @@ export default function EditMemberPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Gênero</Label>
-                <Controller
-                  name="gender"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select value={field.value || ""} onValueChange={(value) => field.onChange(value || undefined)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Masculino</SelectItem>
-                        <SelectItem value="female">Feminino</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                <Label htmlFor="gender">Gênero</Label>
+                <Select
+                  value={form.watch("gender") || ""}
+                  onValueChange={(value) => form.setValue("gender", value as "male" | "female" | undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Masculino</SelectItem>
+                    <SelectItem value="female">Feminino</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Estado Civil</Label>
-                <Controller
-                  name="maritalStatus"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select value={field.value || "single"} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">Solteiro(a)</SelectItem>
-                        <SelectItem value="married">Casado(a)</SelectItem>
-                        <SelectItem value="divorced">Divorciado(a)</SelectItem>
-                        <SelectItem value="widowed">Viúvo(a)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                <Label htmlFor="maritalStatus">Estado Civil</Label>
+                <Select
+                  value={form.watch("maritalStatus") || "single"}
+                  onValueChange={(value) =>
+                    form.setValue("maritalStatus", value as "single" | "married" | "divorced" | "widowed")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Solteiro(a)</SelectItem>
+                    <SelectItem value="married">Casado(a)</SelectItem>
+                    <SelectItem value="divorced">Divorciado(a)</SelectItem>
+                    <SelectItem value="widowed">Viúvo(a)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -192,7 +194,6 @@ export default function EditMemberPage() {
           </CardContent>
         </Card>
 
-        {/* Endereço */}
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
@@ -222,7 +223,6 @@ export default function EditMemberPage() {
           </CardContent>
         </Card>
 
-        {/* Informações da Igreja */}
         <Card>
           <CardHeader>
             <CardTitle>Informações da Igreja</CardTitle>
@@ -240,24 +240,23 @@ export default function EditMemberPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Status</Label>
-                <Controller
-                  name="status"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select value={field.value || "active"} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="inactive">Inativo</SelectItem>
-                        <SelectItem value="visiting">Visitante</SelectItem>
-                        <SelectItem value="transferred">Transferido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={form.watch("status") || "active"}
+                  onValueChange={(value) =>
+                    form.setValue("status", value as "active" | "inactive" | "visiting" | "transferred")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
+                    <SelectItem value="visiting">Visitante</SelectItem>
+                    <SelectItem value="transferred">Transferido</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -273,7 +272,6 @@ export default function EditMemberPage() {
           </CardContent>
         </Card>
 
-        {/* Ministérios */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -297,54 +295,45 @@ export default function EditMemberPage() {
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Ministério *</Label>
-                        <Controller
-                          name={`ministries.${index}.ministryId`}
-                          control={form.control}
-                          render={({ field }) => (
-                            <Select
-                              value={field.value?.toString() || ""}
-                              onValueChange={(value) => field.onChange(Number(value))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o ministério" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allMinistries.map((ministry) => (
-                                  <SelectItem key={ministry.id} value={ministry.id.toString()}>
-                                    {ministry.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
+                        <Select
+                          value={form.watch(`ministries.${index}.ministryId`)?.toString() || ""}
+                          onValueChange={(value) => form.setValue(`ministries.${index}.ministryId`, Number(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o ministério" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allMinistries.map((ministry) => (
+                              <SelectItem key={ministry.id} value={ministry.id.toString()}>
+                                {ministry.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="space-y-2">
                         <Label>Função</Label>
-                        <Controller
-                          name={`ministries.${index}.functionId`}
-                          control={form.control}
-                          render={({ field }) => (
-                            <Select
-                              value={field.value === undefined ? "any" : String(field.value)}
-                              onValueChange={(val) =>
-                                field.onChange(val === "any" ? undefined : Number(val))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Opcional" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="any">Sem função</SelectItem>
-                                {allFunctions.map((f) => (
-                                  <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
+                        <Select
+                          value={form.watch(`ministries.${index}.functionId`)?.toString() || ""}
+                          onValueChange={(value) =>
+                            form.setValue(`ministries.${index}.functionId`, value ? Number(value) : undefined)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sem função" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem função</SelectItem>
+                            {allFunctions?.map((f) => (
+                              <SelectItem key={f.id} value={String(f.id)}>
+                                {f.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+
                     </div>
 
                     <Button
