@@ -1,17 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "build": {
-    "env": {
-      "NODE_ENV": "production",
-      "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
     }
   },
-  "installCommand": "npm install --legacy-peer-deps --force",
-  "buildCommand": "npm run build"
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
