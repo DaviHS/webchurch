@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { Home, Activity, BarChart3, ClipboardCheck, Shield } from "lucide-react"
+import { Home, Activity, BarChart3, ClipboardCheck, Shield, Music, Calendar } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { NavMain, type NavItem } from "./nav-main"
 import { NavUser } from "./nav-user"
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
 
@@ -36,7 +37,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: Shield,
       title: "Administração",
       url: "#",
-      roles: ["super_admin", "admin"],
+      //roles: ["super_admin", "admin"],
       items: [
         {
           title: "Dashboard Admin",
@@ -51,24 +52,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
         {
           title: "Funções e Ministérios",
-          url: "/admin/ministeries-functions",
+          url: "/admin/ministeries",
           resource: "settings",
           action: "update",
         },
-        {
-          title: "Relatórios",
-          url: "/admin/reports",
-          resource: "reports",
-          action: "read",
-        },
-        {
-          title: "Configurações",
-          url: "/admin/settings",
-          resource: "settings",
-          action: "read",
-        },
       ],
     },
+    {
+      icon: Music,
+      title: "Louvor",
+      url: "#",
+      //roles: ["super_admin", "admin"],
+      items: [
+        {
+          title: "Músicas",
+          url: "/praise/songs",
+          icon: Music,
+        },
+        {
+          title: "Eventos",
+          url: "/praise/events",
+          icon: Calendar,
+        },
+        {
+          title: "Relatórios",
+          url: "/praise/events",
+          icon: Calendar,
+        },
+      ]
+    }
   ]
 
   return (

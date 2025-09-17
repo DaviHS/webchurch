@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { users, members } from "@/server/db/schema";
+import { users, members } from "../db/schema";
 import { signInSchema } from "@/validators/auth";
 import { compare } from "bcrypt-ts";
 import Credentials from "next-auth/providers/credentials";
@@ -16,6 +16,7 @@ class InvalidLoginError extends Error {
 }
 
 export const authConfig: NextAuthConfig = {
+  secret: process.env.AUTH_SECRET,
   pages: {
     signOut: `/sign-in`,
     signIn: `/app`,

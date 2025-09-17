@@ -20,7 +20,7 @@ import {
 } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 
-export const membersRouter = createTRPCRouter({
+export const memberRouter = createTRPCRouter({
   create: protectedProcedure.input(memberSchema).mutation(async ({ input }) => {
     const { ministries, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);

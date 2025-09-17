@@ -26,6 +26,13 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { statusTranslations } from "@/lib/utils"
 
+interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  totalItems?: number
+  onPageChange: (page: number) => void
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -35,6 +42,9 @@ interface DataTableProps<TData, TValue> {
   showGlobalFilter?: boolean
   showPagination?: boolean
   pageSize?: number
+  loading?: boolean
+  pagination?: PaginationProps
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -46,6 +56,9 @@ export function DataTable<TData, TValue>({
   showGlobalFilter = true,
   showPagination = true,
   pageSize = 10,
+  loading = false,
+  pagination,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -68,16 +81,15 @@ export function DataTable<TData, TValue>({
     initialState: {
       pagination: {
         pageSize,
+        pageIndex: pagination ? pagination.currentPage - 1 : 0,
       },
     },
     globalFilterFn: (row, columnId, filterValue) => {
       const value = row.getValue(columnId)
-
       if ((columnId === "status" || columnId === "tipo") && typeof value === "string") {
         const statusTranslation = statusTranslations[value] || value
         return String(statusTranslation).toLowerCase().includes(filterValue.toLowerCase())
       }
-
       return typeof value === "string"
         ? String(value).toLowerCase().includes(filterValue.toLowerCase())
         : String(value).includes(filterValue)
@@ -115,42 +127,49 @@ export function DataTable<TData, TValue>({
                   {table
                     .getAllColumns()
                     .filter((column) => column.getCanHide())
-                    .map((column) => {
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={column.id}
-                          className="capitalize"
-                          checked={column.getIsVisible()}
-                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                        >
-                          {column.id}
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })}
+                    .map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
         )}
-        <div className="rounded-md border">
+
+        <div className="rounded-md border relative">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+              <span className="text-gray-500">Carregando...</span>
+            </div>
+          )}
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    )
-                  })}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    onClick={() => onRowClick?.(row.original)}
+                    className={onRowClick ? "cursor-pointer" : ""}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -166,21 +185,27 @@ export function DataTable<TData, TValue>({
             </TableBody>
           </Table>
         </div>
-        {showPagination && (
+
+        {showPagination && pagination && (
           <div className="flex items-center justify-end space-x-2 py-4">
             <div className="flex-1 text-sm text-muted-foreground">
-              {table.getRowModel().rows.length} de {table.getFilteredRowModel().rows.length} linha(s) exibidas.
+              {data.length} de {pagination.totalItems ?? data.length} linha(s) exibidas.
             </div>
             <div className="space-x-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage <= 1}
               >
                 Anterior
               </Button>
-              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage >= pagination.totalPages}
+              >
                 Próxima
               </Button>
             </div>

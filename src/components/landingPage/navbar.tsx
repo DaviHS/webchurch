@@ -52,7 +52,7 @@ export default function Navbar() {
           {session ? (
             <>
               <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                <Link href="/dashboard">Área do Membro</Link>
+                <Link href="/">Área do Membro</Link>
               </Button>
               <Button variant="ghost" onClick={() => void signOut()} className="text-white hover:bg-white/10">
                 Sair
@@ -124,7 +124,7 @@ export default function Navbar() {
               {session ? (
                 <>
                   <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                    <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                    <Link href="/" onClick={() => setIsMenuOpen(false)}>
                       Área do Membro
                     </Link>
                   </Button>

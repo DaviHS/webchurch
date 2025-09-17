@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
+
   // Skip middleware for static files and API routes
   if (
     pathname.startsWith('/_next') ||
@@ -18,13 +18,13 @@ export async function middleware(request: NextRequest) {
   // Get the token to check if user is authenticated
   const token = await getToken({ 
     req: request, 
-    secret: process.env.NEXTAUTH_SECRET 
+    secret: process.env.AUTH_SECRET 
   })
   
   const isAuth = !!token
   const isAuthRoute = /^\/(sign-in|forgot-password|reset-password)/.test(pathname)
   const isRootRoute = pathname === '/'
-  const isPublicRoute = pathname === '/login' || pathname === '/'
+  const isPublicRoute = pathname === '/sign-in' || pathname === '/'
 
   // Allow access to root route and public routes
   if (isRootRoute || isPublicRoute) {
@@ -32,15 +32,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect non-app routes to /app prefix (except auth routes)
-  if (!pathname.startsWith('/app') && !isAuthRoute && !pathname.startsWith('/admin')) {
+  if (!pathname.startsWith('/app') && !isAuthRoute) {
     const newUrl = new URL(`/app${pathname}`, request.nextUrl.origin)
     return NextResponse.redirect(newUrl)
   }
 
   // Protect /app and /admin routes
-  if (pathname.startsWith('/app') || pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/app')) {
     if (!isAuth) {
-      const signInUrl = new URL('/login', request.nextUrl.origin)
+      const signInUrl = new URL('/sign-in', request.nextUrl.origin)
       signInUrl.searchParams.set('from', pathname)
       return NextResponse.redirect(signInUrl)
     }

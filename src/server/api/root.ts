@@ -1,8 +1,10 @@
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
-import { membersRouter } from "./routers/member";
+import { memberRouter } from "./routers/member";
 import { ministriesRouter } from './routers/ministries';
 import { userRouter } from "./routers/user";
 import { functionsRouter } from "./routers/functions";
+import { songRouter } from "./routers/song";
+import { eventRouter } from "./routers/event";
 
 /**
  * This is the primary router for your server.
@@ -12,8 +14,10 @@ import { functionsRouter } from "./routers/functions";
 export const appRouter = createTRPCRouter({
   functions: functionsRouter,
   user: userRouter,
-  member: membersRouter,
+  member: memberRouter,
   ministry: ministriesRouter,
+  song: songRouter,
+  event: eventRouter,
 });
 
 // export type definition of API
