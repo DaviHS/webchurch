@@ -12,7 +12,7 @@ export default function NewSongPage() {
   const createSong = api.song.create.useMutation({
     onSuccess: () => {
       toast.success("Música criada com sucesso!");
-      router.push("/praise/songs");
+      router.push("/app/praise/songs");
     },
     onError: (error) => {
       toast.error("Erro ao criar música: " + error.message);

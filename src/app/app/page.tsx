@@ -26,7 +26,7 @@ export default function DashboardPage() {
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/praise/songs")}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/praise/songs")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Músicas</CardTitle>
             <Music className="h-4 w-4 text-muted-foreground" />
@@ -37,7 +37,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/events")}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/praise/events")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Eventos</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -59,7 +59,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/members")}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/praise/members")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Equipe</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />

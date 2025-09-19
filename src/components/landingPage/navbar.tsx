@@ -52,7 +52,7 @@ export default function Navbar() {
           {session ? (
             <>
               <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                <Link href="/">Área do Membro</Link>
+                <Link href="/app">Área do Membro</Link>
               </Button>
               <Button variant="ghost" onClick={() => void signOut()} className="text-white hover:bg-white/10">
                 Sair
@@ -60,7 +60,7 @@ export default function Navbar() {
             </>
           ) : (
             <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-              <Link href="/sign-in">Área do Membro</Link>
+              <Link href="/app">Área do Membro</Link>
             </Button>
           )}
         </div>

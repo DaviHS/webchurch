@@ -23,7 +23,7 @@ export default function EditSongPage({
   const updateSong = api.song.update.useMutation({
     onSuccess: () => {
       toast.success("Música atualizada com sucesso!");
-      router.push("/praise/songs");
+      router.push("/app/praise/songs");
     },
     onError: (error) => {
       toast.error("Erro ao atualizar música: " + error.message);

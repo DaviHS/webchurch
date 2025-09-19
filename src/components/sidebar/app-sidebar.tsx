@@ -41,20 +41,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [
         {
           title: "Dashboard Admin",
-          url: "/admin",
+          url: "/app/admin",
           roles: ["super_admin", "admin"],
         },
         {
           title: "Membros",
-          url: "/admin/members",
+          url: "/app/admin/members",
           resource: "members",
-          action: "read",
         },
         {
           title: "Funções e Ministérios",
-          url: "/admin/ministeries",
+          url: "/app/admin/ministeries",
           resource: "settings",
-          action: "update",
         },
       ],
     },
@@ -66,17 +64,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [
         {
           title: "Músicas",
-          url: "/praise/songs",
+          url: "/app/praise/songs",
           icon: Music,
         },
         {
           title: "Eventos",
-          url: "/praise/events",
+          url: "/app/praise/events",
           icon: Calendar,
         },
         {
           title: "Relatórios",
-          url: "/praise/events",
+          url: "/app/praise/events",
           icon: Calendar,
         },
       ]

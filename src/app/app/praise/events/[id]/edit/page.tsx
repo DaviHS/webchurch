@@ -23,7 +23,7 @@ export default function EditEventPage({
   const updateEvent = api.event.update.useMutation({
     onSuccess: () => {
       toast.success("Evento atualizado com sucesso!");
-      router.push("/praise/events");
+      router.push("/app/praise/events");
     },
     onError: (error) => {
       toast.error("Erro ao atualizar evento: " + error.message);
@@ -48,7 +48,7 @@ export default function EditEventPage({
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.push("/praise/events")}>
+        <Button variant="outline" onClick={() => router.push("/app/praise/events")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>

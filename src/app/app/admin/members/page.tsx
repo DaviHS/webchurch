@@ -72,7 +72,7 @@ export default function MembrosPage() {
           </p>
         </div>
         <Button asChild className="bg-primary hover:bg-primary/90">
-          <Link href="/admin/members/new">
+          <Link href="/app/admin/members/new">
             <Plus className="mr-2 h-4 w-4" />
             Novo Membro
           </Link>
@@ -207,7 +207,7 @@ export default function MembrosPage() {
                   </div>
 
                   <div className="flex sm:flex-col justify-end items-end gap-2">
-                    <Link href={`/admin/members/${m.id}`}>
+                    <Link href={`/app/admin/members/${m.id}`}>
                       <Button
                         variant="outline"
                         size="sm"
@@ -216,7 +216,7 @@ export default function MembrosPage() {
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Link href={`/admin/members/${m.id}/edit`}>
+                    <Link href={`/app/admin/members/${m.id}/edit`}>
                       <Button
                         variant="outline"
                         size="sm"

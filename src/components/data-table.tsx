@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ChevronDown } from "lucide-react"
+import * as React from "react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -13,18 +13,18 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
 
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { statusTranslations } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTranslations } from "@/lib/utils";
 
 interface PaginationProps {
   currentPage: number
@@ -45,6 +45,8 @@ interface DataTableProps<TData, TValue> {
   loading?: boolean
   pagination?: PaginationProps
   onRowClick?: (row: TData) => void
+  getRowCanExpand?: (row: any) => boolean
+  renderSubComponent?: (props: { row: any }) => React.ReactElement
 }
 
 export function DataTable<TData, TValue>({
@@ -59,12 +61,15 @@ export function DataTable<TData, TValue>({
   loading = false,
   pagination,
   onRowClick,
+  getRowCanExpand,
+  renderSubComponent,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({})
 
   const table = useReactTable({
     data,
@@ -101,7 +106,15 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
     },
+    getRowCanExpand,
   })
+
+  const toggleRowExpanded = (rowId: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [rowId]: !prev[rowId]
+    }))
+  }
 
   return (
     <div className="space-y-4">
@@ -153,6 +166,7 @@ export function DataTable<TData, TValue>({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
+                  {getRowCanExpand && <TableHead className="w-10" />}
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -164,20 +178,50 @@ export function DataTable<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    onClick={() => onRowClick?.(row.original)}
-                    className={onRowClick ? "cursor-pointer" : ""}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() && "selected"}
+                      className={onRowClick ? "cursor-pointer" : ""}
+                    >
+                      {getRowCanExpand && getRowCanExpand(row) && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleRowExpanded(row.id)}
+                          >
+                            {expandedRows[row.id] ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      )}
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell 
+                          key={cell.id}
+                          onClick={() => onRowClick?.(row.original)}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {getRowCanExpand && getRowCanExpand(row) && expandedRows[row.id] && (
+                      <TableRow>
+                        <TableCell colSpan={columns.length + 1} className="bg-muted/50">
+                          {renderSubComponent && renderSubComponent({ row })}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <TableCell 
+                    colSpan={columns.length + (getRowCanExpand ? 1 : 0)} 
+                    className="h-24 text-center"
+                  >
                     {noResultsMessage}
                   </TableCell>
                 </TableRow>

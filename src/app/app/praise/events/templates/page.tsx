@@ -23,7 +23,7 @@ export default function EventTemplatesPage() {
   const useTemplate = api.event.useTemplate.useMutation({
     onSuccess: (event) => {
       toast.success("Evento criado a partir do template!");
-      router.push(`/praise/events/${event!.id}`);
+      router.push(`/app/praise/events/${event!.id}`);
     },
   });
 

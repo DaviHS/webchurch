@@ -69,7 +69,7 @@ export default function MemberProfilePage() {
           <p className="text-muted-foreground">Perfil do membro</p>
         </div>
         <Button asChild variant="secondary">
-          <Link href={`/admin/members/${member.id}/edit`}>
+          <Link href={`/app/admin/members/${member.id}/edit`}>
             <Edit className="w-4 h-4 mr-2" />
             Editar
           </Link>

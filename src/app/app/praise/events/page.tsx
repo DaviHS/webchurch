@@ -56,7 +56,7 @@ export default function EventsPage() {
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Eventos</h1>
-        <Button onClick={() => router.push("/praise/events/new")}>
+        <Button onClick={() => router.push("/app/praise/events/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Novo Evento
         </Button>
@@ -99,7 +99,7 @@ export default function EventsPage() {
               onPageChange: setPage,
               totalItems: data?.total || 0,
             }}
-            onRowClick={(row) => router.push(`/praise/events/${row.id}`)}
+            onRowClick={(row) => router.push(`/app/praise/events/${row.id}`)}
           />
         </CardContent>
       </Card>

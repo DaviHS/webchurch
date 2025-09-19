@@ -196,7 +196,7 @@ ${song.chords ? `\nCifras:\n${song.chords}` : ''}
               <Button 
                 variant="outline" 
                 className="mt-4"
-                onClick={() => router.push('/praise/songs')}
+                onClick={() => router.push('/app/praise/songs')}
               >
                 Voltar para a lista
               </Button>
@@ -251,7 +251,7 @@ ${song.chords ? `\nCifras:\n${song.chords}` : ''}
           
           <Button 
             size="sm"
-            onClick={() => router.push(`/praise/songs/${songId}/edit`)}
+            onClick={() => router.push(`/app/praise/songs/${songId}/edit`)}
             className="flex items-center gap-2"
           >
             <Edit className="h-4 w-4" />

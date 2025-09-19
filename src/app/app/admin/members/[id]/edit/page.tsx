@@ -30,7 +30,7 @@ export default function EditMemberPage() {
   const updateMember = api.member.update.useMutation({
     onSuccess: () => {
       toast.success("Membro atualizado com sucesso!")
-      router.push("/admin/members")
+      router.push("/app/admin/members")
     },
     onError: (error) => {
       toast.error(error.message || "Erro ao atualizar membro")
@@ -75,7 +75,7 @@ export default function EditMemberPage() {
     <div className="container mx-auto py-8">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/admin/membros">
+          <Link href="/app/admin/members">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Voltar
           </Link>

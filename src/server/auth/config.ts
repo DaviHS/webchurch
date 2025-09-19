@@ -5,6 +5,7 @@ import { signInSchema } from "@/validators/auth";
 import { compare } from "bcrypt-ts";
 import Credentials from "next-auth/providers/credentials";
 import { NextAuthConfig } from "next-auth";
+import { env } from "@/env";
 
 class InvalidLoginError extends Error {
   code = "Invalid identifier or password";
@@ -16,7 +17,7 @@ class InvalidLoginError extends Error {
 }
 
 export const authConfig: NextAuthConfig = {
-  secret: process.env.AUTH_SECRET,
+  secret: env.AUTH_SECRET,
   pages: {
     signOut: `/sign-in`,
     signIn: `/app`,

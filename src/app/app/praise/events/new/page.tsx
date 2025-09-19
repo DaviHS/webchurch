@@ -13,7 +13,7 @@ export default function NewEventPage() {
   const createEvent = api.event.create.useMutation({
     onSuccess: (event) => {
       toast.success("Evento criado com sucesso!");
-      router.push(`/praise/events/${event!.id!}`);
+      router.push(`/app/praise/events/${event!.id!}`);
     },
     onError: (error) => {
       toast.error("Erro ao criar evento: " + error.message);
@@ -23,7 +23,7 @@ export default function NewEventPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.push("/praise/events")}>
+        <Button variant="outline" onClick={() => router.push("/app/praise/events")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
