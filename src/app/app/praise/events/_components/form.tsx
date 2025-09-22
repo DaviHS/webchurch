@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -51,15 +51,12 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
     }
   };
 
-  // Função para garantir que a data seja serializada corretamente
   const handleSubmit = (data: EventFormData) => {
-    // Garantir que a data seja um Date object válido
     const formattedData = {
       ...data,
       date: data.date instanceof Date ? data.date : new Date(data.date),
     };
     
-    console.log("Dados enviados:", formattedData);
     onSubmit(formattedData);
   };
 
@@ -135,7 +132,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
                     <Calendar
                       mode="single"
                       selected={field.value}
-                      onSelect={field.onChange}
+                      onSelect={handleDateSelect}
                       disabled={(date) => date < new Date("1900-01-01")}
                       initialFocus
                     />

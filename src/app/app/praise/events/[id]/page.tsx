@@ -15,7 +15,6 @@ export default function EventDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Use o hook use para resolver a Promise
   const resolvedParams = use(params);
   const eventId = Number(resolvedParams.id);
 
@@ -28,13 +27,15 @@ export default function EventDetailPage({
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <h1 className="text-3xl font-bold">{event.title}</h1>
-        <Button onClick={() => router.push(`/events/${eventId}/edit`)}>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          <h1 className="text-3xl font-bold">{event.title}</h1>
+        </div>
+        <Button onClick={() => router.push(`/app/praise/events/${eventId}/edit`)}>
           <Edit className="mr-2 h-4 w-4" />
           Editar
         </Button>
@@ -95,18 +96,6 @@ export default function EventDetailPage({
                   <label className="text-sm font-medium">Pregador</label>
                   <p className="text-muted-foreground">{event.preacher || "Não informado"}</p>
                 </div>
-                {event.startTime && (
-                  <div>
-                    <label className="text-sm font-medium">Hora de Início</label>
-                    <p className="text-muted-foreground">{event.startTime}</p>
-                  </div>
-                )}
-                {event.endTime && (
-                  <div>
-                    <label className="text-sm font-medium">Hora de Término</label>
-                    <p className="text-muted-foreground">{event.endTime}</p>
-                  </div>
-                )}
               </div>
 
               {event.bibleVerse && (

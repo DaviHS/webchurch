@@ -107,7 +107,15 @@ export const eventRouter = createTRPCRouter({
   }),
 
   create: protectedProcedure.input(eventSchema).mutation(async ({ input }) => {
-    const cleanedData = cleanEmptyStrings(input);
+    // Garantir que a data seja um objeto Date válido
+    const processedData = {
+      ...input,
+      date: input.date instanceof Date ? input.date : new Date(input.date)
+    };
+    
+    const cleanedData = cleanEmptyStrings(processedData);
+    console.log("Data a ser inserida:", cleanedData);
+    
     const [newEvent] = await db.insert(events).values(cleanedData).returning();
     return newEvent;
   }),
@@ -338,5 +346,23 @@ export const eventRouter = createTRPCRouter({
       }
 
       return newEvent;
+    }),
+
+    // No seu eventRouter, adicione esta mutation:
+  updateSongOrder: protectedProcedure
+    .input(z.object({
+      eventSongId: z.number(),
+      newOrder: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const { eventSongId, newOrder } = input;
+      
+      const [updatedSong] = await db
+        .update(eventSongs)
+        .set({ order: newOrder })
+        .where(eq(eventSongs.id, eventSongId))
+        .returning();
+      
+      return updatedSong;
     }),
 });

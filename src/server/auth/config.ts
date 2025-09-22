@@ -20,7 +20,7 @@ export const authConfig: NextAuthConfig = {
   secret: env.AUTH_SECRET,
   pages: {
     signOut: `/sign-in`,
-    signIn: `/app`,
+    signIn: `/sign-in`,
   },
   trustHost: true,
   session: {

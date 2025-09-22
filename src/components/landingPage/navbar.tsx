@@ -124,7 +124,7 @@ export default function Navbar() {
               {session ? (
                 <>
                   <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                    <Link href="/" onClick={() => setIsMenuOpen(false)}>
+                    <Link href="/app" onClick={() => setIsMenuOpen(false)}>
                       Área do Membro
                     </Link>
                   </Button>

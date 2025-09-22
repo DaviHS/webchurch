@@ -58,7 +58,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       icon: Music,
-      title: "Louvor",
+      title: "Adoração",
       url: "#",
       //roles: ["super_admin", "admin"],
       items: [
@@ -74,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
         {
           title: "Relatórios",
-          url: "/app/praise/events",
+          url: "/app/praise/reports",
           icon: Calendar,
         },
       ]

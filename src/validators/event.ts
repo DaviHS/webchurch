@@ -12,7 +12,7 @@ export const eventSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
   type: z.enum(["cult", "celebration", "meeting", "conference", "rehearsal", "other", "template"]),
-  date: dateTransformer,
+  date: z.date(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   location: z.string().optional(),

@@ -23,18 +23,6 @@ export default function Fields({
 }: Props) {
   const router = useRouter()
 
-  const handleForgotPassword = (e: React.MouseEvent) => {
-    e.preventDefault()
-    
-    // Abre WhatsApp com mensagem personalizada
-    const phoneNumber = "5511967701575" // Seu número do WhatsApp
-    const message = `Olá! Preciso de ajuda para redefinir minha senha do sistema Igreja Central - Vida com Propósito.${email ? ` Meu e-mail é: ${email}` : ''}`
-    const encodedMessage = encodeURIComponent(message)
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`
-    
-    window.open(whatsappUrl, "_blank")
-  }
-
   return (
     <>
       <div className="space-y-2">
@@ -52,18 +40,6 @@ export default function Fields({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label htmlFor="password" className="text-sm font-medium">
-            Senha
-          </label>
-          <button 
-            onClick={handleForgotPassword}
-            className="text-sm text-primary hover:underline cursor-pointer"
-          >
-            Esqueceu a senha?
-          </button>
-        </div>
-
         <div className="relative">
           <Input
             id="password"

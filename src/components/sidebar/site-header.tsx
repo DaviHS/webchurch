@@ -1,6 +1,6 @@
 "use client"
 
-import { SidebarIcon, LogOut } from "lucide-react"
+import { SidebarIcon, LogOut, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -55,9 +55,29 @@ export function SiteHeader() {
           {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
 
-        <Button className="ml-auto bg-transparent hover:bg-red-400 text-foreground" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            asChild 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
+            title="Página Inicial"
+          >
+            <Link href="/">
+              <Home className="h-4 w-4" />
+            </Link>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100"
+            onClick={handleLogout}
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </header>
   )

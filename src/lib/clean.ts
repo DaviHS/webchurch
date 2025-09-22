@@ -20,6 +20,9 @@ export function cleanEmptyStrings<T extends Record<string, any>>(
 
   return Object.fromEntries(
     Object.entries(data).map(([key, value]) => {
+      // Preserve Date objects
+      if (value instanceof Date) return [key, value];
+      
       // Handle empty strings
       if (value === "") return [key, null];
       
@@ -49,9 +52,9 @@ export function cleanEmptyStrings<T extends Record<string, any>>(
   ) as T;
 }
 
-// Helper function to check if a value is a plain object
-function isPlainObject(value: any): value is Record<string, any> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+// Helper function to check if value is a plain object
+function isPlainObject(value: any): boolean {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
 }
 
 export function toStatus(value: string | undefined): "active" | "inactive" | "visiting" | "transferred" | undefined {
