@@ -1,8 +1,7 @@
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { memberRouter } from "./routers/member";
-import { ministriesRouter } from './routers/ministries';
+import { ministryRouter } from './routers/ministry';
 import { userRouter } from "./routers/user";
-import { functionsRouter } from "./routers/functions";
 import { songRouter } from "./routers/song";
 import { eventRouter } from "./routers/event";
 
@@ -12,10 +11,9 @@ import { eventRouter } from "./routers/event";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  functions: functionsRouter,
   user: userRouter,
   member: memberRouter,
-  ministry: ministriesRouter,
+  ministry: ministryRouter,
   song: songRouter,
   event: eventRouter,
 });

@@ -1,0 +1,77 @@
+-- Tabela de ministérios
+CREATE TABLE ministries (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Tabela de funções
+CREATE TABLE functions (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Tabela de relacionamento ministério-função
+CREATE TABLE ministry_functions (
+  id SERIAL PRIMARY KEY,
+  ministry_id INTEGER NOT NULL REFERENCES ministries(id),
+  function_id INTEGER NOT NULL REFERENCES functions(id),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(ministry_id, function_id)
+);
+
+-- Tabela de membros (já existente)
+CREATE TABLE members (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(50) NOT NULL,
+  last_name VARCHAR(50) NOT NULL,
+  email VARCHAR(100) UNIQUE,
+  phone VARCHAR(20),
+  whatsapp VARCHAR(20),
+  birth_date DATE,
+  gender gender,
+  marital_status marital_status,
+  address TEXT,
+  city VARCHAR(50),
+  state VARCHAR(2),
+  zip_code VARCHAR(10),
+  baptism_date DATE,
+  member_since DATE,
+  status member_status NOT NULL DEFAULT 'active',
+  profession VARCHAR(100),
+  emergency_contact VARCHAR(100),
+  emergency_phone VARCHAR(20),
+  notes TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Tabela de relacionamento membro-ministério
+CREATE TABLE member_ministries (
+  id SERIAL PRIMARY KEY,
+  member_id INTEGER NOT NULL REFERENCES members(id),
+  ministry_id INTEGER NOT NULL REFERENCES ministries(id),
+  function_id INTEGER REFERENCES functions(id),
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  left_at TIMESTAMP,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  notes TEXT
+);
+
+-- Índices para melhor performance
+CREATE INDEX idx_member_ministries_member_id ON member_ministries(member_id);
+CREATE INDEX idx_member_ministries_ministry_id ON member_ministries(ministry_id);
+CREATE INDEX idx_member_ministries_function_id ON member_ministries(function_id);
+CREATE INDEX idx_ministry_functions_ministry_id ON ministry_functions(ministry_id);
+CREATE INDEX idx_ministry_functions_function_id ON ministry_functions(function_id);

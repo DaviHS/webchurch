@@ -1,3 +1,4 @@
+// server/db/schema.ts
 import { pgTableCreator, pgEnum } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { sql } from "drizzle-orm"
@@ -24,6 +25,7 @@ export const songCategoryEnum = pgEnum("song_category", [
   "special"
 ])
 
+// Ministérios
 export const ministries = createTable("ministries", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull().unique(),
@@ -33,10 +35,22 @@ export const ministries = createTable("ministries", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
+// Funções
 export const functions = createTable("functions", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull().unique(),
   description: d.text("description"),
+  displayOrder: d.integer("display_order").default(0),
+  isActive: d.boolean("is_active").notNull().default(true),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}))
+
+// Relacionamento Ministério-Função (quais funções são permitidas em cada ministério)
+export const ministryFunctions = createTable("ministry_functions", (d) => ({
+  id: d.serial("id").primaryKey(),
+  ministryId: d.integer("ministry_id").notNull().references(() => ministries.id),
+  functionId: d.integer("function_id").notNull().references(() => functions.id),
   isActive: d.boolean("is_active").notNull().default(true),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
@@ -166,6 +180,23 @@ export const membersRelations = relations(members, ({ many, one }) => ({
 
 export const ministriesRelations = relations(ministries, ({ many }) => ({
   memberMinistries: many(memberMinistries),
+  ministryFunctions: many(ministryFunctions),
+}))
+
+export const functionsRelations = relations(functions, ({ many }) => ({
+  memberMinistries: many(memberMinistries),
+  ministryFunctions: many(ministryFunctions),
+}))
+
+export const ministryFunctionsRelations = relations(ministryFunctions, ({ one }) => ({
+  ministry: one(ministries, {
+    fields: [ministryFunctions.ministryId],
+    references: [ministries.id],
+  }),
+  function: one(functions, {
+    fields: [ministryFunctions.functionId],
+    references: [functions.id],
+  }),
 }))
 
 export const memberMinistriesRelations = relations(memberMinistries, ({ one }) => ({
@@ -231,6 +262,10 @@ export type Member = typeof members.$inferSelect
 export type NewMember = typeof members.$inferInsert
 export type Ministry = typeof ministries.$inferSelect
 export type NewMinistry = typeof ministries.$inferInsert
+export type Function = typeof functions.$inferSelect
+export type NewFunction = typeof functions.$inferInsert
+export type MinistryFunction = typeof ministryFunctions.$inferSelect
+export type NewMinistryFunction = typeof ministryFunctions.$inferInsert
 export type MemberMinistry = typeof memberMinistries.$inferSelect
 export type NewMemberMinistry = typeof memberMinistries.$inferInsert
 export type User = typeof users.$inferSelect

@@ -39,11 +39,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "#",
       //roles: ["super_admin", "admin"],
       items: [
-        {
-          title: "Dashboard Admin",
-          url: "/app/admin",
-          roles: ["super_admin", "admin"],
-        },
+        // {
+        //   title: "Dashboard Admin",
+        //   url: "/app/admin",
+        //   roles: ["super_admin", "admin"],
+        // },
         {
           title: "Membros",
           url: "/app/admin/members",
@@ -51,7 +51,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
         {
           title: "Funções e Ministérios",
-          url: "/app/admin/ministeries",
+          url: "/app/admin/ministries",
           resource: "settings",
         },
       ],

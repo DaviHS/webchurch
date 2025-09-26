@@ -13,3 +13,5 @@ export const userUpdateSchema = z.object({
   isAdmin: z.boolean().optional(),
   isActive: z.boolean().optional(),
 })
+
+export type UserCreateData = z.infer<typeof userCreateSchema>

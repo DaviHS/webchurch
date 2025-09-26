@@ -40,15 +40,15 @@ export const memberRouter = createTRPCRouter({
     return newMember;
   }),
 
-  getAll: protectedProcedure
+    getAll: protectedProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(10),
-        search: z.string().optional(),
-        status: z.enum(["active", "inactive", "visiting", "transferred"]).optional(),
-        gender: z.enum(["male", "female"]).optional(),
-        hasAccess: z.enum(["true", "false"]).optional(),
+        search: z.string().optional().nullable(),
+        status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
+        gender: z.enum(["male", "female"]).optional().nullable(),
+        hasAccess: z.enum(["true", "false"]).optional().nullable(),
       })
     )
     .query(async ({ input }) => {
@@ -56,8 +56,10 @@ export const memberRouter = createTRPCRouter({
       const offset = (page - 1) * limit;
       const conditions = [];
 
+      // Corrigir: verificar se não é null, undefined ou string vazia
       if (status) conditions.push(eq(members.status, status));
       if (gender) conditions.push(eq(members.gender, gender));
+
 
       if (search) {
         const searchLower = `%${search.toLowerCase()}%`;
