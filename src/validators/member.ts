@@ -1,4 +1,4 @@
-// validators/member.ts
+// validators/member.ts - CORRIGIDO
 import { z } from "zod"
 
 export const memberSchema = z.object({
@@ -34,15 +34,11 @@ export const memberSchema = z.object({
   // Observações
   notes: z.string().optional().or(z.literal("")),
 
-  // Ministérios
-  ministries: z
-    .array(
-      z.object({
-        ministryId: z.number(),
-        functionId: z.number().optional().nullable()
-      }),
-    )
-    .optional(),
+  // Ministérios - CORRIGIDO: usar default array vazio
+  ministries: z.array(z.object({
+    ministryId: z.number(),
+    functionId: z.number().optional().nullable(),
+  })).default([]),
 })
 
 export type MemberFormData = z.infer<typeof memberSchema>

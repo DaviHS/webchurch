@@ -1,4 +1,3 @@
-// app/app/admin/ministries/_components/ministry-members-dialog.tsx
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

@@ -1,4 +1,3 @@
-// app/app/admin/ministries/_components/ministry-functions-dialog.tsx
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,7 +19,6 @@ export function MinistryFunctionsDialog({ ministry, open, onOpenChange }: Minist
   const [addingFunction, setAddingFunction] = useState(false);
   const [viewMembers, setViewMembers] = useState(false);
 
-  // Use useEffect para resetar estados quando o dialog abrir/fechar
   useEffect(() => {
     if (!open) {
       setAddingFunction(false);

@@ -17,18 +17,28 @@ import {
   or,
   sql,
   inArray,
+  asc,
 } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 
 export const memberRouter = createTRPCRouter({
   create: protectedProcedure.input(memberSchema).mutation(async ({ input }) => {
-    const { ministries, ...memberData } = input;
+    const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
-    const [newMember] = await db.insert(members).values(cleanedData).returning();
+    console.log('input', input)
+    console.log('cleanedData', cleanedData)
 
-    if (ministries?.length) {
-      const memberMinistryData = ministries.map((ministry) => ({
+    const result = await db.insert(members).values(cleanedData).returning();
+
+    if (!result || result.length === 0) {
+      throw new Error("Falha ao criar membro");
+    }
+
+    const newMember = result[0];
+
+    if (ministriesInput && ministriesInput.length > 0) {
+      const memberMinistryData = ministriesInput.map((ministry) => ({
         memberId: newMember!.id,
         ministryId: ministry.ministryId,
         functionId: ministry.functionId ?? null,
@@ -40,11 +50,11 @@ export const memberRouter = createTRPCRouter({
     return newMember;
   }),
 
-    getAll: protectedProcedure
+  getAll: protectedProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
-        limit: z.number().min(1).max(100).default(10),
+        limit: z.number().min(1).max(100).default(20),
         search: z.string().optional().nullable(),
         status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
         gender: z.enum(["male", "female"]).optional().nullable(),
@@ -54,91 +64,107 @@ export const memberRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const { page, limit, search, status, gender, hasAccess } = input;
       const offset = (page - 1) * limit;
-      const conditions = [];
+      
+      const baseConditions = [eq(members.isActive, true)];
 
-      // Corrigir: verificar se não é null, undefined ou string vazia
-      if (status) conditions.push(eq(members.status, status));
-      if (gender) conditions.push(eq(members.gender, gender));
+      const optionalConditions = [];
 
+      if (status) {
+        optionalConditions.push(eq(members.status, status));
+      }
+      
+      if (gender) {
+        optionalConditions.push(eq(members.gender, gender));
+      }
 
-      if (search) {
+      if (search && search.trim() !== '') {
         const searchLower = `%${search.toLowerCase()}%`;
-        conditions.push(
-          or(
-            sql`LOWER(${members.firstName}) LIKE ${searchLower}`,
-            sql`LOWER(${members.lastName}) LIKE ${searchLower}`,
-            sql`LOWER(${members.email}) LIKE ${searchLower}`
-          )
+        const searchConditions = or(
+          sql`LOWER(${members.firstName}) LIKE ${searchLower}`,
+          sql`LOWER(${members.lastName}) LIKE ${searchLower}`,
+          sql`LOWER(${members.email}) LIKE ${searchLower}`
         );
+        optionalConditions.push(searchConditions);
       }
 
       if (hasAccess === "true") {
-        conditions.push(isNotNull(users.id));
+        optionalConditions.push(isNotNull(users.id));
       } else if (hasAccess === "false") {
-        conditions.push(isNull(users.id));
+        optionalConditions.push(isNull(users.id));
       }
 
-      let baseQuery = db.select().from(members).leftJoin(users, eq(members.id, users.memberId));
+      const allConditions = optionalConditions.length > 0 
+        ? and(...baseConditions, ...optionalConditions)
+        : and(...baseConditions);
 
-      const query = conditions.length ? baseQuery.where(and(...conditions)) : baseQuery;
-
-      const result = await query.limit(limit).offset(offset).execute();
+      const result = await db
+        .select({
+          member: members,
+          user: users,
+        })
+        .from(members)
+        .leftJoin(users, eq(members.id, users.memberId))
+        .where(allConditions) 
+        .orderBy(asc(members.firstName), asc(members.lastName))
+        .limit(limit)
+        .offset(offset);
 
       if (result.length === 0) return [];
 
-      const memberIds = result.map((r) => r.members.id);
+      const memberIds = result.map(r => r.member.id);
 
-    const ministriesData = await db
-      .select({
-        memberId: memberMinistries.memberId,
-        ministryName: ministries.name,
-        functionName: functions.name,
-      })
-      .from(memberMinistries)
-      .leftJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
-      .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
-      .where(
-        and(
-          inArray(memberMinistries.memberId, memberIds), // Corrigido aqui
-          eq(memberMinistries.isActive, true),
-        ),
-      )
-      .execute()
+      const ministriesData = await db
+        .select({
+          memberId: memberMinistries.memberId,
+          ministryName: ministries.name,
+          functionName: functions.name,
+        })
+        .from(memberMinistries)
+        .innerJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
+        .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
+        .where(
+          and(
+            inArray(memberMinistries.memberId, memberIds),
+            eq(memberMinistries.isActive, true),
+            eq(ministries.isActive, true)
+          )
+        )
+        .orderBy(asc(ministries.name));
 
-      const ministriesByMember = ministriesData.reduce((acc, cur) => {
-        const memberId = cur?.memberId;
-
-        if (typeof memberId !== "number") return acc;
-
-        if (!acc[memberId]) {
-          acc[memberId] = [];
+      const ministriesByMember: Record<number, { ministryName: string; functionName: string | null }[]> = {};
+      
+      ministriesData.forEach((cur) => {
+        if (cur.memberId) {
+          if (!ministriesByMember[cur.memberId]) {
+            ministriesByMember[cur.memberId] = [];
+          }
+          ministriesByMember[cur.memberId!]!.push({
+            ministryName: cur.ministryName || "Ministério sem nome",
+            functionName: cur.functionName,
+          });
         }
+      });
 
-        acc[memberId].push({
-          ministryName: cur.ministryName ?? "",
-          functionName: cur.functionName,
-        });
-
-        return acc;
-      }, {} as Record<number, { ministryName: string; functionName: string | null }[]>);
-
-      return result.map((r) => ({
+      // Formatar resposta final
+      return result.map(r => ({
         members: {
-          ...r.members,
-          ministries: ministriesByMember[r.members.id] || [],
+          ...r.member,
+          ministries: ministriesByMember[r.member.id] || [],
         },
-        users: r.users,
+        users: r.user,
       }));
-
-    }
-  ),
+    }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      const member = await db.select().from(members).where(eq(members.id, input.id)).limit(1);
+      const [member] = await db
+        .select()
+        .from(members)
+        .where(eq(members.id, input.id))
+        .limit(1);
 
-      if (!member[0]) throw new Error("Membro não encontrado");
+      if (!member) throw new Error("Membro não encontrado");
 
       const memberMinistriesData = await db
         .select({
@@ -150,18 +176,19 @@ export const memberRouter = createTRPCRouter({
           functionName: functions.name,
         })
         .from(memberMinistries)
-        .leftJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
+        .innerJoin(ministries, eq(memberMinistries.ministryId, ministries.id))
         .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
         .where(
           and(
             eq(memberMinistries.memberId, input.id),
-            eq(memberMinistries.isActive, true)
+            eq(memberMinistries.isActive, true),
+            eq(ministries.isActive, true)
           )
         )
-        .execute();
+        .orderBy(asc(ministries.name));
 
       return {
-        ...member[0],
+        ...member,
         ministries: memberMinistriesData,
       };
     }),
@@ -174,10 +201,11 @@ export const memberRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const { ministries, ...memberData } = input.data;
+      const { ministries: ministriesInput, ...memberData } = input.data;
       const cleanedData = cleanEmptyStrings(memberData);
 
-      const [updatedMember] = await db
+      // Atualizar membro
+      const result = await db
         .update(members)
         .set({
           ...cleanedData,
@@ -186,36 +214,74 @@ export const memberRouter = createTRPCRouter({
         .where(eq(members.id, input.id))
         .returning();
 
-      if (ministries?.length) {
+      if (!result || result.length === 0) {
+        throw new Error("Falha ao atualizar membro");
+      }
+
+      const updatedMember = result[0];
+
+      // Atualizar ministérios se fornecidos
+      if (ministriesInput) {
+        // Desativar relações antigas
         await db
           .update(memberMinistries)
           .set({ isActive: false })
           .where(eq(memberMinistries.memberId, input.id));
 
-        const memberMinistryData = ministries.map((ministry) => ({
-          memberId: input.id,
-          ministryId: ministry.ministryId,
-          functionId: ministry.functionId ?? null,
-        }));
+        // Criar novas relações se houver ministérios
+        if (ministriesInput.length > 0) {
+          const memberMinistryData = ministriesInput.map((ministry) => ({
+            memberId: input.id,
+            ministryId: ministry.ministryId,
+            functionId: ministry.functionId ?? null,
+          }));
 
-        await db.insert(memberMinistries).values(memberMinistryData);
+          await db.insert(memberMinistries).values(memberMinistryData);
+        }
       }
 
       return updatedMember;
     }),
 
-  delete: protectedProcedure
+  // CORREÇÃO: Soft delete (desativar membro)
+  deactivate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      const [deletedMember] = await db
+      const result = await db
         .update(members)
         .set({
           isActive: false,
+          status: "inactive", // Muda o status para inativo
           updatedAt: new Date(),
         })
         .where(eq(members.id, input.id))
         .returning();
 
-      return deletedMember;
+      if (!result || result.length === 0) {
+        throw new Error("Falha ao desativar membro");
+      }
+
+      return result[0];
+    }),
+
+  // Para compatibilidade, manter delete como alias de deactivate
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const result = await db
+        .update(members)
+        .set({
+          isActive: false,
+          status: "inactive",
+          updatedAt: new Date(),
+        })
+        .where(eq(members.id, input.id))
+        .returning();
+
+      if (!result || result.length === 0) {
+        throw new Error("Falha ao excluir membro");
+      }
+
+      return result[0];
     }),
 });

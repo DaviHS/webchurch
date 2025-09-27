@@ -27,8 +27,7 @@ export function sanitizeMemberForForm(member: RawMember): MemberFormData {
     city: member.city ?? undefined,
     state: member.state ?? undefined,
     zipCode: member.zipCode ?? undefined,
-    baptized: !!member.baptized,           // boolean, não undefined nem string
-    churchRole: member.churchRole ?? undefined,
+    baptized: !!member.baptized,           
     baptismDate: member.baptismDate ?? undefined,
     memberSince: member.memberSince ?? undefined,
     status: member.status ?? "active",

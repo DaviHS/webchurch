@@ -1,19 +1,21 @@
-// app/app/admin/members/page.tsx
+// app/app/admin/members/page.tsx - COM SOFT DELETE
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, Edit } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, UserX, UserCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { QuickViewDialog } from "./_components/quick-view-dialog";
 import { MemberFormDialog } from "./_components/member-form-dialog";
+import { toast } from "sonner";
 
 export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Estados para os dialogs
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -21,23 +23,43 @@ export default function MembersPage() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
 
-  // Remover filtros problemáticos ou corrigir a chamada
-  const { data: members = [], isLoading } = api.member.getAll.useQuery({
+  // Debounce para search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Query corrigida
+  const { data: membersData = [], isLoading, refetch } = api.member.getAll.useQuery({
     page,
-    limit: 10,
-    search: search || undefined,
-    // Remover filtros problemáticos ou passar null em vez de string vazia
-    status: undefined,
-    gender: undefined, 
-    hasAccess: undefined,
+    limit: 20,
+    search: debouncedSearch || undefined,
   });
+
+  // Mutation para soft delete
+  const deactivateMember = api.member.deactivate.useMutation({
+    onSuccess: () => {
+      toast.success("Membro desativado com sucesso!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Extrair membros do formato correto
+  const members = Array.isArray(membersData) ? membersData : [];
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      active: "bg-green-100 text-green-800",
-      inactive: "bg-red-100 text-red-800",
-      visiting: "bg-blue-100 text-blue-800",
-      transferred: "bg-yellow-100 text-yellow-800",
+      active: "bg-green-100 text-green-800 border-green-200",
+      inactive: "bg-red-100 text-red-800 border-red-200",
+      visiting: "bg-blue-100 text-blue-800 border-blue-200",
+      transferred: "bg-yellow-100 text-yellow-800 border-yellow-200",
     };
 
     const labels = {
@@ -48,7 +70,7 @@ export default function MembersPage() {
     };
 
     return (
-      <Badge className={variants[status as keyof typeof variants]}>
+      <Badge variant="outline" className={variants[status as keyof typeof variants]}>
         {labels[status as keyof typeof labels]}
       </Badge>
     );
@@ -72,6 +94,22 @@ export default function MembersPage() {
     setFormDialogOpen(true);
   };
 
+  const handleDeactivate = async (member: any) => {
+    if (confirm(`Tem certeza que deseja desativar ${member.firstName} ${member.lastName}?`)) {
+      try {
+        await deactivateMember.mutateAsync({ id: member.id });
+      } catch (error) {
+        // Erro já é tratado na mutation
+      }
+    }
+  };
+
+  const handleDialogClose = () => {
+    setFormDialogOpen(false);
+    setSelectedMember(null);
+    refetch(); // Recarregar a lista após fechar o dialog
+  };
+
   return (
     <div className="container mx-auto p-3 sm:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -91,11 +129,12 @@ export default function MembersPage() {
         </Button>
       </div>
 
+      {/* Busca */}
       <div className="mb-6">
-        <div className="relative">
+        <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar membros..."
+            placeholder="Buscar por nome ou email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 text-sm sm:text-base"
@@ -103,8 +142,9 @@ export default function MembersPage() {
         </div>
       </div>
 
+      {/* Lista de Membros */}
       {isLoading ? (
-        <div className="text-center py-8">Carregando...</div>
+        <div className="text-center py-8">Carregando membros...</div>
       ) : (
         <div className="grid gap-3 sm:gap-4">
           {members.map(({ members: m, users: u }) => (
@@ -135,7 +175,7 @@ export default function MembersPage() {
                       {m.memberSince && (
                         <p className="flex items-center gap-1">
                           <span>📅</span>
-                          <span>Membro desde: {new Date(m.memberSince).toLocaleDateString()}</span>
+                          <span>Membro desde: {new Date(m.memberSince).toLocaleDateString('pt-BR')}</span>
                         </p>
                       )}
                       <p className="flex items-center gap-1">
@@ -144,7 +184,7 @@ export default function MembersPage() {
                       </p>
                     </div>
 
-                    {m.ministries?.length > 0 && (
+                    {m.ministries && m.ministries.length > 0 && (
                       <div className="pt-2">
                         <p className="text-xs sm:text-sm font-semibold">Ministérios:</p>
                         <ul className="list-disc list-inside text-xs sm:text-sm text-muted-foreground">
@@ -188,6 +228,16 @@ export default function MembersPage() {
                       <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="ml-1 sm:hidden">Editar</span>
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeactivate(m)}
+                      disabled={deactivateMember.isPending}
+                      className="text-red-600 hover:text-red-700 flex-1 sm:flex-none"
+                    >
+                      <UserX className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="ml-1 sm:hidden">Desativar</span>
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -198,10 +248,12 @@ export default function MembersPage() {
 
       {members.length === 0 && !isLoading && (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">Nenhum membro encontrado</p>
+          <p className="text-muted-foreground">
+            {debouncedSearch ? "Nenhum membro encontrado para sua busca" : "Nenhum membro cadastrado"}
+          </p>
           <Button onClick={handleNewMember} className="mt-4" size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            Adicionar Primeiro Membro
+            {debouncedSearch ? "Cadastrar Novo Membro" : "Adicionar Primeiro Membro"}
           </Button>
         </div>
       )}
@@ -217,7 +269,7 @@ export default function MembersPage() {
       <MemberFormDialog
         member={selectedMember}
         open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
+        onOpenChange={handleDialogClose}
         mode={formMode}
       />
     </div>

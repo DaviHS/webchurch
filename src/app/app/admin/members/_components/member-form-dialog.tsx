@@ -1,3 +1,4 @@
+// app/app/admin/members/_components/member-form-dialog.tsx - CORRIGIDO
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -14,8 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, X, Plus, Loader2, Trash2, UserPlus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import { sanitizeMemberForForm } from "@/lib/sanitize";
+import { useEffect, useState, useMemo } from "react";
 
 interface MemberFormDialogProps {
   member?: any;
@@ -33,14 +33,73 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
   const [showPassword, setShowPassword] = useState(false);
   const [createUser, setCreateUser] = useState(false);
   
-  const { data: ministries = [] } = api.ministry.getAll.useQuery();
+  // Buscar todos os dados necessários no topo do componente
+  const { data: ministries = [] } = api.ministry.getAll.useQuery(undefined, {
+    enabled: open,
+  });
 
+  const { data: allFunctions = [] } = api.ministry.getAllFunctions.useQuery(undefined, {
+    enabled: open,
+  });
+
+  const { data: allMinistryFunctions = [] } = api.ministry.getMinistryFunctions.useQuery(
+    { ministryId: 0 }, // Dummy ID para buscar todos
+    { enabled: open }
+  );
+
+  // Criar um mapa de funções por ministário usando useMemo
+  const functionsByMinistry = useMemo(() => {
+    const map = new Map<number, any[]>();
+    
+    allMinistryFunctions.forEach((mf) => {
+      if (!map.has(mf.ministryId)) {
+        map.set(mf.ministryId, []);
+      }
+      map.get(mf.ministryId)!.push({
+        functionId: mf.functionId,
+        functionName: mf.functionName,
+      });
+    });
+    
+    return map;
+  }, [allMinistryFunctions]);
+
+  const form = useForm<MemberFormData>({
+    resolver: zodResolver(memberSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      whatsapp: "",
+      birthDate: "",
+      gender: "male",
+      maritalStatus: "single",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      profession: "",
+      emergencyContact: "",
+      emergencyPhone: "",
+      baptismDate: "",
+      memberSince: new Date().toISOString().split('T')[0],
+      status: "active",
+      notes: "",
+      baptized: false,
+      ministries: [],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "ministries",
+  });
 
   const createMember = api.member.create.useMutation({
     onSuccess: (newMember) => {
       toast.success("Membro criado com sucesso!");
       
-      // Criar usuário se solicitado
       if (createUser && newMember?.email) {
         createUserMutation.mutate({
           memberId: newMember.id,
@@ -49,6 +108,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
         });
       } else {
         onOpenChange(false);
+        form.reset();
       }
     },
     onError: (error) => {
@@ -60,6 +120,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
     onSuccess: () => {
       toast.success("Membro atualizado com sucesso!");
       onOpenChange(false);
+      form.reset();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -70,67 +131,104 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
     onSuccess: () => {
       toast.success("Usuário criado com sucesso!");
       onOpenChange(false);
+      form.reset();
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const form = useForm<MemberFormData>({
-    resolver: zodResolver(memberSchema),
-    defaultValues: {
-      status: "active",
-      gender: "male",
-      maritalStatus: "single",
-      baptized: false,
-      ministries: [],
-    },
-  });
-
-  const { data: ministryFunctions = [] } = api.ministry.getMinistryFunctions.useQuery(
-    { ministryId: form.watch(`ministries.${index}.ministryId`) },
-    { enabled: !!form.watch(`ministries.${index}.ministryId`) }
-  );
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "ministries",
-  });
-
+  // Reset do form quando abrir/fechar
   useEffect(() => {
-    if (member && open) {
-      form.reset(sanitizeMemberForForm(member));
-      setCreateUser(!!member.userId);
-    } else if (open) {
-      form.reset({
-        status: "active",
-        gender: "male",
-        maritalStatus: "single",
-        baptized: false,
-        ministries: [],
-      });
-      setCreateUser(false);
+    if (open) {
+      if (member && mode === "edit") {
+        const formData = {
+          firstName: member.firstName || "",
+          lastName: member.lastName || "",
+          email: member.email || "",
+          phone: member.phone || "",
+          whatsapp: member.whatsapp || "",
+          birthDate: member.birthDate ? new Date(member.birthDate).toISOString().split('T')[0] : "",
+          gender: member.gender || "male",
+          maritalStatus: member.maritalStatus || "single",
+          address: member.address || "",
+          city: member.city || "",
+          state: member.state || "",
+          zipCode: member.zipCode || "",
+          profession: member.profession || "",
+          emergencyContact: member.emergencyContact || "",
+          emergencyPhone: member.emergencyPhone || "",
+          baptismDate: member.baptismDate ? new Date(member.baptismDate).toISOString().split('T')[0] : "",
+          memberSince: member.memberSince ? new Date(member.memberSince).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: member.status || "active",
+          notes: member.notes || "",
+          baptized: member.baptized || false,
+          ministries: member.ministries?.map((min: any) => ({
+            ministryId: min.ministryId || min.id,
+            functionId: min.functionId,
+          })) || [],
+        };
+        form.reset(formData);
+        setCreateUser(!!member.userId);
+      } else {
+        form.reset({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          whatsapp: "",
+          birthDate: "",
+          gender: "male",
+          maritalStatus: "single",
+          address: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          profession: "",
+          emergencyContact: "",
+          emergencyPhone: "",
+          baptismDate: "",
+          memberSince: new Date().toISOString().split('T')[0],
+          status: "active",
+          notes: "",
+          baptized: false,
+          ministries: [],
+        });
+        setCreateUser(false);
+      }
       setActiveTab("personal");
     }
-  }, [member, open, form]);
+  }, [open, member, mode, form]);
 
   const onSubmit = async (data: MemberFormData) => {
-    if (mode === "create") {
-      createMember.mutate(data);
-    } else {
-      updateMember.mutate({
-        id: member.id,
-        data,
-      });
+    try {
+      // Filtrar ministérios com ministryId válido
+      const validMinistries = data.ministries.filter(ministry => ministry.ministryId > 0);
+      
+      const submitData = {
+        ...data,
+        ministries: validMinistries,
+      };
+
+      if (mode === "create") {
+        await createMember.mutateAsync(submitData);
+      } else {
+        await updateMember.mutateAsync({
+          id: member.id,
+          data: submitData,
+        });
+      }
+    } catch (error) {
+      // Erro já é tratado na mutation
     }
   };
 
   const isLoading = createMember.isPending || updateMember.isPending || createUserMutation.isPending;
 
-  // Corrigir valores para o Select
-  const genderValue = form.watch("gender") || "";
-  const maritalStatusValue = form.watch("maritalStatus") || "single";
-  const statusValue = form.watch("status") || "active";
+  // Função para obter funções de um ministério específico (sem usar hook)
+  const getFunctionsForMinistry = (ministryId: number) => {
+    return functionsByMinistry.get(ministryId) || [];
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,13 +244,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => {
-            if (val) setActiveTab(val as TabValue);
-          }}
-          className="w-full"
-        >
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as TabValue)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto py-2">
             <TabsTrigger value="personal" className="text-xs sm:text-sm py-2 h-auto">
               Pessoal
@@ -182,6 +274,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       id="firstName" 
                       {...form.register("firstName")} 
                       className="text-sm sm:text-base"
+                      placeholder="Digite o nome"
                     />
                     {form.formState.errors.firstName && (
                       <p className="text-xs text-red-500">{form.formState.errors.firstName.message}</p>
@@ -194,6 +287,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       id="lastName" 
                       {...form.register("lastName")} 
                       className="text-sm sm:text-base"
+                      placeholder="Digite o sobrenome"
                     />
                     {form.formState.errors.lastName && (
                       <p className="text-xs text-red-500">{form.formState.errors.lastName.message}</p>
@@ -208,6 +302,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         type="email" 
                         {...form.register("email")} 
                         className="text-sm sm:text-base"
+                        placeholder="email@exemplo.com"
                       />
                     </div>
 
@@ -217,6 +312,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         id="phone" 
                         {...form.register("phone")} 
                         className="text-sm sm:text-base"
+                        placeholder="(11) 99999-9999"
                       />
                     </div>
                   </div>
@@ -238,6 +334,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         id="whatsapp" 
                         {...form.register("whatsapp")} 
                         className="text-sm sm:text-base"
+                        placeholder="(11) 99999-9999"
                       />
                     </div>
                   </div>
@@ -246,7 +343,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                     <div className="space-y-2">
                       <Label className="text-sm">Gênero</Label>
                       <Select
-                        value={genderValue}
+                        value={form.watch("gender") || "male"}
                         onValueChange={(value) => form.setValue("gender", value as "male" | "female")}
                       >
                         <SelectTrigger className="text-sm sm:text-base">
@@ -262,7 +359,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                     <div className="space-y-2">
                       <Label className="text-sm">Estado Civil</Label>
                       <Select
-                        value={maritalStatusValue}
+                        value={form.watch("maritalStatus") || "single"}
                         onValueChange={(value) =>
                           form.setValue("maritalStatus", value as "single" | "married" | "divorced" | "widowed")
                         }
@@ -286,6 +383,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       id="profession" 
                       {...form.register("profession")} 
                       className="text-sm sm:text-base"
+                      placeholder="Digite a profissão"
                     />
                   </div>
                 </CardContent>
@@ -303,6 +401,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       id="emergencyContact" 
                       {...form.register("emergencyContact")} 
                       className="text-sm sm:text-base"
+                      placeholder="Nome do contato de emergência"
                     />
                   </div>
                   <div className="space-y-2">
@@ -311,6 +410,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       id="emergencyPhone" 
                       {...form.register("emergencyPhone")} 
                       className="text-sm sm:text-base"
+                      placeholder="(11) 99999-9999"
                     />
                   </div>
                 </CardContent>
@@ -394,6 +494,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                       {...form.register("address")} 
                       rows={3} 
                       className="text-sm sm:text-base"
+                      placeholder="Rua, número, bairro..."
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -403,6 +504,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         id="city" 
                         {...form.register("city")} 
                         className="text-sm sm:text-base"
+                        placeholder="São Paulo"
                       />
                     </div>
                     <div className="space-y-2">
@@ -412,6 +514,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         {...form.register("state")} 
                         maxLength={2} 
                         className="text-sm sm:text-base"
+                        placeholder="SP"
                       />
                     </div>
                     <div className="space-y-2">
@@ -420,6 +523,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         id="zipCode" 
                         {...form.register("zipCode")} 
                         className="text-sm sm:text-base"
+                        placeholder="00000-000"
                       />
                     </div>
                   </div>
@@ -455,7 +559,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   <div className="space-y-2">
                     <Label className="text-sm">Status</Label>
                     <Select
-                      value={statusValue}
+                      value={form.watch("status") || "active"}
                       onValueChange={(value) =>
                         form.setValue("status", value as "active" | "inactive" | "visiting" | "transferred")
                       }
@@ -470,6 +574,15 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                         <SelectItem value="transferred">Transferido</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2 flex items-center">
+                    <input
+                      type="checkbox"
+                      id="baptized"
+                      {...form.register("baptized")}
+                      className="mr-2"
+                    />
+                    <Label htmlFor="baptized" className="text-sm">Batizado</Label>
                   </div>
                 </CardContent>
               </Card>
@@ -494,7 +607,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
               </Card>
             </TabsContent>
 
-            {/* Aba: Ministérios */}
+            {/* Aba: Ministérios - CORRIGIDA */}
             <TabsContent value="ministries" className="space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-3">
@@ -513,62 +626,71 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg">
-                      <div className="flex-1 grid grid-cols-1 gap-3 w-full">
-                        <div className="space-y-2">
-                          <Label className="text-sm">Ministério *</Label>
-                          <Select
-                            value={form.watch(`ministries.${index}.ministryId`)?.toString() || ""}
-                            onValueChange={(value) => form.setValue(`ministries.${index}.ministryId`, Number(value))}
-                          >
-                            <SelectTrigger className="text-sm sm:text-base">
-                              <SelectValue placeholder="Selecione o ministério" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ministries.map((ministry) => (
-                                <SelectItem key={ministry.id} value={ministry.id.toString()}>
-                                  {ministry.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                  {fields.map((field, index) => {
+                    const selectedMinistryId = form.watch(`ministries.${index}.ministryId`);
+                    
+                    // ✅ CORREÇÃO: Usar função regular em vez de hook
+                    const ministryFunctions = getFunctionsForMinistry(selectedMinistryId);
+
+                    return (
+                      <div key={field.id} className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                          <div className="space-y-2">
+                            <Label className="text-sm">Ministério</Label>
+                            <Select
+                              value={selectedMinistryId?.toString() || ""}
+                              onValueChange={(value) => form.setValue(`ministries.${index}.ministryId`, Number(value))}
+                            >
+                              <SelectTrigger className="text-sm sm:text-base">
+                                <SelectValue placeholder="Selecione o ministério" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0">Selecione um ministério</SelectItem>
+                                {ministries.map((ministry) => (
+                                  <SelectItem key={ministry.id} value={ministry.id.toString()}>
+                                    {ministry.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm">Função</Label>
+                            <Select
+                              value={form.watch(`ministries.${index}.functionId`)?.toString() || ""}
+                              onValueChange={(value) =>
+                                form.setValue(`ministries.${index}.functionId`, value ? Number(value) : undefined)
+                              }
+                              disabled={!selectedMinistryId || selectedMinistryId === 0}
+                            >
+                              <SelectTrigger className="text-sm sm:text-base">
+                                <SelectValue placeholder={ministryFunctions.length === 0 ? "Sem funções" : "Selecione a função"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">Sem função</SelectItem>
+                                {ministryFunctions.map((mf: any)                                                                                                 => (
+                                  <SelectItem key={mf.functionId} value={mf.functionId.toString()}>
+                                    {mf.functionName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-sm">Função</Label>
-                          <Select
-                            value={form.watch(`ministries.${index}.functionId`)?.toString() || ""}
-                            onValueChange={(value) =>
-                              form.setValue(`ministries.${index}.functionId`, value ? Number(value) : undefined)
-                            }
-                          >
-                            <SelectTrigger className="text-sm sm:text-base">
-                              <SelectValue placeholder="Sem função" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">Sem função</SelectItem>
-                              {ministryFunctions.map((mf) => (
-                                <SelectItem key={mf.functionId} value={mf.functionId.toString()}>
-                                  {mf.functionName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => remove(index)}
+                          className="text-red-600 hover:text-red-700 mt-2 sm:mt-0 w-full sm:w-auto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => remove(index)}
-                        className="text-red-600 hover:text-red-700 mt-2 sm:mt-0 w-full sm:w-auto"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {fields.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
@@ -587,7 +709,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    const tabs: TabValue[] = ["personal", "address", "church", "ministries"];
                     const currentIndex = tabs.indexOf(activeTab);
                     const prevTab = tabs[currentIndex - 1];
                     if (prevTab) setActiveTab(prevTab);
@@ -602,7 +723,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    const tabs: TabValue[] = ["personal", "address", "church", "ministries"];
                     const currentIndex = tabs.indexOf(activeTab);
                     const nextTab = tabs[currentIndex + 1];
                     if (nextTab) setActiveTab(nextTab);
@@ -611,6 +731,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   className="flex-1 sm:flex-none"
                 >
                   Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
 
