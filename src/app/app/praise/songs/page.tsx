@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useDebounce } from "@/lib/hooks";
 
 export default function SongsPage() {
   const [search, setSearch] = useState("");
@@ -39,8 +40,10 @@ export default function SongsPage() {
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<any>(null);
 
+  const debouncedSearch = useDebounce(search, 300);
+
   const { data, isLoading, refetch } = api.song.list.useQuery({
-    search,
+    search: debouncedSearch,
     category: category || undefined,
     page,
     limit: 24,
@@ -149,7 +152,6 @@ export default function SongsPage() {
           </div>
         </div>
 
-        {/* Direita: ações */}
         <div className="flex items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -157,22 +159,39 @@ export default function SongsPage() {
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuItem onClick={() => handleEdit(song)}>
-                Editar
+
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onClick={() => handleEdit(song)}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                <span>Editar</span>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => handleDelete(song)}
-                className="text-red-600"
+                className="flex items-center gap-2 text-red-600"
               >
-                Excluir
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleViewLyrics(song)}>
-                Ver Letra
+
+              <DropdownMenuItem
+                onClick={() => handleViewLyrics(song)}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                <span>Ver Letra</span>
               </DropdownMenuItem>
+
               {song.youtubeUrl && (
-                <DropdownMenuItem onClick={() => handlePlayYouTube(song)}>
-                  YouTube
+                <DropdownMenuItem
+                  onClick={() => handlePlayYouTube(song)}
+                  className="flex items-center gap-2"
+                >
+                  <Youtube className="h-4 w-4" />
+                  <span>YouTube</span>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -189,12 +208,13 @@ export default function SongsPage() {
             <Play className="h-3 w-3" />
           </Button>
         </div>
+
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="container mx-auto py-4 px-2 sm:px-4">
+    <div className="container mx-auto py-4">
       {presentingSong && (
         <SongPresentation 
           song={presentingSong} 

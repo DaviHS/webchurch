@@ -40,6 +40,9 @@ export default function Fields({
       </div>
 
       <div className="space-y-2">
+        <label htmlFor="password" className="text-sm font-medium">
+          Senha
+        </label>
         <div className="relative">
           <Input
             id="password"

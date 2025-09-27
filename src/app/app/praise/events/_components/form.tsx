@@ -1,3 +1,4 @@
+// src/app/praise/events/_components/form.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -15,7 +16,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 interface EventFormProps {
   onSubmit: (data: EventFormData) => void;
@@ -24,7 +24,6 @@ interface EventFormProps {
 }
 
 export function EventForm({ onSubmit, initialData, isLoading = false }: EventFormProps) {
-  const router = useRouter();
   const [date, setDate] = useState<Date | undefined>(
     initialData?.date ? new Date(initialData.date) : new Date()
   );
@@ -62,22 +61,27 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <div className="grid grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Título *</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {/* Grid responsivo - 1 coluna no mobile, 2 no desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Título - Ocupa linha inteira no mobile */}
+          <div className="md:col-span-2">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Título *</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
+          {/* Tipo e Data - No mobile: tipo em cima, data embaixo */}
           <FormField
             control={form.control}
             name="type"
@@ -143,48 +147,55 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Local</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Local - Ocupa linha inteira */}
+          <div className="md:col-span-2">
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Local</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Hora de Início</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Horários - lado a lado mesmo no mobile */}
+          <div className="grid grid-cols-2 gap-3 md:col-span-2">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Hora Início</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} className="text-sm" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Hora de Término</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Hora Fim</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} className="text-sm" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
+          {/* Pregador e Versículo */}
           <FormField
             control={form.control}
             name="preacher"
@@ -214,6 +225,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
           />
         </div>
 
+        {/* Descrição - Ocupa linha inteira */}
         <FormField
           control={form.control}
           name="description"
@@ -221,14 +233,14 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             <FormItem>
               <FormLabel>Descrição</FormLabel>
               <FormControl>
-                <Textarea {...field} rows={4} />
+                <Textarea {...field} rows={3} className="resize-none" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
           {isLoading ? "Salvando..." : "Salvar"}
         </Button>
       </form>

@@ -40,7 +40,7 @@ export function SearchSection({
           <SelectValue placeholder="Todas categorias" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todas categorias</SelectItem>
+          <SelectItem value="any">Todas categorias</SelectItem>
           <SelectItem value="hymn">Hino</SelectItem>
           <SelectItem value="praise">Louvor</SelectItem>
           <SelectItem value="worship">Adoração</SelectItem>

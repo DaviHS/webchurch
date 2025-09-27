@@ -80,7 +80,12 @@ export const eventRouter = createTRPCRouter({
     const [songsList, participants] = await Promise.all([
       db
         .select({
-          eventSong: eventSongs,
+          id: eventSongs.id,
+          eventId: eventSongs.eventId,
+          songId: eventSongs.songId,
+          order: eventSongs.order,
+          leaderId: eventSongs.leaderId,
+          notes: eventSongs.notes,
           song: songs,
           leader: members,
         })
@@ -91,20 +96,24 @@ export const eventRouter = createTRPCRouter({
         .orderBy(eventSongs.order),
       db
         .select({
-          participant: eventParticipants,
-          member: members,
-        })
-        .from(eventParticipants)
-        .where(eq(eventParticipants.eventId, input))
-        .leftJoin(members, eq(eventParticipants.memberId, members.id)),
-    ]);
+          id: eventParticipants.id,
+          eventId: eventParticipants.eventId,
+          memberId: eventParticipants.memberId,
+          role: eventParticipants.role,
+          instrument: eventParticipants.instrument,
+        member: members,
+      })
+      .from(eventParticipants)
+      .where(eq(eventParticipants.eventId, input))
+      .leftJoin(members, eq(eventParticipants.memberId, members.id)),
+  ]);
 
-    return {
-      ...event,
-      songs: songsList,
-      participants: participants,
-    };
-  }),
+  return {
+    ...event,
+    songs: songsList,
+    participants: participants,
+  };
+}),
 
   create: protectedProcedure.input(eventSchema).mutation(async ({ input }) => {
     // Garantir que a data seja um objeto Date válido

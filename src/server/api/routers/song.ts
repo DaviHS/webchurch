@@ -4,11 +4,11 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/
 import { db } from "@/server/db";
 import { songs } from "@/server/db/schema";
 import { songSchema } from "@/validators/song";
-import { eq, desc, like, and, or } from "drizzle-orm";
+import { eq, desc, like, and, or, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 
 export const songRouter = createTRPCRouter({
-  list: publicProcedure
+    list: publicProcedure
     .input(
       z.object({
         search: z.string().optional(),
@@ -21,16 +21,29 @@ export const songRouter = createTRPCRouter({
       const { search, category, page, limit } = input;
       const offset = (page - 1) * limit;
 
-      const whereConditions = [];
-      if (search) {
-        const searchLower = `%${search.toLowerCase()}%`;
+      const whereConditions: any[] = [];
+
+      if (search && search.trim() !== "") {
+        const sanitized = search.trim().toLowerCase();
+        const searchLower = `%${sanitized}%`;
+
+        // case-insensitive search using LOWER(...) LIKE ...
         whereConditions.push(
           or(
-            like(songs.title, searchLower),
-            like(songs.artist, searchLower)
+            sql`LOWER(${songs.title}) LIKE ${searchLower}`,
+            sql`LOWER(${songs.artist}) LIKE ${searchLower}`
           )
         );
+
+        // ---- alternativa (Postgres): usar ILIKE (mais simples)
+        // whereConditions.push(
+        //   or(
+        //     sql`${songs.title} ILIKE ${searchLower}`,
+        //     sql`${songs.artist} ILIKE ${searchLower}`
+        //   )
+        // );
       }
+
       if (category) {
         whereConditions.push(eq(songs.category, category as any));
       }

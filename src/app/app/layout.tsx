@@ -37,7 +37,7 @@ export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
           <AppSidebar />
           <div className="flex-1 h-full overflow-auto font-sans">
             <div className="w-full h-full overflow-x-hidden overflow-y-auto">
-              <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
+              <div className="mx-auto w-full">
                 {children}
               </div>
             </div>
