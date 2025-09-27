@@ -1,3 +1,4 @@
+// server/api/routers/song.ts
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
@@ -7,7 +8,6 @@ import { eq, desc, like, and, or } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 
 export const songRouter = createTRPCRouter({
-  // Listar músicas com filtros, paginação e pesquisa
   list: publicProcedure
     .input(
       z.object({
@@ -55,7 +55,6 @@ export const songRouter = createTRPCRouter({
       };
     }),
 
-  // Buscar música por ID
   getById: publicProcedure.input(z.number()).query(async ({ input }) => {
     const song = await db
       .select()
@@ -65,14 +64,12 @@ export const songRouter = createTRPCRouter({
     return song || null;
   }),
 
-  // Criar nova música
   create: protectedProcedure.input(songSchema).mutation(async ({ input }) => {
     const cleanedData = cleanEmptyStrings(input);
     const [newSong] = await db.insert(songs).values(cleanedData).returning();
     return newSong;
   }),
 
-  // Atualizar música existente
   update: protectedProcedure
     .input(
       z.object({
@@ -90,7 +87,6 @@ export const songRouter = createTRPCRouter({
       return updatedSong;
     }),
 
-  // Deletar música
   delete: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
     await db.delete(songs).where(eq(songs.id, input));
     return { success: true };
