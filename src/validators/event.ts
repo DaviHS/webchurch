@@ -35,6 +35,7 @@ export const eventParticipantSchema = z.object({
   instrument: z.string().optional(),
 })
 
+
 export type EventFormData = z.infer<typeof eventSchema>
 export type EventSongFormData = z.infer<typeof eventSongSchema>
 export type EventParticipantFormData = z.infer<typeof eventParticipantSchema>

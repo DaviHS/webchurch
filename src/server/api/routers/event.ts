@@ -116,7 +116,6 @@ export const eventRouter = createTRPCRouter({
 }),
 
   create: protectedProcedure.input(eventSchema).mutation(async ({ input }) => {
-    // Garantir que a data seja um objeto Date válido
     const processedData = {
       ...input,
       date: input.date instanceof Date ? input.date : new Date(input.date)
@@ -138,8 +137,7 @@ export const eventRouter = createTRPCRouter({
   )
   .mutation(async ({ input }) => {
     const { data } = input;
-    
-    // Converter strings vazias para NULL explicitamente
+
     const processedData = {
       ...data,
       date: data.date ? new Date(data.date) : undefined,
@@ -151,7 +149,6 @@ export const eventRouter = createTRPCRouter({
       bibleVerse: data.bibleVerse === '' ? null : data.bibleVerse,
     };
 
-    // Remover campos undefined (mantendo null para campos explicitamente vazios)
     const updateData = Object.fromEntries(
       Object.entries(processedData).filter(([_, value]) => value !== undefined)
     );
@@ -201,33 +198,35 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  getSongsReport: publicProcedure
-    .input(z.object({
-      days: z.number().default(30),
-    }))
-    .query(async ({ input }) => {
-      const { days } = input;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+  // No eventRouter - getSongsReport
+getSongsReport: publicProcedure
+  .input(z.object({
+    days: z.number().default(30),
+  }))
+  .query(async ({ input }) => {
+    const { days } = input;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
-      const result = await db
-        .select({
-          songId: eventSongs.songId,
-          title: songs.title,
-          artist: songs.artist,
-          count: sql<number>`count(${eventSongs.songId})`,
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .innerJoin(songs, eq(eventSongs.songId, songs.id))
-        .where(gte(events.date, startDate))
-        .groupBy(eventSongs.songId, songs.title, songs.artist)
-        .orderBy(sql`count(${eventSongs.songId}) DESC`)
-        .limit(20);
+    const result = await db
+      .select({
+        songId: eventSongs.songId,
+        title: songs.title,
+        artist: songs.artist,
+        category: songs.category, // Adicione esta linha se quiser usar categorias
+        count: sql<number>`count(${eventSongs.songId})`,
+      })
+      .from(eventSongs)
+      .innerJoin(events, eq(eventSongs.eventId, events.id))
+      .innerJoin(songs, eq(eventSongs.songId, songs.id))
+      .where(gte(events.date, startDate))
+      .groupBy(eventSongs.songId, songs.title, songs.artist, songs.category)
+      .orderBy(sql`count(${eventSongs.songId}) DESC`)
+      .limit(20);
 
-      return result;
-    }),
-
+    return result;
+  }),
+  
   exportRepertoire: protectedProcedure
     .input(z.number())
     .query(async ({ input: eventId }) => {

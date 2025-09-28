@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, Edit, Trash2, UserX, UserCheck } from "lucide-react";
+import { Eye, MoreVertical, Lock, Unlock, Edit, UserX, Mail, Phone, Calendar, Plus, Search } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { api } from "@/lib/api";
 import { QuickViewDialog } from "./_components/quick-view-dialog";
 import { MemberFormDialog } from "./_components/member-form-dialog";
@@ -150,98 +156,123 @@ export default function MembersPage() {
           {members.map(({ members: m, users: u }) => (
             <Card key={m.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                  <div className="space-y-2 flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex flex-col gap-4">
+                  {/* Topo: Nome, status e botões */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base sm:text-lg font-semibold">
                         {m.firstName} {m.lastName}
                       </h3>
                       {getStatusBadge(m.status)}
                     </div>
 
-                    <div className="text-xs sm:text-sm text-muted-foreground space-y-1">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleQuickView(m)}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleQuickView(m)}>
+                            <Eye className="h-4 w-4 mr-2 text-green-600" />
+                            Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(m)}>
+                            <Edit className="h-4 w-4 mr-2 text-blue-600" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeactivate(m)}
+                            disabled={deactivateMember.isPending}
+                          >
+                            <UserX className="h-4 w-4 mr-2 text-red-600" />
+                            Desativar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  {/* Informações em duas colunas */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <div className="space-y-1">
                       {m.email && (
                         <p className="flex items-center gap-1">
-                          <span>📧</span>
+                          <Mail className="h-4 w-4 text-muted-foreground" />
                           <span className="truncate">{m.email}</span>
                         </p>
                       )}
                       {m.phone && (
                         <p className="flex items-center gap-1">
-                          <span>📱</span>
+                          <Phone className="h-4 w-4 text-muted-foreground" />
                           <span>{m.phone}</span>
                         </p>
                       )}
+                    </div>
+                    <div className="space-y-1">
                       {m.memberSince && (
                         <p className="flex items-center gap-1">
-                          <span>📅</span>
-                          <span>Membro desde: {new Date(m.memberSince).toLocaleDateString('pt-BR')}</span>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            Membro desde:{" "}
+                            {new Date(m.memberSince).toLocaleDateString("pt-BR")}
+                          </span>
                         </p>
                       )}
                       <p className="flex items-center gap-1">
-                        <span>{u ? "🔐" : "🔒"}</span>
+                        {u ? (
+                          <Unlock className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Lock className="h-4 w-4 text-red-600" />
+                        )}
                         <span>{u ? "Com acesso" : "Sem acesso"}</span>
                       </p>
                     </div>
+                  </div>
 
-                    {m.ministries && m.ministries.length > 0 && (
-                      <div className="pt-2">
-                        <p className="text-xs sm:text-sm font-semibold">Ministérios:</p>
-                        <ul className="list-disc list-inside text-xs sm:text-sm text-muted-foreground">
-                          {m.ministries.slice(0, 2).map(
-                            (
-                              min: { ministryName: string; functionName: string | null },
-                              idx: number
-                            ) => (
-                              <li key={idx} className="truncate">
-                                {min.ministryName}
-                                {min.functionName ? ` — ${min.functionName}` : ""}
-                              </li>
-                            )
-                          )}
-                          {m.ministries.length > 2 && (
-                            <li className="text-muted-foreground/70">
-                              +{m.ministries.length - 2} mais
+                  {/* Ministérios */}
+                  {m.ministries && m.ministries.length > 0 && (
+                    <div>
+                      <p className="text-xs sm:text-sm font-semibold">Ministérios:</p>
+                      <ul className="list-disc list-inside text-xs sm:text-sm text-muted-foreground">
+                        {m.ministries.slice(0, 2).map(
+                          (
+                            min: { ministryName: string; functionName: string | null },
+                            idx: number
+                          ) => (
+                            <li key={idx} className="truncate">
+                              {min.ministryName}
+                              {min.functionName ? ` — ${min.functionName}` : ""}
                             </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 w-full sm:w-auto justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickView(m)}
-                      className="text-green-600 hover:text-green-700 flex-1 sm:flex-none"
-                    >
-                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="ml-1 sm:hidden">Ver</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(m)}
-                      className="text-blue-600 hover:text-blue-700 flex-1 sm:flex-none"
-                    >
-                      <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="ml-1 sm:hidden">Editar</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeactivate(m)}
-                      disabled={deactivateMember.isPending}
-                      className="text-red-600 hover:text-red-700 flex-1 sm:flex-none"
-                    >
-                      <UserX className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="ml-1 sm:hidden">Desativar</span>
-                    </Button>
-                  </div>
+                          )
+                        )}
+                        {m.ministries.length > 2 && (
+                          <li className="text-muted-foreground/70">
+                            +{m.ministries.length - 2} mais
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
+
+
           ))}
         </div>
       )}

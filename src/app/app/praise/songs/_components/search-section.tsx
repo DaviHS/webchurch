@@ -35,7 +35,10 @@ export function SearchSection({
         />
       </div>
       
-      <Select value={category} onValueChange={setCategory}>
+      <Select
+        value={category || "any"}
+        onValueChange={(val) => setCategory(val === "any" ? "" : val)}
+      >
         <SelectTrigger className="w-full sm:w-40">
           <SelectValue placeholder="Todas categorias" />
         </SelectTrigger>
