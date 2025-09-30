@@ -115,20 +115,20 @@ export function MinistryFunctionsDialog({ ministry, open, onOpenChange }: Minist
                 ) : (
                   <div className="space-y-2">
                     {ministryFunctions.map((mf) => (
-                      <Card key={mf.id}>
+                      <Card key={mf.ministryId}>
                         <CardContent className="p-3 flex justify-between items-center">
                           <div className="flex-1">
                             <span className="font-medium">{mf.functionName}</span>
-                            {mf.functionDescription && (
+                            {mf.functionName && (
                               <p className="text-sm text-muted-foreground">
-                                {mf.functionDescription}
+                                {mf.functionName}
                               </p>
                             )}
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleRemoveFunction(mf.id)}
+                            onClick={() => handleRemoveFunction(mf.ministryId)}
                             disabled={removeFunctionMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
