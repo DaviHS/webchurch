@@ -68,8 +68,19 @@ export const userRouter = createTRPCRouter({
 
     return user
   }),
+  
+  getByMemberId: protectedProcedure
+    .input(z.object({ memberId: z.number() }))
+    .query(async ({ input }) => {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.memberId, input.memberId))
+        .limit(1);
 
-  // Atualizar usuário
+      return user || null;
+    }),
+
   update: protectedProcedure
     .input(userUpdateSchema)
     .mutation(async ({ input }) => {

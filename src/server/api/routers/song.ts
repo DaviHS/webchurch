@@ -1,4 +1,3 @@
-// server/api/routers/song.ts
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
@@ -8,7 +7,7 @@ import { eq, desc, like, and, or, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 
 export const songRouter = createTRPCRouter({
-    list: publicProcedure
+  list: publicProcedure
     .input(
       z.object({
         search: z.string().optional(),
@@ -27,21 +26,12 @@ export const songRouter = createTRPCRouter({
         const sanitized = search.trim().toLowerCase();
         const searchLower = `%${sanitized}%`;
 
-        // case-insensitive search using LOWER(...) LIKE ...
         whereConditions.push(
           or(
             sql`LOWER(${songs.title}) LIKE ${searchLower}`,
             sql`LOWER(${songs.artist}) LIKE ${searchLower}`
           )
         );
-
-        // ---- alternativa (Postgres): usar ILIKE (mais simples)
-        // whereConditions.push(
-        //   or(
-        //     sql`${songs.title} ILIKE ${searchLower}`,
-        //     sql`${songs.artist} ILIKE ${searchLower}`
-        //   )
-        // );
       }
 
       if (category) {

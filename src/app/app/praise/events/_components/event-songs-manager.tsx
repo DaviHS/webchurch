@@ -27,7 +27,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const [isAdding, setIsAdding] = useState(false);
 
   // Buscar dados
-  const { data: songsData } = api.song.list.useQuery({});
+  const { data: songsData } = api.song.list.useQuery({limit: 30});
   const allSongs = songsData?.songs || [];
 
   const { data: membersData } = api.member.getAll.useQuery({});

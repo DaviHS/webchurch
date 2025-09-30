@@ -1,4 +1,3 @@
-// app/app/admin/members/_components/member-form-dialog.tsx - CORRIGIDO
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -12,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, X, Plus, Loader2, Trash2, UserPlus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Save, X, Plus, Loader2, Trash2, UserPlus, Eye, EyeOff, ChevronLeft, ChevronRight, Key, User } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useEffect, useState, useMemo } from "react";
@@ -24,30 +24,30 @@ interface MemberFormDialogProps {
   mode: "create" | "edit";
 }
 
-type TabValue = "personal" | "address" | "church" | "ministries";
+type TabValue = "personal" | "address" | "church" | "ministries" | "access";
 
-const tabs: TabValue[] = ["personal", "address", "church", "ministries"];
+const tabs: TabValue[] = ["personal", "address", "church", "ministries", "access"];
 
 export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFormDialogProps) {
   const [activeTab, setActiveTab] = useState<TabValue>("personal");
   const [showPassword, setShowPassword] = useState(false);
   const [createUser, setCreateUser] = useState(false);
   
-  // Buscar todos os dados necessários no topo do componente
   const { data: ministries = [] } = api.ministry.getAll.useQuery(undefined, {
     enabled: open,
   });
 
-  const { data: allFunctions = [] } = api.ministry.getAllFunctions.useQuery(undefined, {
+  const { data: allMinistryFunctions = [] } = api.ministry.getAllMinistryFunctions.useQuery(undefined, {
     enabled: open,
   });
 
-  const { data: allMinistryFunctions = [] } = api.ministry.getMinistryFunctions.useQuery(
-    { ministryId: 0 }, // Dummy ID para buscar todos
-    { enabled: open }
+  const { data: existingUser } = api.user.getByMemberId.useQuery(
+    { memberId: member?.id },
+    { 
+      enabled: open && mode === "edit" && !!member?.id,
+    }
   );
 
-  // Criar um mapa de funções por ministário usando useMemo
   const functionsByMinistry = useMemo(() => {
     const map = new Map<number, any[]>();
     
@@ -138,10 +138,26 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
     },
   });
 
-  // Reset do form quando abrir/fechar
+  const updateUserMutation = api.user.update.useMutation({
+    onSuccess: () => {
+      toast.success("Usuário atualizado com sucesso!");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   useEffect(() => {
     if (open) {
       if (member && mode === "edit") {
+        console.log('Member data:', member);
+        console.log('Member ministries:', member.ministries);
+
+        const ministriesData = member.ministries?.map((min: any) => ({
+          ministryId: min.ministryId,
+          functionId: min.functionId || undefined,
+        })) || [];
+
         const formData = {
           firstName: member.firstName || "",
           lastName: member.lastName || "",
@@ -163,13 +179,13 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
           status: member.status || "active",
           notes: member.notes || "",
           baptized: member.baptized || false,
-          ministries: member.ministries?.map((min: any) => ({
-            ministryId: min.ministryId || min.id,
-            functionId: min.functionId,
-          })) || [],
+          ministries: ministriesData,
         };
+
+        console.log('Form data to reset:', formData); // Para debug
         form.reset(formData);
-        setCreateUser(!!member.userId);
+        
+        setCreateUser(!!existingUser);
       } else {
         form.reset({
           firstName: "",
@@ -198,17 +214,18 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
       }
       setActiveTab("personal");
     }
-  }, [open, member, mode, form]);
+  }, [open, member, mode, form, existingUser]);
 
   const onSubmit = async (data: MemberFormData) => {
     try {
-      // Filtrar ministérios com ministryId válido
       const validMinistries = data.ministries.filter(ministry => ministry.ministryId > 0);
       
       const submitData = {
         ...data,
         ministries: validMinistries,
       };
+
+      console.log('Submitting data:', submitData);
 
       if (mode === "create") {
         await createMember.mutateAsync(submitData);
@@ -219,13 +236,41 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
         });
       }
     } catch (error) {
+    }
+  };
+
+  const handleCreateUserAccess = async () => {
+    if (!form.watch("email")) {
+      toast.error("O membro precisa ter um email para criar acesso");
+      return;
+    }
+
+    try {
+      await createUserMutation.mutateAsync({
+        memberId: member.id,
+        email: form.watch("email")!,
+        password: "123456",
+      });
+    } catch (error) {
       // Erro já é tratado na mutation
     }
   };
 
-  const isLoading = createMember.isPending || updateMember.isPending || createUserMutation.isPending;
+  const handleResetPassword = async () => {
+    if (!existingUser?.id) return;
 
-  // Função para obter funções de um ministério específico (sem usar hook)
+    try {
+      await updateUserMutation.mutateAsync({
+        id: existingUser.id,
+        password: "123456",
+      });
+      toast.success("Senha resetada para 123456");
+    } catch (error) {
+    }
+  };
+
+  const isLoading = createMember.isPending || updateMember.isPending || createUserMutation.isPending || updateUserMutation.isPending;
+
   const getFunctionsForMinistry = (ministryId: number) => {
     return functionsByMinistry.get(ministryId) || [];
   };
@@ -245,7 +290,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as TabValue)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto py-2">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto py-2 gap-1">
             <TabsTrigger value="personal" className="text-xs sm:text-sm py-2 h-auto">
               Pessoal
             </TabsTrigger>
@@ -258,10 +303,12 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
             <TabsTrigger value="ministries" className="text-xs sm:text-sm py-2 h-auto">
               Ministérios
             </TabsTrigger>
+            <TabsTrigger value="access" className="text-xs sm:text-sm py-2 h-auto">
+              Acesso
+            </TabsTrigger>
           </TabsList>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-            {/* Aba: Informações Pessoais */}
             <TabsContent value="personal" className="space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-3">
@@ -389,7 +436,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                 </CardContent>
               </Card>
 
-              {/* Contato de Emergência */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Contato de Emergência</CardTitle>
@@ -415,72 +461,8 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Criação de Usuário (apenas para novo membro) */}
-              {mode === "create" && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <CardTitle className="text-lg">Criar Usuário</CardTitle>
-                      <Button
-                        type="button"
-                        variant={createUser ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCreateUser(!createUser)}
-                        className="w-full sm:w-auto"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        {createUser ? "Criar Usuário" : "Não Criar"}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {createUser && (
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label className="text-sm">Email para acesso</Label>
-                          <Input 
-                            value={form.watch("email") || ""} 
-                            disabled 
-                            placeholder="Usará o email cadastrado acima"
-                            className="text-sm sm:text-base"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Senha inicial</Label>
-                          <div className="relative">
-                            <Input 
-                              type={showPassword ? "text" : "password"} 
-                              value="123456" 
-                              disabled 
-                              className="text-sm sm:text-base"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            O usuário receberá esta senha inicial e poderá alterá-la depois
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              )}
             </TabsContent>
 
-            {/* Aba: Endereço */}
             <TabsContent value="address" className="space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-3">
@@ -531,7 +513,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
               </Card>
             </TabsContent>
 
-            {/* Aba: Igreja */}
             <TabsContent value="church" className="space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-3">
@@ -587,7 +568,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                 </CardContent>
               </Card>
 
-              {/* Observações */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Observações</CardTitle>
@@ -607,7 +587,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
               </Card>
             </TabsContent>
 
-            {/* Aba: Ministérios - CORRIGIDA */}
             <TabsContent value="ministries" className="space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader className="pb-3">
@@ -628,9 +607,14 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                 <CardContent className="space-y-3">
                   {fields.map((field, index) => {
                     const selectedMinistryId = form.watch(`ministries.${index}.ministryId`);
-                    
-                    // ✅ CORREÇÃO: Usar função regular em vez de hook
+                    const selectedFunctionId = form.watch(`ministries.${index}.functionId`);
                     const ministryFunctions = getFunctionsForMinistry(selectedMinistryId);
+
+                    console.log(`Field ${index}:`, { 
+                      ministryId: selectedMinistryId, 
+                      functionId: selectedFunctionId,
+                      availableFunctions: ministryFunctions 
+                    }); // Para debug
 
                     return (
                       <div key={field.id} className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg">
@@ -639,7 +623,12 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                             <Label className="text-sm">Ministério</Label>
                             <Select
                               value={selectedMinistryId?.toString() || ""}
-                              onValueChange={(value) => form.setValue(`ministries.${index}.ministryId`, Number(value))}
+                              onValueChange={(value) => {
+                                const ministryId = Number(value);
+                                form.setValue(`ministries.${index}.ministryId`, ministryId);
+                                // Resetar função quando mudar o ministério
+                                form.setValue(`ministries.${index}.functionId`, undefined);
+                              }}
                             >
                               <SelectTrigger className="text-sm sm:text-base">
                                 <SelectValue placeholder="Selecione o ministério" />
@@ -658,18 +647,20 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                           <div className="space-y-2">
                             <Label className="text-sm">Função</Label>
                             <Select
-                              value={form.watch(`ministries.${index}.functionId`)?.toString() || ""}
+                              value={selectedFunctionId?.toString() || ""}
                               onValueChange={(value) =>
                                 form.setValue(`ministries.${index}.functionId`, value ? Number(value) : undefined)
                               }
                               disabled={!selectedMinistryId || selectedMinistryId === 0}
                             >
                               <SelectTrigger className="text-sm sm:text-base">
-                                <SelectValue placeholder={ministryFunctions.length === 0 ? "Sem funções" : "Selecione a função"} />
+                                <SelectValue placeholder={
+                                  ministryFunctions.length === 0 ? "Sem funções disponíveis" : "Selecione a função"
+                                } />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="any">Sem função</SelectItem>
-                                {ministryFunctions.map((mf: any)                                                                                                 => (
+                                <SelectItem value="any">Sem função específica</SelectItem>
+                                {ministryFunctions.map((mf: any) => (
                                   <SelectItem key={mf.functionId} value={mf.functionId.toString()}>
                                     {mf.functionName}
                                   </SelectItem>
@@ -702,7 +693,163 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
               </Card>
             </TabsContent>
 
-            {/* Navegação entre abas e botões de ação */}
+            <TabsContent value="access" className="space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Key className="h-5 w-5" />
+                    Acesso do Sistema
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {mode === "create" ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-sm font-medium">Criar usuário para acesso</Label>
+                          <p className="text-xs text-muted-foreground">
+                            O membro poderá acessar o sistema com o email cadastrado
+                          </p>
+                        </div>
+                        <Switch
+                          checked={createUser}
+                          onCheckedChange={setCreateUser}
+                        />
+                      </div>
+
+                      {createUser && (
+                        <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                          <div className="space-y-2">
+                            <Label className="text-sm">Email para acesso</Label>
+                            <Input 
+                              value={form.watch("email") || ""} 
+                              disabled 
+                              className="text-sm sm:text-base bg-background"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Será usado o email cadastrado nas informações pessoais
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm">Senha inicial</Label>
+                            <div className="relative">
+                              <Input 
+                                type={showPassword ? "text" : "password"} 
+                                value="123456" 
+                                disabled 
+                                className="text-sm sm:text-base bg-background"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              O usuário receberá esta senha inicial e poderá alterá-la depois
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {existingUser ? (
+                        <div className="space-y-4">
+                          <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
+                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-2">
+                              <User className="h-4 w-4" />
+                              <span className="font-medium">Usuário já possui acesso</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <Label className="text-xs">Email de acesso</Label>
+                                <p className="font-medium">{existingUser.email}</p>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Status</Label>
+                                <p className="font-medium">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    existingUser.isActive 
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                  }`}>
+                                    {existingUser.isActive ? 'Ativo' : 'Inativo'}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleResetPassword}
+                              disabled={updateUserMutation.isPending}
+                              className="flex-1"
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              {updateUserMutation.isPending ? "Resetando..." : "Resetar Senha"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => updateUserMutation.mutate({
+                                id: existingUser.id,
+                                isActive: !existingUser.isActive
+                              })}
+                              disabled={updateUserMutation.isPending}
+                              className="flex-1"
+                            >
+                              {existingUser.isActive ? "Desativar Acesso" : "Ativar Acesso"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
+                            <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-2">
+                              <User className="h-4 w-4" />
+                              <span className="font-medium">Sem acesso ao sistema</span>
+                            </div>
+                            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                              Este membro ainda não possui uma conta de acesso ao sistema.
+                            </p>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={handleCreateUserAccess}
+                            disabled={createUserMutation.isPending || !form.watch("email")}
+                            className="w-full"
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            {createUserMutation.isPending ? "Criando..." : "Criar Acesso para este Membro"}
+                          </Button>
+
+                          {!form.watch("email") && (
+                            <p className="text-xs text-red-500 text-center">
+                              É necessário ter um email cadastrado para criar o acesso
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
@@ -727,7 +874,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                     const nextTab = tabs[currentIndex + 1];
                     if (nextTab) setActiveTab(nextTab);
                   }}
-                  disabled={activeTab === "ministries"}
+                  disabled={activeTab === "access"}
                   className="flex-1 sm:flex-none"
                 >
                   Próximo

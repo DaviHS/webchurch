@@ -137,7 +137,6 @@ export default function SongsPage() {
   const SongCard = ({ song }: { song: any }) => (
     <Card className="h-full flex flex-col transition-all hover:shadow-md">
       <CardContent className="p-3 flex items-center justify-between gap-2">
-        {/* Esquerda: título + artista + categoria */}
         <div className="flex flex-col min-w-0">
           <CardTitle className="text-sm leading-tight line-clamp-1">
             {song.title}

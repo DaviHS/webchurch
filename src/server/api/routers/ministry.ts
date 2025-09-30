@@ -6,13 +6,16 @@ import { eq, and, inArray, desc, asc, sql, not } from "drizzle-orm"
 import { ministrySchema, functionSchema, ministryFunctionSchema } from "@/validators/ministry"
 
 export const ministryRouter = createTRPCRouter({
-  // Ministérios
   getAll: protectedProcedure.query(async () => {
     return await db
-      .select()
+      .select({
+        id: ministries.id,
+        name: ministries.name,
+        description: ministries.description,
+      })
       .from(ministries)
       .where(eq(ministries.isActive, true))
-      .orderBy(asc(ministries.name))
+      .orderBy(ministries.name);
   }),
 
   create: protectedProcedure
@@ -54,13 +57,17 @@ export const ministryRouter = createTRPCRouter({
       return deletedMinistry
     }),
 
-  // Funções
   getAllFunctions: protectedProcedure.query(async () => {
     return await db
-      .select()
+      .select({
+        id: functions.id,
+        name: functions.name,
+        description: functions.description,
+        displayOrder: functions.displayOrder
+      })
       .from(functions)
       .where(eq(functions.isActive, true))
-      .orderBy(asc(functions.displayOrder), asc(functions.name))
+      .orderBy(functions.displayOrder, functions.name);
   }),
 
   createFunction: protectedProcedure
@@ -102,28 +109,25 @@ export const ministryRouter = createTRPCRouter({
       return deletedFunction
     }),
 
-  // Relacionamentos Ministério-Função
   getMinistryFunctions: protectedProcedure
     .input(z.object({ ministryId: z.number() }))
     .query(async ({ input }) => {
       return await db
         .select({
-          id: ministryFunctions.id,
           ministryId: ministryFunctions.ministryId,
           functionId: ministryFunctions.functionId,
           functionName: functions.name,
-          functionDescription: functions.description,
-          isActive: ministryFunctions.isActive,
         })
         .from(ministryFunctions)
         .innerJoin(functions, eq(ministryFunctions.functionId, functions.id))
         .where(
           and(
             eq(ministryFunctions.ministryId, input.ministryId),
-            eq(ministryFunctions.isActive, true)
+            eq(ministryFunctions.isActive, true),
+            eq(functions.isActive, true)
           )
         )
-        .orderBy(asc(functions.displayOrder), asc(functions.name))
+        .orderBy(functions.name);
     }),
 
   addFunctionToMinistry: protectedProcedure
@@ -135,6 +139,23 @@ export const ministryRouter = createTRPCRouter({
         .returning()
       return newRelation
     }),
+    
+  getAllMinistryFunctions: protectedProcedure.query(async () => {
+    return await db
+      .select({
+        ministryId: ministryFunctions.ministryId,
+        functionId: ministryFunctions.functionId,
+        functionName: functions.name,
+      })
+      .from(ministryFunctions)
+      .innerJoin(functions, eq(ministryFunctions.functionId, functions.id))
+      .where(
+        and(
+          eq(ministryFunctions.isActive, true),
+          eq(functions.isActive, true)
+        )
+      );
+  }),
 
   removeFunctionFromMinistry: protectedProcedure
     .input(z.object({ id: z.number() }))

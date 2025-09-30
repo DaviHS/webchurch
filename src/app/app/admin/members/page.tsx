@@ -1,4 +1,3 @@
-// app/app/admin/members/page.tsx - COM SOFT DELETE
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,13 +22,11 @@ export default function MembersPage() {
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Estados para os dialogs
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
 
-  // Debounce para search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -39,14 +36,12 @@ export default function MembersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Query corrigida
   const { data: membersData = [], isLoading, refetch } = api.member.getAll.useQuery({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
   });
 
-  // Mutation para soft delete
   const deactivateMember = api.member.deactivate.useMutation({
     onSuccess: () => {
       toast.success("Membro desativado com sucesso!");
@@ -105,7 +100,6 @@ export default function MembersPage() {
       try {
         await deactivateMember.mutateAsync({ id: member.id });
       } catch (error) {
-        // Erro já é tratado na mutation
       }
     }
   };
@@ -113,12 +107,12 @@ export default function MembersPage() {
   const handleDialogClose = () => {
     setFormDialogOpen(false);
     setSelectedMember(null);
-    refetch(); // Recarregar a lista após fechar o dialog
+    refetch();
   };
 
   return (
-    <div className="container mx-auto p-3 sm:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="container mx-auto py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Membros</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
@@ -135,7 +129,6 @@ export default function MembersPage() {
         </Button>
       </div>
 
-      {/* Busca */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -148,7 +141,6 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {/* Lista de Membros */}
       {isLoading ? (
         <div className="text-center py-8">Carregando membros...</div>
       ) : (
@@ -157,7 +149,6 @@ export default function MembersPage() {
             <Card key={m.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-4">
-                  {/* Topo: Nome, status e botões */}
                   <div className="flex justify-between items-start">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base sm:text-lg font-semibold">
@@ -207,7 +198,6 @@ export default function MembersPage() {
                     </div>
                   </div>
 
-                  {/* Informações em duas colunas */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-muted-foreground">
                     <div className="space-y-1">
                       {m.email && (
@@ -244,7 +234,6 @@ export default function MembersPage() {
                     </div>
                   </div>
 
-                  {/* Ministérios */}
                   {m.ministries && m.ministries.length > 0 && (
                     <div>
                       <p className="text-xs sm:text-sm font-semibold">Ministérios:</p>
@@ -289,7 +278,6 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Dialogs */}
       <QuickViewDialog
         member={selectedMember}
         open={quickViewOpen}

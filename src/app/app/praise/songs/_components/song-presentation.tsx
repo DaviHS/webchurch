@@ -61,6 +61,23 @@ export function SongPresentation({ song, onClose }: { song: any; onClose: () => 
     };
   }, [slides.length]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setCurrentSlide((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "ArrowRight") {
+        setCurrentSlide((prev) => Math.min(slides.length - 1, prev + 1));
+      } else if (e.key === "Escape") {
+        onClose();
+      } else if (e.key.toLowerCase() === "f") {
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [slides.length, onClose]);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen();

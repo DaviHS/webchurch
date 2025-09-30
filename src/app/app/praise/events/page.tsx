@@ -1,4 +1,3 @@
-// app/praise/events/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,8 +7,6 @@ import { api } from "@/trpc/react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { EventFormData } from "@/validators/event";
-
-// Import dos componentes
 import { EventDialog } from "./_components/event-dialog";
 import { EventDetailDialog } from "./_components/event-detail-dialog";
 import { EventFilters } from "./_components/event-filters";
@@ -30,11 +27,10 @@ export default function EventsPage() {
     limit: 20,
   });
 
-  // Query para buscar detalhes do evento quando selectedEvent for definido
   const { data: eventDetails, isLoading: isLoadingDetails } = api.event.getById.useQuery(
     selectedEvent?.id || 0,
     {
-      enabled: !!selectedEvent?.id, // Só executa quando selectedEvent.id existe
+      enabled: !!selectedEvent?.id,
     }
   );
 
@@ -100,11 +96,10 @@ export default function EventsPage() {
     setDetailDialogOpen(true);
   };
 
-  // Usar eventDetails se disponível, caso contrário usar selectedEvent
   const eventToDisplay = eventDetails || selectedEvent;
 
   return (
-    <div className="container mx-auto py-4 px-2 sm:px-4">
+    <div className="container mx-auto py-4">
       <EventDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

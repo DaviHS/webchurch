@@ -26,9 +26,6 @@ export const memberRouter = createTRPCRouter({
     const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
-    console.log('input', input)
-    console.log('cleanedData', cleanedData)
-
     const result = await db.insert(members).values(cleanedData).returning();
 
     if (!result || result.length === 0) {
@@ -38,13 +35,16 @@ export const memberRouter = createTRPCRouter({
     const newMember = result[0];
 
     if (ministriesInput && ministriesInput.length > 0) {
-      const memberMinistryData = ministriesInput.map((ministry) => ({
-        memberId: newMember!.id,
-        ministryId: ministry.ministryId,
-        functionId: ministry.functionId ?? null,
-      }));
+      const validMinistries = ministriesInput.filter(m => m.ministryId > 0);
+      if (validMinistries.length > 0) {
+        const memberMinistryData = validMinistries.map((ministry) => ({
+          memberId: newMember!.id,
+          ministryId: ministry.ministryId,
+          functionId: ministry.functionId ?? null,
+        }));
 
-      await db.insert(memberMinistries).values(memberMinistryData);
+        await db.insert(memberMinistries).values(memberMinistryData);
+      }
     }
 
     return newMember;
@@ -116,6 +116,8 @@ export const memberRouter = createTRPCRouter({
       const ministriesData = await db
         .select({
           memberId: memberMinistries.memberId,
+          ministryId: memberMinistries.ministryId,
+          functionId: memberMinistries.functionId,
           ministryName: ministries.name,
           functionName: functions.name,
         })
@@ -131,15 +133,22 @@ export const memberRouter = createTRPCRouter({
         )
         .orderBy(asc(ministries.name));
 
-      const ministriesByMember: Record<number, { ministryName: string; functionName: string | null }[]> = {};
+      const ministriesByMember: Record<number, { 
+        ministryId: number; 
+        ministryName: string; 
+        functionId: number | null; 
+        functionName: string | null 
+      }[]> = {};
       
       ministriesData.forEach((cur) => {
         if (cur.memberId) {
           if (!ministriesByMember[cur.memberId]) {
             ministriesByMember[cur.memberId] = [];
           }
-          ministriesByMember[cur.memberId!]!.push({
+          ministriesByMember[cur.memberId]!.push({
+            ministryId: cur.ministryId,
             ministryName: cur.ministryName || "Ministério sem nome",
+            functionId: cur.functionId,
             functionName: cur.functionName,
           });
         }
@@ -204,7 +213,6 @@ export const memberRouter = createTRPCRouter({
       const { ministries: ministriesInput, ...memberData } = input.data;
       const cleanedData = cleanEmptyStrings(memberData);
 
-      // Atualizar membro
       const result = await db
         .update(members)
         .set({
@@ -220,17 +228,15 @@ export const memberRouter = createTRPCRouter({
 
       const updatedMember = result[0];
 
-      // Atualizar ministérios se fornecidos
       if (ministriesInput) {
-        // Desativar relações antigas
         await db
           .update(memberMinistries)
           .set({ isActive: false })
           .where(eq(memberMinistries.memberId, input.id));
 
-        // Criar novas relações se houver ministérios
-        if (ministriesInput.length > 0) {
-          const memberMinistryData = ministriesInput.map((ministry) => ({
+        const validMinistries = ministriesInput.filter(m => m.ministryId > 0);
+        if (validMinistries.length > 0) {
+          const memberMinistryData = validMinistries.map((ministry) => ({
             memberId: input.id,
             ministryId: ministry.ministryId,
             functionId: ministry.functionId ?? null,
@@ -243,29 +249,7 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
-  // CORREÇÃO: Soft delete (desativar membro)
   deactivate: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const result = await db
-        .update(members)
-        .set({
-          isActive: false,
-          status: "inactive", // Muda o status para inativo
-          updatedAt: new Date(),
-        })
-        .where(eq(members.id, input.id))
-        .returning();
-
-      if (!result || result.length === 0) {
-        throw new Error("Falha ao desativar membro");
-      }
-
-      return result[0];
-    }),
-
-  // Para compatibilidade, manter delete como alias de deactivate
-  delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const result = await db
@@ -279,7 +263,7 @@ export const memberRouter = createTRPCRouter({
         .returning();
 
       if (!result || result.length === 0) {
-        throw new Error("Falha ao excluir membro");
+        throw new Error("Falha ao desativar membro");
       }
 
       return result[0];

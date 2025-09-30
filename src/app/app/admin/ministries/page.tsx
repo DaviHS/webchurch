@@ -1,4 +1,3 @@
-// app/app/admin/ministries/page.tsx - VERSÃO CORRIGIDA E MELHORADA
 "use client";
 
 import { useState } from "react";
@@ -23,11 +22,9 @@ export default function MinistriesPage() {
   const [selectedMinistry, setSelectedMinistry] = useState<any>(null);
   const [selectedFunction, setSelectedFunction] = useState<any>(null);
 
-  // Queries para dados
   const { data: stats = [], isLoading: statsLoading, refetch: refetchStats } = api.ministry.getMinistryStats.useQuery();
   const { data: functions = [], isLoading: functionsLoading, refetch: refetchFunctions } = api.ministry.getAllFunctions.useQuery();
 
-  // Mutations para soft delete
   const deleteMinistryMutation = api.ministry.delete.useMutation({
     onSuccess: () => {
       toast.success("Ministério excluído com sucesso!");
@@ -90,16 +87,14 @@ export default function MinistriesPage() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex flex-col gap-6">
-        {/* Cabeçalho */}
+    <div className="container mx-auto py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Ministérios e Funções</h1>
             <p className="text-muted-foreground">Gerencie os ministérios e funções da igreja</p>
           </div>
           
-          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ministries" className="flex items-center gap-2">
@@ -112,7 +107,6 @@ export default function MinistriesPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Aba Ministérios */}
             <TabsContent value="ministries" className="space-y-4">
               <div className="flex justify-between items-center mt-4">
                 <h2 className="text-lg font-semibold">Lista de Ministérios</h2>
