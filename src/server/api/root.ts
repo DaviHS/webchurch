@@ -4,6 +4,7 @@ import { ministryRouter } from './routers/ministry';
 import { userRouter } from "./routers/user";
 import { songRouter } from "./routers/song";
 import { eventRouter } from "./routers/event";
+import { financeRouter } from "./routers/finance";
 
 /**
  * This is the primary router for your server.
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   ministry: ministryRouter,
   song: songRouter,
   event: eventRouter,
+  finance: financeRouter
 });
 
 // export type definition of API

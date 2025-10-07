@@ -167,6 +167,66 @@ export const eventParticipants = createTable("event_participants", (d) => ({
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
 }))
 
+// Financial Categories
+export const financialCategories = createTable("financial_categories", (d) => ({
+  id: d.serial("id").primaryKey(),
+  name: d.varchar("name", { length: 100 }).notNull(),
+  type: d.varchar("type", { length: 20 }).notNull(), // 'income' or 'expense'
+  description: d.text("description"),
+  isActive: d.boolean("is_active").notNull().default(true),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}))
+
+// Financial Transactions
+export const financialTransactions = createTable("financial_transactions", (d) => ({
+  id: d.serial("id").primaryKey(),
+  categoryId: d.integer("category_id").notNull().references(() => financialCategories.id),
+  type: d.varchar("type", { length: 20 }).notNull(), // 'income', 'expense', 'transfer'
+  amount: d.numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  description: d.varchar("description", { length: 255 }).notNull(),
+  transactionDate: d.timestamp("transaction_date").notNull().defaultNow(),
+  paymentMethod: d.varchar("payment_method", { length: 50 }), // 'cash', 'card', 'transfer', 'check'
+  referenceNumber: d.varchar("reference_number", { length: 100 }),
+  memberId: d.integer("member_id").references(() => members.id),
+  isRecurring: d.boolean("is_recurring").default(false),
+  recurrencePattern: d.varchar("recurrence_pattern", { length: 50 }), // 'weekly', 'monthly', 'yearly'
+  status: d.varchar("status", { length: 20 }).default('completed'), // 'pending', 'completed', 'cancelled'
+  notes: d.text("notes"),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}));
+
+// Monthly Closures
+export const monthlyClosures = createTable("monthly_closures", (d) => ({
+  id: d.serial("id").primaryKey(),
+  month: d.integer("month").notNull(),
+  year: d.integer("year").notNull(),
+  openingBalance: d.numeric("opening_balance", { precision: 10, scale: 2 }).notNull(),
+  totalIncome: d.numeric("total_income", { precision: 10, scale: 2 }).notNull(),
+  totalExpenses: d.numeric("total_expenses", { precision: 10, scale: 2 }).notNull(),
+  closingBalance: d.numeric("closing_balance", { precision: 10, scale: 2 }).notNull(),
+  status: d.varchar("status", { length: 20 }).default('open'), // 'open', 'closed', 'locked'
+  closedAt: d.timestamp("closed_at"),
+  closedBy: d.integer("closed_by").references(() => users.id),
+  notes: d.text("notes"),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}));
+
+// Budgets
+export const budgets = createTable("budgets", (d) => ({
+  id: d.serial("id").primaryKey(),
+  categoryId: d.integer("category_id").notNull().references(() => financialCategories.id),
+  month: d.integer("month").notNull(),
+  year: d.integer("year").notNull(),
+  allocatedAmount: d.numeric("allocated_amount", { precision: 10, scale: 2 }).notNull(),
+  actualAmount: d.numeric("actual_amount", { precision: 10, scale: 2 }),
+  description: d.text("description"),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}));
+
 // Relações
 export const membersRelations = relations(members, ({ many, one }) => ({
   memberMinistries: many(memberMinistries),
@@ -278,3 +338,4 @@ export type EventSong = typeof eventSongs.$inferSelect
 export type NewEventSong = typeof eventSongs.$inferInsert
 export type EventParticipant = typeof eventParticipants.$inferSelect
 export type NewEventParticipant = typeof eventParticipants.$inferInsert
+export type MonthlyClosures = typeof monthlyClosures.$inferInsert;
