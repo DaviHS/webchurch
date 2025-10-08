@@ -1,16 +1,16 @@
-// src/app/praise/events/_components/event-songs-manager.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowUp, ArrowDown, Plus, Trash2, Music, User, ChevronDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Trash2, Music, User, ChevronDown, Search, X } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { getCategoryName } from "@/lib/utils/format-translate";
 
 interface EventSongsManagerProps {
   eventId: number;
@@ -25,9 +25,15 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     notes: ""
   });
   const [isAdding, setIsAdding] = useState(false);
+  const [songSearch, setSongSearch] = useState("");
+  const [showSongSearch, setShowSongSearch] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<any>(null);
 
   // Buscar dados
-  const { data: songsData } = api.song.list.useQuery({limit: 30});
+  const { data: songsData, isLoading: songsLoading } = api.song.list.useQuery({
+    search: songSearch || undefined,
+    limit: 50, // Aumentei o limite para 50
+  });
   const allSongs = songsData?.songs || [];
 
   const { data: membersData } = api.member.getAll.useQuery({});
@@ -36,6 +42,11 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const addSongMutation = api.event.addSong.useMutation();
   const removeSongMutation = api.event.removeSong.useMutation();
   const updateSongOrderMutation = api.event.updateSongOrder.useMutation();
+
+  // Filtrar músicas que já foram adicionadas ao evento
+  const availableSongs = allSongs.filter(song => 
+    !songs.some(eventSong => eventSong.songId === song.id)
+  );
 
   const handleAddSong = async () => {
     if (!newSong.songId) {
@@ -56,6 +67,9 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
 
       toast.success("Música adicionada com sucesso!");
       setNewSong({ songId: "", leaderId: "", notes: "" });
+      setSelectedSong(null);
+      setSongSearch("");
+      setShowSongSearch(false);
       onUpdate();
     } catch (error) {
       toast.error("Erro ao adicionar música");
@@ -101,6 +115,18 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     }
   };
 
+  const handleSelectSong = (song: any) => {
+    setNewSong(prev => ({ ...prev, songId: song.id.toString() }));
+    setSelectedSong(song);
+    setShowSongSearch(false);
+    setSongSearch("");
+  };
+
+  const clearSelectedSong = () => {
+    setNewSong(prev => ({ ...prev, songId: "" }));
+    setSelectedSong(null);
+  };
+
   const sortedSongs = [...songs].sort((a: any, b: any) => a.order - b.order);
 
   return (
@@ -126,36 +152,102 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
               <div className="px-4 pb-4 border-t">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-4">
                   <div className="md:col-span-4">
-                    <Label htmlFor="song-select" className="text-sm font-medium">Música</Label>
-                    <Select value={newSong.songId} onValueChange={(value) => setNewSong(prev => ({ ...prev, songId: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Escolha uma música..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allSongs.map((song: any) => (
-                          <SelectItem key={song.id} value={song.id.toString()}>
-                            {song.title} - {song.artist}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="song-select" className="text-sm font-medium mb-2 block">
+                      Música
+                    </Label>
+                    
+                    {selectedSong ? (
+                      <div className="border rounded-lg p-3 bg-muted/30 relative">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="font-medium">{selectedSong.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {selectedSong.artist}
+                              {selectedSong.category && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {getCategoryName(selectedSong.category)}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearSelectedSong}
+                            className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Input
+                            placeholder="Buscar música..."
+                            value={songSearch}
+                            onChange={(e) => setSongSearch(e.target.value)}
+                            onFocus={() => setShowSongSearch(true)}
+                            className="pr-10"
+                          />
+                          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        </div>
+
+                        {showSongSearch && (
+                          <div className="absolute z-10 w-full max-w-md mt-1 bg-popover border rounded-lg shadow-lg max-h-60 overflow-auto">
+                            <div className="p-2">
+                              {songsLoading ? (
+                                <div className="text-center py-4 text-sm text-muted-foreground">
+                                  Carregando...
+                                </div>
+                              ) : availableSongs.length === 0 ? (
+                                <div className="text-center py-4 text-sm text-muted-foreground">
+                                  {songSearch ? "Nenhuma música encontrada" : "Nenhuma música disponível"}
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  {availableSongs.map((song: any) => (
+                                    <button
+                                      key={song.id}
+                                      type="button"
+                                      onClick={() => handleSelectSong(song)}
+                                      className="w-full text-left p-2 rounded hover:bg-accent hover:text-accent-foreground transition-colors"
+                                    >
+                                      <div className="font-medium">{song.title}</div>
+                                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                        <span>{song.artist}</span>
+                                        {song.category && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {getCategoryName(song.category)}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="md:col-span-3">
                     <Label htmlFor="leader-select" className="text-sm font-medium">Líder (opcional)</Label>
-                    <Select value={newSong.leaderId} onValueChange={(value) => setNewSong(prev => ({ ...prev, leaderId: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Escolher líder..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Sem líder</SelectItem>
-                        {allMembers.map((member: any) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            {member.firstName} {member.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={newSong.leaderId}
+                      onChange={(e) => setNewSong(prev => ({ ...prev, leaderId: e.target.value }))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="">Sem líder</option>
+                      {allMembers.map((member: any) => (
+                        <option key={member.id} value={member.id.toString()}>
+                          {member.firstName} {member.lastName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="md:col-span-3">
@@ -231,11 +323,15 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                     {song.order}
                   </div>
 
-                  {/* Informações da Música */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{song.song?.title || "Música não encontrada"}</div>
                     <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
                       <span>{song.song?.artist || "Artista desconhecido"}</span>
+                      {song.song?.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {getCategoryName(song.song.category)}
+                        </Badge>
+                      )}
                       {song.leader && (
                         <>
                           <span>•</span>
@@ -266,6 +362,14 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
           )}
         </CardContent>
       </Card>
+
+      {/* Overlay para fechar a busca quando clicar fora */}
+      {showSongSearch && (
+        <div 
+          className="fixed inset-0 z-0" 
+          onClick={() => setShowSongSearch(false)}
+        />
+      )}
     </div>
   );
 }

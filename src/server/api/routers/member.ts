@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import {
   members,
@@ -22,7 +22,7 @@ import {
 import { cleanEmptyStrings } from "@/lib/clean";
 
 export const memberRouter = createTRPCRouter({
-  create: protectedProcedure.input(memberSchema).mutation(async ({ input }) => {
+  create: publicProcedure.input(memberSchema).mutation(async ({ input }) => {
     const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
@@ -65,11 +65,13 @@ export const memberRouter = createTRPCRouter({
       const { page, limit, search, status, gender, hasAccess } = input;
       const offset = (page - 1) * limit;
       
-      const baseConditions = [eq(members.isActive, true)];
+      // Usando apenas status para filtrar membros ativos
+      const baseConditions = [eq(members.status, "active")];
 
       const optionalConditions = [];
 
-      if (status) {
+      if (status && status !== "active") {
+        // Se um status específico foi fornecido (diferente de "active"), usamos ele
         optionalConditions.push(eq(members.status, status));
       }
       
@@ -249,14 +251,13 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
-  deactivate: protectedProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const result = await db
         .update(members)
         .set({
-          isActive: false,
-          status: "inactive",
+          status: "inactive", // Usando apenas status
           updatedAt: new Date(),
         })
         .where(eq(members.id, input.id))

@@ -24,6 +24,7 @@ export const songCategoryEnum = pgEnum("song_category", [
   "chorus",
   "special"
 ])
+export const userStatusEnum = pgEnum("user_status", ["pending", "active", "inactive"])
 
 // Ministérios
 export const ministries = createTable("ministries", (d) => ({
@@ -104,7 +105,8 @@ export const users = createTable("users", (d) => ({
   passwordCreatedAt: d.timestamp("password_created_at", { mode: "date", withTimezone: true }),
   passwordUpdatedAt: d.timestamp("password_updated_at", { mode: "date", withTimezone: true }),
   isAdmin: d.boolean("is_admin").notNull().default(false),
-  isActive: d.boolean("is_active").notNull().default(true),
+  status: userStatusEnum("status").notNull().default("pending"),
+  approvedAt: d.timestamp("approved_at"),
   lastLogin: d.timestamp("last_login"),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
@@ -121,6 +123,7 @@ export const songs = createTable("songs", (d) => ({
   lyrics: d.text("lyrics"),
   chords: d.text("chords"),
   youtubeUrl: d.varchar("youtube_url", { length: 255 }),
+  youtubeVideoId: d.varchar("youtube_video_id", { length: 20 }), 
   duration: d.integer("duration"), // em segundos
   bpm: d.integer("bpm"),
   key: d.varchar("key", { length: 10 }),

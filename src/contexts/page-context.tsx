@@ -22,9 +22,9 @@ const PageContext = createContext<PageContextType | undefined>(undefined)
 
 export function PageProvider({ children }: { children: ReactNode }) {
   const [pageInfo, setPageInfo] = useState({
-    title: "Igrela Central VCP",
+    title: "Igreja Central VCP",
     subtitle: "",
-    breadcrumbs: [{ label: "Igrela Central VCP", href: "/app" }] as BreadcrumbItem[],
+    breadcrumbs: [{ label: "Igreja Central VCP", href: "/app" }] as BreadcrumbItem[],
   })
 
   const setPageInfoHandler = (info: {
@@ -34,7 +34,7 @@ export function PageProvider({ children }: { children: ReactNode }) {
   }) => {
       setPageInfo((prev) => {
       const newBreadcrumbs =
-        info.breadcrumbs || [{ label: "Igrela Central VCP", href: "/app" }, { label: info.title }];
+        info.breadcrumbs || [{ label: "Igreja Central VCP", href: "/app" }, { label: info.title }];
 
       const isEqual =
         prev.title === info.title &&

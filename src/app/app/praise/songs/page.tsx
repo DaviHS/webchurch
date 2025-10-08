@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/lib/hooks";
+import { getCategoryName } from "@/lib/utils/format-translate";
 
 export default function SongsPage() {
   const [search, setSearch] = useState("");
@@ -81,17 +82,6 @@ export default function SongsPage() {
       toast.error("Erro ao excluir música: " + error.message);
     },
   });
-
-  const getCategoryName = (category: string) => {
-    const categories: { [key: string]: string } = {
-      hymn: "Hino",
-      praise: "Louvor",
-      worship: "Adoração",
-      chorus: "Coro",
-      special: "Especial"
-    };
-    return categories[category] || category;
-  };
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return "-";

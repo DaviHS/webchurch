@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Save, X, Plus, Loader2, Trash2, UserPlus, Eye, EyeOff, ChevronLeft, ChevronRight, Key, User } from "lucide-react";
+import { Save, X, Plus, Loader2, Trash2, UserPlus, Eye, EyeOff, ChevronLeft, ChevronRight, Key, User, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useEffect, useState, useMemo } from "react";
@@ -765,10 +765,26 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                     <div className="space-y-4">
                       {existingUser ? (
                         <div className="space-y-4">
-                          <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
-                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-2">
+                          <div className={`p-4 border rounded-lg ${
+                            existingUser.status === "active" 
+                              ? "bg-green-50 dark:bg-green-950/20" 
+                              : existingUser.status === "pending"
+                              ? "bg-yellow-50 dark:bg-yellow-950/20"
+                              : "bg-red-50 dark:bg-red-950/20"
+                          }`}>
+                            <div className={`flex items-center gap-2 mb-2 ${
+                              existingUser.status === "active" 
+                                ? "text-green-600 dark:text-green-400" 
+                                : existingUser.status === "pending"
+                                ? "text-yellow-600 dark:text-yellow-400"
+                                : "text-red-600 dark:text-red-400"
+                            }`}>
                               <User className="h-4 w-4" />
-                              <span className="font-medium">Usuário já possui acesso</span>
+                              <span className="font-medium">
+                                {existingUser.status === "active" ? "Usuário ativo" :
+                                existingUser.status === "pending" ? "Aguardando aprovação" :
+                                "Usuário inativo"}
+                              </span>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                               <div>
@@ -779,11 +795,15 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                                 <Label className="text-xs">Status</Label>
                                 <p className="font-medium">
                                   <span className={`px-2 py-1 rounded-full text-xs ${
-                                    existingUser.isActive 
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                    existingUser.status === "active" 
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                                    existingUser.status === "pending"
+                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
                                       : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                                   }`}>
-                                    {existingUser.isActive ? 'Ativo' : 'Inativo'}
+                                    {existingUser.status === "active" ? "Ativo" :
+                                    existingUser.status === "pending" ? "Pendente" :
+                                    "Inativo"}
                                   </span>
                                 </p>
                               </div>
@@ -801,18 +821,34 @@ export function MemberFormDialog({ member, open, onOpenChange, mode }: MemberFor
                               <Key className="h-4 w-4 mr-2" />
                               {updateUserMutation.isPending ? "Resetando..." : "Resetar Senha"}
                             </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => updateUserMutation.mutate({
-                                id: existingUser.id,
-                                isActive: !existingUser.isActive
-                              })}
-                              disabled={updateUserMutation.isPending}
-                              className="flex-1"
-                            >
-                              {existingUser.isActive ? "Desativar Acesso" : "Ativar Acesso"}
-                            </Button>
+
+                            {existingUser.status === "pending" ? (
+                              <Button
+                                type="button"
+                                onClick={() => updateUserMutation.mutate({
+                                  id: existingUser.id,
+                                  status: "active"
+                                })}
+                                disabled={updateUserMutation.isPending}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Aprovar
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => updateUserMutation.mutate({
+                                  id: existingUser.id,
+                                  status: existingUser.status === "active" ? "inactive" : "active"
+                                })}
+                                disabled={updateUserMutation.isPending}
+                                className="flex-1"
+                              >
+                                {existingUser.status === "active" ? "Desativar Acesso" : "Ativar Acesso"}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ) : (

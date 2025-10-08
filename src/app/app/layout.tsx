@@ -9,6 +9,17 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
 
+interface ExtendedSession {
+  user: {
+    id: string;
+    userId?: number;
+    email?: string | null;
+    name?: string | null;
+    memberId?: number | null;
+    hasDefaultPassword?: boolean;
+  };
+}
+
 export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -18,6 +29,14 @@ export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
     
     if (!session) {
       router.push("/sign-in");
+      return;
+    }
+
+    const extendedSession = session as ExtendedSession;
+    
+    if (extendedSession.user?.hasDefaultPassword) {
+      router.push("/change-password");
+      return;
     }
   }, [session, status, router]);
 
@@ -27,6 +46,12 @@ export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
 
   if (!session) {
     return null;
+  }
+
+  const extendedSession = session as ExtendedSession;
+  
+  if (extendedSession.user?.hasDefaultPassword) {
+    return <LoadingState />;
   }
 
   return (

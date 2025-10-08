@@ -37,6 +37,7 @@ export const songSchema = z.object({
     })
     .optional()
     .default(0),
+  key: z.string().optional(),
 })
 
 export type SongFormData = z.infer<typeof songSchema>

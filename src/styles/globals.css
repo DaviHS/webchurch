@@ -236,6 +236,31 @@
   scroll-behavior: smooth;
 }
 
+/* Melhorar a experiência do dropdown de músicas */
+.dropdown-search-results {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+}
+
+.dropdown-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-search-results::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+.dropdown-search-results::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.dropdown-search-results::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
 @layer base {
   * {
     @apply border-border;

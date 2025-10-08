@@ -5,17 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MoreVertical, Lock, Unlock, Edit, UserX, Mail, Phone, Calendar, Plus, Search } from "lucide-react"
+import { Eye, MoreVertical, Lock, Unlock, Edit, UserX, Mail, Phone, Calendar, Plus, Search, Users, UserCheck } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { api } from "@/lib/api";
+import { api } from "@/trpc/react";
 import { QuickViewDialog } from "./_components/quick-view-dialog";
 import { MemberFormDialog } from "./_components/member-form-dialog";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function MembersPage() {
   const [search, setSearch] = useState("");
@@ -42,7 +43,9 @@ export default function MembersPage() {
     search: debouncedSearch || undefined,
   });
 
-  const deactivateMember = api.member.deactivate.useMutation({
+  const { data: pendingCount } = api.user.getPendingCount.useQuery();
+
+  const deactivateMember = api.member.delete.useMutation({
     onSuccess: () => {
       toast.success("Membro desativado com sucesso!");
       refetch();
@@ -119,14 +122,28 @@ export default function MembersPage() {
             Gerencie os membros da igreja
           </p>
         </div>
-        <Button 
-          onClick={handleNewMember} 
-          className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-          size="sm"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Membro
-        </Button>
+        
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          {pendingCount && pendingCount > 0 && (
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href="/app/admin/members/pending" className="flex items-center gap-2">
+                <UserCheck className="h-4 w-4" />
+                <Badge variant="destructive" className="ml-1">
+                  {pendingCount}
+                </Badge>
+              </Link>
+            </Button>
+          )}
+          
+          <Button 
+            onClick={handleNewMember} 
+            className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
+            size="sm"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Membro
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -155,6 +172,11 @@ export default function MembersPage() {
                         {m.firstName} {m.lastName}
                       </h3>
                       {getStatusBadge(m.status)}
+                      {u && u.status === "pending" && (
+                        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                          Pendente
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex gap-2">
@@ -225,11 +247,23 @@ export default function MembersPage() {
                       )}
                       <p className="flex items-center gap-1">
                         {u ? (
-                          <Unlock className="h-4 w-4 text-green-600" />
+                          u.status === "active" ? (
+                            <Unlock className="h-4 w-4 text-green-600" />
+                          ) : u.status === "pending" ? (
+                            <Users className="h-4 w-4 text-yellow-600" />
+                          ) : (
+                            <Lock className="h-4 w-4 text-red-600" />
+                          )
                         ) : (
                           <Lock className="h-4 w-4 text-red-600" />
                         )}
-                        <span>{u ? "Com acesso" : "Sem acesso"}</span>
+                        <span>
+                          {u ? 
+                            u.status === "active" ? "Acesso ativo" :
+                            u.status === "pending" ? "Aguardando aprovação" :
+                            "Acesso inativo" 
+                          : "Sem acesso"}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -260,8 +294,6 @@ export default function MembersPage() {
                 </div>
               </CardContent>
             </Card>
-
-
           ))}
         </div>
       )}
