@@ -18,8 +18,8 @@ export const appRouter = createTRPCRouter({
   ministry: ministryRouter,
   song: songRouter,
   event: eventRouter,
-  register: registerRouter
-  finance: financeRouter
+  register: registerRouter,
+  finance: financeRouter,
 });
 
 // export type definition of API
