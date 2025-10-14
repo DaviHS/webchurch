@@ -74,25 +74,29 @@ export const songRouter = createTRPCRouter({
     let youtubeVideoId: string | null = null;
     let finalYoutubeUrl = input.youtubeUrl;
 
-    // Se tem URL do YouTube, extrai o ID do vídeo
     if (input.youtubeUrl) {
       youtubeVideoId = youtubeService.extractVideoId(input.youtubeUrl);
     } else {
-      // Se não tem URL, busca automaticamente no YouTube
       const videoId = await youtubeService.searchVideo(input.title, input.artist);
+  
       if (videoId) {
         youtubeVideoId = videoId;
         finalYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
       }
     }
 
-    // Adiciona à playlist se encontrou o vídeo
     if (youtubeVideoId && YOUTUBE_PLAYLIST_ID) {
       try {
-        await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
-        console.log(`Vídeo ${youtubeVideoId} adicionado à playlist ${YOUTUBE_PLAYLIST_ID}`);
+        const alreadyInPlaylist = await youtubeService.isVideoInPlaylist(
+          youtubeVideoId, 
+          YOUTUBE_PLAYLIST_ID
+        );
+
+        if (!alreadyInPlaylist) {
+          await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
+        }
       } catch (error) {
-        console.error('Erro ao adicionar à playlist, mas a música será salva:', error);
+        console.error('Erro ao gerenciar playlist:', error);
       }
     }
 
@@ -114,20 +118,56 @@ export const songRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
+      const currentSong = await db
+        .select()
+        .from(songs)
+        .where(eq(songs.id, input.id))
+        .then((res) => res[0]);
+
+      if (!currentSong) {
+        throw new Error("Música não encontrada");
+      }
+
       let youtubeVideoId: string | null = null;
       let finalYoutubeUrl = input.data.youtubeUrl;
-      console.log(YOUTUBE_PLAYLIST_ID)
-      // Lógica similar para atualização
+
+      const oldYoutubeVideoId = currentSong.youtubeVideoId;
+
       if (input.data.youtubeUrl) {
         youtubeVideoId = youtubeService.extractVideoId(input.data.youtubeUrl);
-        
-        // Se é uma URL nova e temos playlist, adiciona à playlist
-        if (youtubeVideoId && YOUTUBE_PLAYLIST_ID) {
-          try {
-            await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
-          } catch (error) {
-            console.error('Erro ao adicionar à playlist na atualização:', error);
+      } else if (input.data.title) {
+        const videoId = await youtubeService.searchVideo(input.data.title, input.data.artist);
+        if (videoId) {
+          youtubeVideoId = videoId;
+          finalYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        }
+      }
+
+      if (YOUTUBE_PLAYLIST_ID) {
+        try {
+          if (oldYoutubeVideoId && oldYoutubeVideoId !== youtubeVideoId) {
+            const isOldVideoInPlaylist = await youtubeService.isVideoInPlaylist(
+              oldYoutubeVideoId, 
+              YOUTUBE_PLAYLIST_ID
+            );
+            
+            if (isOldVideoInPlaylist) {
+              await youtubeService.removeFromPlaylist(oldYoutubeVideoId, YOUTUBE_PLAYLIST_ID);
+            }
           }
+
+          if (youtubeVideoId) {
+            const alreadyInPlaylist = await youtubeService.isVideoInPlaylist(
+              youtubeVideoId, 
+              YOUTUBE_PLAYLIST_ID
+            );
+
+            if (!alreadyInPlaylist) {
+              await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao gerenciar playlist:', error);
         }
       }
 
@@ -142,6 +182,7 @@ export const songRouter = createTRPCRouter({
         .set({ ...cleanedData, updatedAt: new Date() })
         .where(eq(songs.id, input.id))
         .returning();
+
       return updatedSong;
     }),
 
