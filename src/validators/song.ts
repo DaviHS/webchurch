@@ -15,6 +15,7 @@ export const songFormSchema = z.object({
   category: z.enum(["hymn", "praise", "worship", "chorus", "special"]),
   lyrics: z.string().optional().default(""),
   youtubeUrl: z.string().url("URL inválida").optional().or(z.literal("")).default(""),
+  spotifyUrl: z.string().optional(),
   duration: z.string()
     .regex(/^\d{1,2}:\d{2}$/, "Formato inválido. Use mm:ss (ex: 03:30)")
     .optional()
@@ -28,6 +29,7 @@ export const songSchema = z.object({
   category: z.enum(["hymn", "praise", "worship", "chorus", "special"]),
   lyrics: z.string().optional().default(""),
   youtubeUrl: z.string().url("URL inválida").optional().or(z.literal("")).default(""),
+  spotifyUrl: z.string().url().optional().or(z.literal("")).default(""),
   duration: z.union([z.number(), z.string()])
     .transform((val) => {
       if (typeof val === 'string') {

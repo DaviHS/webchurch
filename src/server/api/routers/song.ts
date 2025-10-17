@@ -6,6 +6,7 @@ import { songSchema } from "@/validators/song";
 import { eq, desc, like, and, or, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 import { youtubeService } from "@/lib/youtube";
+import { spotifyService } from "@/lib/spotify";
 
 const YOUTUBE_PLAYLIST_ID = process.env.YOUTUBE_PLAYLIST_ID || 'ID_PLAYLIST';
 
@@ -73,6 +74,8 @@ export const songRouter = createTRPCRouter({
   create: protectedProcedure.input(songSchema).mutation(async ({ input }) => {
     let youtubeVideoId: string | null = null;
     let finalYoutubeUrl = input.youtubeUrl;
+    let spotifyTrackId: string | null = null;
+    let finalSpotifyUrl = input.spotifyUrl;
 
     if (input.youtubeUrl) {
       youtubeVideoId = youtubeService.extractVideoId(input.youtubeUrl);
@@ -82,6 +85,19 @@ export const songRouter = createTRPCRouter({
       if (videoId) {
         youtubeVideoId = videoId;
         finalYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      }
+    }
+
+    if (input.spotifyUrl) {
+      const spotifyData = spotifyService.extractId(input.spotifyUrl);
+      if (spotifyData?.type === 'track') {
+        spotifyTrackId = spotifyData.id;
+      }
+    } else {
+      const track = await spotifyService.searchTrack(input.title, input.artist);
+      if (track) {
+        spotifyTrackId = track.id;
+        finalSpotifyUrl = track.external_urls.spotify;
       }
     }
 
@@ -100,17 +116,27 @@ export const songRouter = createTRPCRouter({
       }
     }
 
+    if (spotifyTrackId && process.env.SPOTIFY_PLAYLIST_ID) {
+      try {
+        await spotifyService.addToPlaylist(spotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
+      } catch (error) {
+        console.error('Erro ao gerenciar playlist do Spotify:', error);
+      }
+    }
+
     const cleanedData = cleanEmptyStrings({
       ...input,
       youtubeUrl: finalYoutubeUrl,
       youtubeVideoId,
+      spotifyUrl: finalSpotifyUrl,
+      spotifyTrackId,
     });
 
     const [newSong] = await db.insert(songs).values(cleanedData).returning();
     return newSong;
   }),
 
-   update: protectedProcedure
+  update: protectedProcedure
     .input(
       z.object({
         id: z.number(),
@@ -130,9 +156,13 @@ export const songRouter = createTRPCRouter({
 
       let youtubeVideoId: string | null = null;
       let finalYoutubeUrl = input.data.youtubeUrl;
+      let spotifyTrackId: string | null = null;
+      let finalSpotifyUrl = input.data.spotifyUrl;
 
       const oldYoutubeVideoId = currentSong.youtubeVideoId;
+      const oldSpotifyTrackId = currentSong.spotifyTrackId;
 
+      // Lógica do YouTube
       if (input.data.youtubeUrl) {
         youtubeVideoId = youtubeService.extractVideoId(input.data.youtubeUrl);
       } else if (input.data.title) {
@@ -143,6 +173,21 @@ export const songRouter = createTRPCRouter({
         }
       }
 
+      // Lógica do Spotify
+      if (input.data.spotifyUrl) {
+        const spotifyData = spotifyService.extractId(input.data.spotifyUrl);
+        if (spotifyData?.type === 'track') {
+          spotifyTrackId = spotifyData.id;
+        }
+      } else if (input.data.title) {
+        const track = await spotifyService.searchTrack(input.data.title, input.data.artist);
+        if (track) {
+          spotifyTrackId = track.id;
+          finalSpotifyUrl = track.external_urls.spotify;
+        }
+      }
+
+      // Gerenciar playlists do YouTube
       if (YOUTUBE_PLAYLIST_ID) {
         try {
           if (oldYoutubeVideoId && oldYoutubeVideoId !== youtubeVideoId) {
@@ -171,10 +216,41 @@ export const songRouter = createTRPCRouter({
         }
       }
 
+      // Gerenciar playlists do Spotify
+      if (process.env.SPOTIFY_PLAYLIST_ID) {
+        try {
+          if (oldSpotifyTrackId && oldSpotifyTrackId !== spotifyTrackId) {
+            const isOldTrackInPlaylist = await spotifyService.isTrackInPlaylist(
+              oldSpotifyTrackId, 
+              process.env.SPOTIFY_PLAYLIST_ID
+            );
+            
+            if (isOldTrackInPlaylist) {
+              await spotifyService.removeFromPlaylist(oldSpotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
+            }
+          }
+
+          if (spotifyTrackId) {
+            const alreadyInPlaylist = await spotifyService.isTrackInPlaylist(
+              spotifyTrackId, 
+              process.env.SPOTIFY_PLAYLIST_ID
+            );
+
+            if (!alreadyInPlaylist) {
+              await spotifyService.addToPlaylist(spotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao gerenciar playlist do Spotify:', error);
+        }
+      }
+
       const cleanedData = cleanEmptyStrings({
         ...input.data,
         youtubeUrl: finalYoutubeUrl,
         youtubeVideoId,
+        spotifyUrl: finalSpotifyUrl,
+        spotifyTrackId,
       });
 
       const [updatedSong] = await db

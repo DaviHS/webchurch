@@ -48,7 +48,6 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -68,14 +67,12 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
         )}
       </div>
 
-      {/* Filter Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Filter className="h-4 w-4" />
           Filtros:
         </div>
 
-        {/* Date Range */}
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -114,7 +111,6 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
           </PopoverContent>
         </Popover>
 
-        {/* Type Filter */}
         <Select
           value={filters.type}
           onValueChange={(value) => onFiltersChange({ ...filters, type: value })}
@@ -130,7 +126,6 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
           </SelectContent>
         </Select>
 
-        {/* Category Filter */}
         <Select
           value={filters.categoryId?.toString() || ""}
           onValueChange={(value) => onFiltersChange({ ...filters, categoryId: value ? parseInt(value) : undefined })}
@@ -149,7 +144,6 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
         </Select>
       </div>
 
-      {/* Active Filters Display */}
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2">
           {filters.startDate && filters.endDate && (

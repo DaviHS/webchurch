@@ -127,6 +127,13 @@ export const songs = createTable("songs", (d) => ({
   duration: d.integer("duration"), // em segundos
   bpm: d.integer("bpm"),
   key: d.varchar("key", { length: 10 }),
+
+  spotifyUrl: d.varchar("spotify_url", { length: 255 }),
+  spotifyTrackId: d.varchar("spotify_track_id", { length: 50 }),
+  // spotifyPreviewUrl: d.varchar("spotify_preview_url", { length: 255 }),
+  // spotifyArtistId: d.varchar("spotify_artist_id", { length: 50 }),
+  // spotifyAlbumImage: d.varchar("spotify_album_image", { length: 255 }),
+
   isActive: d.boolean("is_active").notNull().default(true),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
