@@ -8,9 +8,10 @@ import {
   songs,
   members,
 } from "@/server/db/schema";
-import { eq, desc, like, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, like, and, gte, lte, sql, ilike, inArray } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/clean";
 import { eventSchema, eventUpdateSchema } from "@/validators/event";
+import { subDays } from "date-fns";
 
 // Schemas Zod atualizados
 const eventSongInputSchema = z.object({
@@ -198,31 +199,133 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  // No eventRouter - getSongsReport
+// No arquivo de rotas do evento (event.ts)
+
 getSongsReport: publicProcedure
   .input(z.object({
-    days: z.number().default(30),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
+    songIds: z.array(z.number()).optional(),
   }))
   .query(async ({ input }) => {
-    const { days } = input;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    const { startDate, endDate, songIds } = input;
 
-    const result = await db
+    let startDateFilter: Date;
+    let endDateFilter: Date;
+
+    if (startDate && endDate) {
+      startDateFilter = startDate;
+      endDateFilter = endDate;
+    } else {
+      // Default: últimos 30 dias
+      endDateFilter = new Date();
+      startDateFilter = subDays(endDateFilter, 30);
+    }
+
+    const whereConditions = [
+      gte(events.date, startDateFilter),
+      lte(events.date, endDateFilter),
+    ];
+
+    if (songIds && songIds.length > 0) {
+      whereConditions.push(inArray(eventSongs.songId, songIds));
+    }
+
+    const query = db
       .select({
         songId: eventSongs.songId,
         title: songs.title,
         artist: songs.artist,
-        category: songs.category, // Adicione esta linha se quiser usar categorias
         count: sql<number>`count(${eventSongs.songId})`,
       })
       .from(eventSongs)
       .innerJoin(events, eq(eventSongs.eventId, events.id))
       .innerJoin(songs, eq(eventSongs.songId, songs.id))
-      .where(gte(events.date, startDate))
-      .groupBy(eventSongs.songId, songs.title, songs.artist, songs.category)
-      .orderBy(sql`count(${eventSongs.songId}) DESC`)
-      .limit(20);
+      .where(and(...whereConditions))
+      .groupBy(eventSongs.songId, songs.title, songs.artist)
+      .orderBy(sql`count(${eventSongs.songId}) DESC`);
+
+    const result = await (!songIds || songIds.length === 0 ? query.limit(50) : query);
+    return result;
+  }),
+
+getSongExecutions: publicProcedure
+  .input(z.object({
+    songId: z.number(),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
+  }))
+  .query(async ({ input }) => {
+    const { songId, startDate, endDate } = input;
+
+    let startDateFilter: Date;
+    let endDateFilter: Date;
+
+    if (startDate && endDate) {
+      startDateFilter = startDate;
+      endDateFilter = endDate;
+    } else if (endDate) {
+      endDateFilter = endDate;
+      startDateFilter = subDays(endDateFilter, 30);
+    } else {
+      endDateFilter = new Date();
+      startDateFilter = subDays(endDateFilter, 30);
+    }
+
+    const results = await db
+      .select({
+        id: eventSongs.id,
+        eventId: eventSongs.eventId,
+        eventTitle: events.title,
+        eventDate: events.date,
+        eventType: events.type,
+        order: eventSongs.order,
+        notes: eventSongs.notes,
+        songId: songs.id,
+        songTitle: songs.title,
+        songArtist: songs.artist,
+      })
+      .from(eventSongs)
+      .innerJoin(events, eq(eventSongs.eventId, events.id))
+      .innerJoin(songs, eq(eventSongs.songId, songs.id))
+      .where(
+        and(
+          eq(eventSongs.songId, songId),
+          gte(events.date, startDateFilter),
+          lte(events.date, endDateFilter),
+          sql`${events.type} != 'template'`
+        )
+      )
+      .orderBy(desc(events.date));
+
+    return results;
+  }),
+  
+  getSongsTrend: publicProcedure
+  .input(z.object({
+    songId: z.number(),
+    days: z.number().default(30),
+  }))
+  .query(async ({ input }) => {
+    const { songId, days } = input;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const result = await db
+      .select({
+        date: events.date,
+        count: sql<number>`count(${eventSongs.songId})`,
+      })
+      .from(eventSongs)
+      .innerJoin(events, eq(eventSongs.eventId, events.id))
+      .where(
+        and(
+          eq(eventSongs.songId, songId),
+          gte(events.date, startDate)
+        )
+      )
+      .groupBy(events.date)
+      .orderBy(events.date);
 
     return result;
   }),

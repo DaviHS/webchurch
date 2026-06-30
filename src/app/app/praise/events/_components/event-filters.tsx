@@ -1,4 +1,3 @@
-// app/praise/events/_components/event-filters.tsx
 import { Input } from "@/components/ui/input";
 import {
   Select,

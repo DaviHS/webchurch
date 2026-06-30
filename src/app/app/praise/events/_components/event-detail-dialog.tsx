@@ -1,9 +1,7 @@
-// src/app/praise/events/_components/event-detail-dialog.tsx
 "use client";
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Music, Users, X, Loader2, Calendar, MapPin, User, BookOpen, Clock } from "lucide-react";
@@ -84,14 +82,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                 </>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0 -mt-2 -mr-2 shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </DialogHeader>
 
@@ -102,22 +92,24 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
         ) : (
           <div className="flex flex-col flex-1 min-h-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-              <TabsList className="grid grid-cols-3 p-2 mx-4 mt-2 shrink-0">
-                <TabsTrigger value="info" className="text-xs sm:text-sm">
-                  Informações
-                </TabsTrigger>
-                <TabsTrigger value="songs" className="text-xs sm:text-sm">
-                  <Music className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Repertório
-                </TabsTrigger>
-                <TabsTrigger value="participants" className="text-xs sm:text-sm">
-                  <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Participantes
-                </TabsTrigger>
-              </TabsList>
+              <div className="px-4 pt-0 shrink-0">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="info" className="text-xs sm:text-sm">
+                    Informações
+                  </TabsTrigger>
+                  <TabsTrigger value="songs" className="text-xs sm:text-sm">
+                    <Music className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    Repertório
+                  </TabsTrigger>
+                  <TabsTrigger value="participants" className="text-xs sm:text-sm">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    Participantes
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-              <ScrollArea className="flex-1 px-4 pb-4">
-                <TabsContent value="info" className="mt-4 space-y-4">
+              <ScrollArea className="flex-1 px-4 pb-4 pt-4">
+                <TabsContent value="info" className="mt-0 space-y-4">
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -132,7 +124,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                           <p className="font-medium">{getTypeName(event.type)}</p>
                         </div>
 
-                        {/* Data e Horários */}
                         <div>
                           <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
@@ -181,8 +172,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                     </CardContent>
                   </Card>
 
-
-                  {/* Card de Pregador e Versículo */}
                   {(event.preacher || event.bibleVerse) && (
                     <Card>
                       <CardHeader className="pb-3">
@@ -211,7 +200,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                     </Card>
                   )}
 
-                  {/* Card de Descrição */}
                   {event.description && (
                     <Card>
                       <CardHeader className="pb-3">
@@ -223,7 +211,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                     </Card>
                   )}
 
-                  {/* Card de Estatísticas */}
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">Estatísticas</CardTitle>
@@ -245,7 +232,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="songs" className="mt-4">
+                <TabsContent value="songs" className="mt-0">
                   <EventSongsManager 
                     eventId={event.id}
                     songs={event.songs || []}
@@ -253,7 +240,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                   />
                 </TabsContent>
 
-                <TabsContent value="participants" className="mt-4">
+                <TabsContent value="participants" className="mt-0">
                   <EventParticipantsManager 
                     eventId={event.id}
                     participants={event.participants || []}

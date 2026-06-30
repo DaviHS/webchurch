@@ -17,7 +17,6 @@ interface EventActionsProps {
 export function EventActions({ event, onEdit, onDelete, onViewDetails }: EventActionsProps) {
   return (
     <div className="flex justify-between items-center gap-1">
-      {/* Botão Ver Detalhes */}
       <Button
         variant="default"
         size="sm"
@@ -28,7 +27,6 @@ export function EventActions({ event, onEdit, onDelete, onViewDetails }: EventAc
         <BarChart className="h-3 w-3" />
       </Button>
 
-      {/* Dropdown Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">

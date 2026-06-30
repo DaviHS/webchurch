@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,10 +29,9 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const [showSongSearch, setShowSongSearch] = useState(false);
   const [selectedSong, setSelectedSong] = useState<any>(null);
 
-  // Buscar dados
   const { data: songsData, isLoading: songsLoading } = api.song.list.useQuery({
     search: songSearch || undefined,
-    limit: 50, // Aumentei o limite para 50
+    limit: 50, 
   });
   const allSongs = songsData?.songs || [];
 
@@ -43,7 +42,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const removeSongMutation = api.event.removeSong.useMutation();
   const updateSongOrderMutation = api.event.updateSongOrder.useMutation();
 
-  // Filtrar músicas que já foram adicionadas ao evento
   const availableSongs = allSongs.filter(song => 
     !songs.some(eventSong => eventSong.songId === song.id)
   );
@@ -96,13 +94,11 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     if (newIndex < 0 || newIndex >= songs.length) return;
 
     try {
-      // Atualizar a ordem da música movida
       await updateSongOrderMutation.mutateAsync({
         eventSongId: songId,
         newOrder: newIndex + 1
       });
 
-      // Atualizar a ordem da música que foi substituída
       await updateSongOrderMutation.mutateAsync({
         eventSongId: songs[newIndex].id,
         newOrder: songIndex + 1

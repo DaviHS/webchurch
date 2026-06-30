@@ -62,9 +62,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {/* Grid responsivo - 1 coluna no mobile, 2 no desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Título - Ocupa linha inteira no mobile */}
           <div className="md:col-span-2">
             <FormField
               control={form.control}
@@ -81,7 +79,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             />
           </div>
 
-          {/* Tipo e Data - No mobile: tipo em cima, data embaixo */}
           <FormField
             control={form.control}
             name="type"
@@ -147,7 +144,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             )}
           />
 
-          {/* Local - Ocupa linha inteira */}
           <div className="md:col-span-2">
             <FormField
               control={form.control}
@@ -164,7 +160,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             />
           </div>
 
-          {/* Horários - lado a lado mesmo no mobile */}
           <div className="grid grid-cols-2 gap-3 md:col-span-2">
             <FormField
               control={form.control}
@@ -195,7 +190,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             />
           </div>
 
-          {/* Pregador e Versículo */}
           <FormField
             control={form.control}
             name="preacher"
@@ -225,7 +219,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
           />
         </div>
 
-        {/* Descrição - Ocupa linha inteira */}
         <FormField
           control={form.control}
           name="description"
