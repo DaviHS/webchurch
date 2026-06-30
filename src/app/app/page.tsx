@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/trpc/react";
+import { subDays } from "date-fns";
 import { Music, Calendar, Users, BarChart3 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -10,11 +11,13 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Estatísticas rápidas
   const { data: songsStats } = api.song.list.useQuery({ limit: 1 });
   const { data: eventsStats } = api.event.list.useQuery({ limit: 1 });
-  const { data: recentSongs } = api.event.getSongsReport.useQuery({ days: 7 });
-
+  const { data: recentSongs } = api.event.getSongsReport.useQuery({
+    startDate: subDays(new Date(), 7),
+    endDate: new Date(),
+  });
+  
   return (
     <div className="container mx-auto py-6">
       <div className="mb-8">

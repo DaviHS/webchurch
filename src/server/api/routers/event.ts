@@ -13,7 +13,6 @@ import { cleanEmptyStrings } from "@/lib/clean";
 import { eventSchema, eventUpdateSchema } from "@/validators/event";
 import { subDays } from "date-fns";
 
-// Schemas Zod atualizados
 const eventSongInputSchema = z.object({
   eventId: z.number(),
   songId: z.number(),
@@ -199,9 +198,7 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-// No arquivo de rotas do evento (event.ts)
-
-getSongsReport: publicProcedure
+  getSongsReport: publicProcedure
   .input(z.object({
     startDate: z.date().optional(),
     endDate: z.date().optional(),
@@ -217,7 +214,6 @@ getSongsReport: publicProcedure
       startDateFilter = startDate;
       endDateFilter = endDate;
     } else {
-      // Default: últimos 30 dias
       endDateFilter = new Date();
       startDateFilter = subDays(endDateFilter, 30);
     }
@@ -249,7 +245,7 @@ getSongsReport: publicProcedure
     return result;
   }),
 
-getSongExecutions: publicProcedure
+  getSongExecutions: publicProcedure
   .input(z.object({
     songId: z.number(),
     startDate: z.date().optional(),
