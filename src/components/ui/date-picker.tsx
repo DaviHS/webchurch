@@ -1,4 +1,3 @@
-// src/components/ui/date-picker.tsx
 "use client";
 
 import * as React from "react";
@@ -18,30 +17,48 @@ interface DatePickerProps {
   date?: Date;
   setDate: (date?: Date) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export function DatePicker({ date, setDate, placeholder = "Selecione uma data" }: DatePickerProps) {
+export function DatePicker({ 
+  date, 
+  setDate, 
+  placeholder = "Selecione uma data",
+  disabled = false 
+}: DatePickerProps) {
+  const [open, setOpen] = React.useState(false);
+
   return (
-    <Popover>
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
+          disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground"
+            !date && "text-muted-foreground",
+            disabled && "cursor-not-allowed opacity-50"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent
+        className="w-auto p-0 pointer-events-auto"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <Calendar
           mode="single"
           selected={date}
-          onSelect={setDate}
+          onSelect={(selectedDate) => {
+            setDate(selectedDate);
+            setOpen(false);
+          }}
           initialFocus
           locale={ptBR}
+          className="pointer-events-auto"
         />
       </PopoverContent>
     </Popover>

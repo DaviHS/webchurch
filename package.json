@@ -4,17 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
-    "check": "next lint && tsc --noEmit",
     "dev": "next dev --turbo",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "build": "next build",
+    "start": "next start",
+    "preview": "next build && next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "preview": "next build && next start",
-    "start": "next start",
     "typecheck": "tsc --noEmit",
-    "deploy": "git pull && npm install -f && next build"
+    "check": "npm run lint && npm run typecheck",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "clean": "rimraf .next node_modules",
+    "deploy": "git pull && npm ci && npm run build"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -72,14 +73,14 @@
     "input-otp": "^1.4.2",
     "lru-cache": "^11.1.0",
     "lucide-react": "^0.474.0",
-    "next": "^15.0.1",
+    "next": "^15.5.19",
     "next-auth": "^5.0.0-beta.25",
     "next-pwa": "^5.6.0",
     "next-themes": "^0.4.4",
     "nodemailer": "^6.10.1",
-    "react": "^18.3.1",
+    "react": "^19.2.7",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.7",
     "react-error-boundary": "^6.0.0",
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
@@ -99,8 +100,8 @@
   "devDependencies": {
     "@types/eslint": "^8.56.10",
     "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
     "eslint": "^8.57.0",
@@ -110,7 +111,7 @@
     "prettier": "^3.3.2",
     "prettier-plugin-tailwindcss": "^0.6.5",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.5.3"
+    "typescript": "^5.9.3"
   },
   "ct3aMetadata": {
     "initVersion": "7.38.1"

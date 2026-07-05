@@ -1,21 +1,15 @@
-// src/app/praise/events/_components/form.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { eventSchema, type EventFormData } from "@/validators/event";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { EventFormData, eventSchema } from "@/validators/event";
 
 interface EventFormProps {
   onSubmit: (data: EventFormData) => void;
@@ -24,10 +18,6 @@ interface EventFormProps {
 }
 
 export function EventForm({ onSubmit, initialData, isLoading = false }: EventFormProps) {
-  const [date, setDate] = useState<Date | undefined>(
-    initialData?.date ? new Date(initialData.date) : new Date()
-  );
-
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
@@ -43,17 +33,18 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
     }
   });
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    setDate(selectedDate);
-    if (selectedDate) {
-      form.setValue("date", selectedDate);
-    }
-  };
-
   const handleSubmit = (data: EventFormData) => {
-    const formattedData = {
+    if (!data.date) {
+      form.setError("date", {
+        type: "manual",
+        message: "Data é obrigatória"
+      });
+      return;
+    }
+
+    const formattedData: EventFormData = {
       ...data,
-      date: data.date instanceof Date ? data.date : new Date(data.date),
+      date: data.date,
     };
     
     onSubmit(formattedData);
@@ -110,35 +101,15 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Data *</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP", { locale: ptBR })
-                        ) : (
-                          <span>Selecione uma data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={handleDateSelect}
-                      disabled={(date) => date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <FormControl>
+                  <DatePicker
+                    date={field.value || undefined}
+                    setDate={(date) => {
+                      field.onChange(date || null);
+                    }}
+                    placeholder="Selecione uma data"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
