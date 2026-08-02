@@ -1,19 +1,5 @@
-export interface ResponseAPI<T> {
-  data: T;
-  error: boolean;
-  message: string;
-}
-
-export interface UserAPI {
-  userId: number;
-  name: string;
-  email: string; 
-  role: string;
-}
-
-export interface Field {
-  label: string;
-  description?: string;
-  className?: string;
-  placeholder?: string;
-}
+export * from './song';
+export * from './report';
+export * from './event';
+export * from './user';
+export * from './component';

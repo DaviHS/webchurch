@@ -10,19 +10,14 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 
-interface SearchSectionProps {
+interface SongFiltersProps {
   search: string;
-  setSearch: (value: string) => void;
+  onSearchChange: (value: string) => void;
   category: string;
-  setCategory: (value: string) => void;
+  onCategoryChange: (value: string) => void;
 }
 
-export function SearchSection({ 
-  search, 
-  setSearch, 
-  category, 
-  setCategory 
-}: SearchSectionProps) {
+export function SongFilters({ search, onSearchChange, category, onCategoryChange }: SongFiltersProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-center">
       <div className="relative w-full">
@@ -31,13 +26,13 @@ export function SearchSection({
           placeholder="Buscar por música ou artista..."
           className="pl-10 w-full text-sm sm:text-base"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
-      
+
       <Select
         value={category || "any"}
-        onValueChange={(val) => setCategory(val === "any" ? "" : val)}
+        onValueChange={(val) => onCategoryChange(val === "any" ? "" : val)}
       >
         <SelectTrigger className="w-full sm:w-40">
           <SelectValue placeholder="Todas categorias" />

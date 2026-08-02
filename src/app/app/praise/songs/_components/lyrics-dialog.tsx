@@ -10,12 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-
-interface Song {
-  title: string;
-  artist?: string;
-  lyrics?: string;
-}
+import { Song } from "@/types";
 
 interface LyricsDialogProps {
   song: Song;

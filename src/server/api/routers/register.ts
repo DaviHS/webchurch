@@ -5,7 +5,7 @@ import { members, users } from "@/server/db/schema";
 import { registerSchema } from "@/validators/register";
 import { hash } from "bcrypt-ts";
 import { eq } from "drizzle-orm";
-import { cleanEmptyStrings } from "@/lib/clean";
+import { cleanEmptyStrings } from "@/lib/formatters";
 
 export const registerRouter = createTRPCRouter({
   register: publicProcedure

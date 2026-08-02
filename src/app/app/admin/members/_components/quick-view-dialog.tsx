@@ -20,6 +20,7 @@ import {
   Shield,
   AlertCircle
 } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
 
 interface QuickViewDialogProps {
   member: any;
@@ -59,11 +60,6 @@ export function QuickViewDialog({ member, open, onOpenChange, onEdit }: QuickVie
       widowed: "Viúvo(a)",
     } as const;
     return status ? map[status as keyof typeof map] : "Não informado";
-  };
-
-  const formatDate = (date: string | Date | null) => {
-    if (!date) return "Não informado";
-    return new Date(date).toLocaleDateString('pt-BR');
   };
 
   if (!member) return null;

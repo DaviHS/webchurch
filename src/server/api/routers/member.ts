@@ -19,7 +19,7 @@ import {
   inArray,
   asc,
 } from "drizzle-orm";
-import { cleanEmptyStrings } from "@/lib/clean";
+import { cleanEmptyStrings } from "@/lib/formatters";
 
 export const memberRouter = createTRPCRouter({
   create: publicProcedure.input(memberSchema).mutation(async ({ input }) => {

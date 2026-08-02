@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users /* Music */ } from "lucide-react";
 import { EventActions } from "./event-actions";
+import { formatDate } from "@/lib/formatters";
 
 interface EventCardProps {
   event: any;
@@ -23,8 +24,6 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardP
     };
     return types[type] || type;
   };
-
-  const formatDate = (date: Date) => new Date(date).toLocaleDateString("pt-BR");
 
   return (
     <Card className="h-full flex flex-col transition-all hover:shadow-md">

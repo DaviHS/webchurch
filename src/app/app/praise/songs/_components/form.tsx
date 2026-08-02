@@ -16,7 +16,6 @@ interface SongFormProps {
   isLoading?: boolean;
 }
 
-// Função para converter segundos em string "mm:ss"
 const secondsToDurationString = (seconds: number | undefined): string => {
   if (!seconds || seconds === 0) return '';
   const minutes = Math.floor(seconds / 60);
@@ -38,18 +37,15 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
   });
 
   const handleSubmit = form.handleSubmit((formData) => {
-    // Converter os dados do formulário para o formato esperado pela API
     const apiData = songSchema.parse(formData);
     console.log(apiData)
     onSubmit(apiData);
   });
 
-  // Verifica se a música está vinculada à playlist do YouTube
   const isLinkedToPlaylist = initialData?.youtubeVideoId;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Aviso sobre vinculação automática com a playlist */}
       {!initialData?.youtubeVideoId && (
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
           <p className="text-blue-800 text-sm">
@@ -58,7 +54,6 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
         </div>
       )}
 
-      {/* Status de vinculação para edição */}
       {isLinkedToPlaylist && (
         <div className="bg-green-50 border border-green-200 rounded-md p-3">
           <p className="text-green-800 text-sm flex items-center gap-2">

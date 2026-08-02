@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventSongsManager } from "./event-songs-manager";
 import { EventParticipantsManager } from "./event-participants-manager";
 import { api } from "@/trpc/react";
+import { formatDate, formatTime } from "@/lib/formatters";
 
 interface EventDetailDialogProps {
   event: any;
@@ -35,15 +36,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
       template: "Template"
     };
     return types[type] || type;
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
-
-  const formatTime = (time: string) => {
-    if (!time) return "";
-    return time.includes(':') ? time : `${time.substring(0, 2)}:${time.substring(2)}`;
   };
 
   const handleUpdate = () => {

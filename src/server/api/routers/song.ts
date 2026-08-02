@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { songs } from "@/server/db/schema";
 import { songSchema } from "@/validators/song";
 import { eq, desc, like, and, or, sql } from "drizzle-orm";
-import { cleanEmptyStrings } from "@/lib/clean";
+import { cleanEmptyStrings } from "@/lib/formatters";
 import { youtubeService } from "@/lib/youtube";
 import { spotifyService } from "@/lib/spotify";
 

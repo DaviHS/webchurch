@@ -9,7 +9,7 @@ import {
   members,
 } from "@/server/db/schema";
 import { eq, desc, like, and, gte, lte, sql, ilike, inArray } from "drizzle-orm";
-import { cleanEmptyStrings } from "@/lib/clean";
+import { cleanEmptyStrings } from "@/lib/formatters";
 import { eventSchema, eventUpdateSchema } from "@/validators/event";
 import { subDays } from "date-fns";
 
@@ -296,6 +296,60 @@ export const eventRouter = createTRPCRouter({
 
     return results;
   }),
+
+  getLastExecutions: publicProcedure
+  .input(z.object({
+    songId: z.number(),
+    limit: z.number().default(10),
+  }))
+  .query(async ({ input }) => {
+    const { songId, limit } = input;
+
+    const results = await db
+      .select({
+        id: eventSongs.id,
+        eventId: eventSongs.eventId,
+        eventTitle: events.title,
+        eventDate: events.date,
+        eventType: events.type,
+        order: eventSongs.order,
+        notes: eventSongs.notes,
+      })
+      .from(eventSongs)
+      .innerJoin(events, eq(eventSongs.eventId, events.id))
+      .where(
+        and(
+          eq(eventSongs.songId, songId),
+          sql`${events.type} != 'template'`
+        )
+      )
+      .orderBy(desc(events.date))
+      .limit(limit);
+
+    return results;
+  }),
+
+getSongStats: publicProcedure
+  .input(z.object({ songId: z.number() }))
+  .query(async ({ input }) => {
+    const stats = await db
+      .select({
+        totalExecutions: sql<number>`count(*)`,
+        firstExecution: sql<Date>`min(${events.date})`,
+        lastExecution: sql<Date>`max(${events.date})`,
+        averageOrder: sql<number>`avg(${eventSongs.order})`,
+      })
+      .from(eventSongs)
+      .innerJoin(events, eq(eventSongs.eventId, events.id))
+      .where(
+        and(
+          eq(eventSongs.songId, input.songId),
+          sql`${events.type} != 'template'`
+        )
+      );
+    
+    return stats[0];
+  }),
   
   getSongsTrend: publicProcedure
   .input(z.object({
@@ -455,7 +509,6 @@ export const eventRouter = createTRPCRouter({
       return newEvent;
     }),
 
-    // No seu eventRouter, adicione esta mutation:
   updateSongOrder: protectedProcedure
     .input(z.object({
       eventSongId: z.number(),

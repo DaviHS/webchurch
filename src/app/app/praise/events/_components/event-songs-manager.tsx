@@ -10,7 +10,7 @@ import { ArrowUp, ArrowDown, Plus, Trash2, Music, User, ChevronDown, Search, X }
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { getCategoryName } from "@/lib/utils/format-translate";
+import { getCategoryName } from "@/lib/formatters";
 
 interface EventSongsManagerProps {
   eventId: number;
