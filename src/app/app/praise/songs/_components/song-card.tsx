@@ -32,6 +32,12 @@ export function SongCard({
   onViewHistory,
   onPresent,
 }: SongCardProps) {
+  const handleAction = (e: React.MouseEvent, action: () => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    action();
+  };
+
   return (
     <Card className="h-full flex flex-col transition-all hover:shadow-md">
       <CardContent className="p-3 flex items-center justify-between gap-2">
@@ -54,14 +60,22 @@ export function SongCard({
         <div className="flex items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem
-                onClick={() => onEdit(song)}
+                onClick={(e) => handleAction(e, () => onEdit(song))}
                 className="flex items-center gap-2"
               >
                 <Edit className="h-4 w-4" />
@@ -69,7 +83,7 @@ export function SongCard({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => onDelete(song)}
+                onClick={(e) => handleAction(e, () => onDelete(song))}
                 className="flex items-center gap-2 text-red-600"
               >
                 <Trash2 className="h-4 w-4" />
@@ -77,7 +91,7 @@ export function SongCard({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => onViewLyrics(song)}
+                onClick={(e) => handleAction(e, () => onViewLyrics(song))}
                 className="flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
@@ -85,7 +99,7 @@ export function SongCard({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => onViewHistory(song)}
+                onClick={(e) => handleAction(e, () => onViewHistory(song))}
                 className="flex items-center gap-2"
               >
                 <History className="h-4 w-4" />
@@ -94,7 +108,7 @@ export function SongCard({
 
               {song.youtubeUrl && (
                 <DropdownMenuItem
-                  onClick={() => onPlayYouTube(song)}
+                  onClick={(e) => handleAction(e, () => onPlayYouTube(song))}
                   className="flex items-center gap-2"
                 >
                   <Youtube className="h-4 w-4" />
@@ -107,7 +121,7 @@ export function SongCard({
           <Button
             variant="default"
             size="sm"
-            onClick={() => onPresent(song)}
+            onClick={(e) => handleAction(e, () => onPresent(song))}
             disabled={!song.lyrics}
             title="Apresentar música"
             className="h-6 w-6 p-0"
