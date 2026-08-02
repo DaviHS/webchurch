@@ -121,7 +121,7 @@ export function SongCard({
           <Button
             variant="default"
             size="sm"
-            onClick={(e) => handleAction(e, () => onPresent(song))}
+            onClick={(e) => handleAction(e, () => onViewLyrics(song))}
             disabled={!song.lyrics}
             title="Apresentar música"
             className="h-6 w-6 p-0"
@@ -133,3 +133,5 @@ export function SongCard({
     </Card>
   );
 }
+
+//onClick={(e) => handleAction(e, () => onViewLyrics(song))}
