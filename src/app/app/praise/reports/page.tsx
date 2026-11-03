@@ -1,89 +1,80 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, TrendingUp } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/page-header";
+import { useDebounce } from "@/hooks/use-debounce";
 import { api } from "@/trpc/react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { safeParseNumber } from "@/lib/formatters";
 import { ReportFilters } from "./_components/report-filters";
 import { ReportStatsCard } from "./_components/report-stats-card";
 import { ReportRanking } from "./_components/report-ranking";
 import { ReportChart } from "./_components/report-chart";
 import { SongDetailsDialog } from "./_components/song-details-dialog";
-import type { Song, DateRange, ReportItem } from "@/types";
+import type { Song, DateRange } from "@/types";
+
+const DEFAULT_TIME_RANGE = "30";
+const EMPTY_RANGE: DateRange = { from: undefined, to: undefined };
+
+function getPresetRange(days: string): DateRange {
+  const to = new Date();
+  return { from: subDays(to, Number(days)), to };
+}
+
+function toCsvField(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
 
 export default function ReportsPage() {
-  const [timeRange, setTimeRange] = useState("30");
-  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [timeRange, setTimeRange] = useState(DEFAULT_TIME_RANGE);
+  const [customRange, setCustomRange] = useState<DateRange>(EMPTY_RANGE);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
   const [selectedSongForDetails, setSelectedSongForDetails] = useState<Song | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { data: songsData, isLoading: songsLoading } = api.song.list.useQuery({
-    search: searchTerm || undefined,
+    search: debouncedSearchTerm || undefined,
     limit: 50,
   });
 
-  const allSongs: Song[] = songsData?.songs?.map((song) => ({
+  const dateRange = timeRange === "custom" ? customRange : getPresetRange(timeRange);
+
+  const allSongs: Song[] = songsData?.songs.map((song) => ({
     ...song,
     artist: song.artist ?? "",
     lyrics: song.lyrics ?? undefined,
     youtubeUrl: song.youtubeUrl ?? undefined,
     youtubeVideoId: song.youtubeVideoId ?? undefined,
     duration: song.duration ?? undefined,
-  })) || [];
+  })) ?? [];
 
-  const getPeriodParams = () => {
-    if (timeRange === "custom" && dateRange.from && dateRange.to) {
-      return {
-        startDate: startOfDay(dateRange.from),
-        endDate: endOfDay(dateRange.to),
-      };
-    }
-    if (timeRange !== "custom") {
-      const endDate = endOfDay(new Date());
-      return {
-        startDate: startOfDay(subDays(endDate, Number(timeRange))),
-        endDate,
-      };
-    }
-    return { startDate: undefined, endDate: undefined };
-  };
+  const startDate = dateRange.from ? startOfDay(dateRange.from) : undefined;
+  const endDate = dateRange.to ? endOfDay(dateRange.to) : undefined;
+  const isDateRangeValid = startDate !== undefined && endDate !== undefined;
 
-  const { startDate, endDate } = getPeriodParams();
-  const isDateRangeValid = timeRange !== "custom" || !!(dateRange.from && dateRange.to);
-
-  const { data: report, isLoading, refetch } = api.event.getSongsReport.useQuery(
+  const { data: report, isLoading } = api.event.getSongsReport.useQuery(
     { startDate, endDate, songIds: selectedSongs.length > 0 ? selectedSongs.map(s => s.id) : undefined },
     { enabled: isDateRangeValid, staleTime: 0, refetchOnWindowFocus: false }
   );
 
-  const { data: songExecutions, isLoading: isLoadingExecutions, refetch: refetchExecutions } =
+  const { data: songExecutions, isLoading: isLoadingExecutions } =
     api.event.getSongExecutions.useQuery(
-      { songId: selectedSongForDetails?.id || 0, startDate, endDate },
-      { enabled: false }
+      { songId: selectedSongForDetails?.id ?? 0, startDate, endDate },
+      { enabled: isDialogOpen && selectedSongForDetails !== null }
     );
 
-  useEffect(() => {
-    if (timeRange !== "custom") {
-      const end = new Date();
-      const start = subDays(end, Number(timeRange));
-      setDateRange({ from: start, to: end });
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    if (isDateRangeValid) {
-      void refetch();
-    }
-  }, [startDate, endDate, selectedSongs, refetch, isDateRangeValid]);
+  const handleTimeRangeChange = (value: string) => {
+    if (value === "custom") setCustomRange(dateRange);
+    setTimeRange(value);
+  };
 
   const getStats = () => {
     if (!report?.length) return null;
-    const counts = report.map((item: ReportItem) => safeParseNumber(item.count));
+    const counts = report.map((item) => item.count);
     const totalExecucoes = counts.reduce((sum, count) => sum + count, 0);
     return {
       totalMusicas: report.length,
@@ -94,11 +85,8 @@ export default function ReportsPage() {
   };
 
   const getPeriodText = () => {
-    if (timeRange === "custom" && dateRange.from && dateRange.to) {
-      return `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`;
-    }
-    const end = new Date();
-    return `${format(subDays(end, Number(timeRange)), "dd/MM/yyyy")} - ${format(end, "dd/MM/yyyy")}`;
+    if (!dateRange.from || !dateRange.to) return "";
+    return `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`;
   };
 
   const handleSelectSong = (song: Song) => {
@@ -112,9 +100,6 @@ export default function ReportsPage() {
   const handleOpenSongDetails = (song: Song) => {
     setSelectedSongForDetails(song);
     setIsDialogOpen(true);
-    setTimeout(() => {
-      void refetchExecutions();
-    }, 100);
   };
 
   const exportToCSV = () => {
@@ -123,7 +108,7 @@ export default function ReportsPage() {
     const csvContent = [
       headers.join(","),
       ...report.map((item, index) =>
-        [index + 1, `"${item.title}"`, `"${item.artist || ''}"`, safeParseNumber(item.count)].join(",")
+        [index + 1, toCsvField(item.title), toCsvField(item.artist ?? ""), item.count].join(",")
       )
     ].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -138,8 +123,8 @@ export default function ReportsPage() {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedSongs([]);
-    setTimeRange("30");
-    setDateRange({ from: undefined, to: undefined });
+    setTimeRange(DEFAULT_TIME_RANGE);
+    setCustomRange(EMPTY_RANGE);
     setShowSearchResults(false);
   };
 
@@ -147,28 +132,24 @@ export default function ReportsPage() {
   const showLoading = isLoading && isDateRangeValid;
 
   return (
-    <div className="container mx-auto py-3 sm:py-4 space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
-            Relatórios de Louvor
-          </h1>
-          <p className="text-muted-foreground mt-0.5 text-xs sm:text-sm">
-            Análise de músicas mais executadas
-          </p>
-        </div>
-        <Button onClick={exportToCSV} disabled={!report?.length} size="sm" className="w-full sm:w-auto">
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Exportar
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Relatórios"
+        icon={TrendingUp}
+        description="Análise das músicas mais executadas."
+        actions={
+          <Button onClick={exportToCSV} disabled={!report?.length} variant="outline" className="w-full sm:w-auto">
+            <Download className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </Button>
+        }
+      />
 
       <ReportFilters
         timeRange={timeRange}
-        onTimeRangeChange={setTimeRange}
+        onTimeRangeChange={handleTimeRangeChange}
         dateRange={dateRange}
-        onDateRangeChange={setDateRange}
+        onDateRangeChange={setCustomRange}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         showSearchResults={showSearchResults}
@@ -182,9 +163,9 @@ export default function ReportsPage() {
         isDateRangeValid={isDateRangeValid}
       />
 
-      <div className="grid gap-4 sm:gap-6">
+      <div className="grid gap-6">
         <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} />
-        
+
         <ReportRanking
           report={report}
           isLoading={showLoading}
@@ -208,6 +189,6 @@ export default function ReportsPage() {
         isLoading={isLoadingExecutions}
         onFilterBySong={handleSelectSong}
       />
-    </div>
+    </PageContainer>
   );
 }

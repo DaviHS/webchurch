@@ -1,96 +1,89 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer, PageHeader } from "@/components/page-header";
 import { api } from "@/trpc/react";
 import { subDays } from "date-fns";
-import { Music, Calendar, Users, BarChart3 } from "lucide-react";
+import { Music, Calendar, Users, BarChart3, Home, CalendarClock } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useState } from "react";
+
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  hint: string;
+  icon: LucideIcon;
+  href?: string;
+}
+
+function StatCard({ title, value, hint, icon: Icon, href }: StatCardProps) {
+  const card = (
+    <Card className={href ? "h-full transition-shadow hover:shadow-md" : "h-full"}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link href={href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {card}
+    </Link>
+  );
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const router = useRouter();
 
   const { data: songsStats } = api.song.list.useQuery({ limit: 1 });
   const { data: eventsStats } = api.event.list.useQuery({ limit: 1 });
-  const { data: recentSongs } = api.event.getSongsReport.useQuery({
-    startDate: subDays(new Date(), 7),
-    endDate: new Date(),
+  const [lastWeek] = useState(() => {
+    const endDate = new Date();
+    return { startDate: subDays(endDate, 7), endDate };
   });
-  
+  const { data: recentSongs } = api.event.getSongsReport.useQuery(lastWeek);
+
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo, {session?.user?.name}!
-        </p>
+    <PageContainer>
+      <PageHeader
+        title="Início"
+        icon={Home}
+        description={session?.user?.name ? `Bem-vindo, ${session.user.name}!` : "Bem-vindo!"}
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Músicas" value={songsStats?.total ?? 0} hint="Total cadastradas" icon={Music} href="/app/praise/songs" />
+        <StatCard title="Eventos" value={eventsStats?.total ?? 0} hint="Total realizados" icon={Calendar} href="/app/praise/events" />
+        <StatCard title="Músicas recentes" value={recentSongs?.length ?? 0} hint="Últimos 7 dias" icon={BarChart3} />
+        <StatCard title="Equipe" value="-" hint="Integrantes" icon={Users} href="/app/admin/members" />
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/praise/songs")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Músicas</CardTitle>
-            <Music className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{songsStats?.total || 0}</div>
-            <p className="text-xs text-muted-foreground">Total cadastradas</p>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/praise/events")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Eventos</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{eventsStats?.total || 0}</div>
-            <p className="text-xs text-muted-foreground">Total realizados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Músicas Recentes</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recentSongs?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Últimos 7 dias</p>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/app/admin/members")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Equipe</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Integrantes</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Músicas mais tocadas */}
       <Card>
         <CardHeader>
-          <CardTitle>Músicas Mais Tocadas (Última Semana)</CardTitle>
+          <CardTitle>Músicas mais tocadas (última semana)</CardTitle>
         </CardHeader>
         <CardContent>
           {recentSongs && recentSongs.length > 0 ? (
             <div className="space-y-3">
               {recentSongs.slice(0, 5).map((song, index) => (
-                <div key={song.songId} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                <div key={song.songId} className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                       {index + 1}
                     </div>
-                    <div>
-                      <div className="font-semibold">{song.title}</div>
-                      <div className="text-sm text-muted-foreground">{song.artist}</div>
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">{song.title}</div>
+                      <div className="truncate text-sm text-muted-foreground">{song.artist}</div>
                     </div>
                   </div>
                   <div className="text-lg font-bold">{song.count}x</div>
@@ -98,24 +91,19 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">
-              Nenhuma música tocada na última semana.
-            </p>
+            <EmptyState icon={Music} title="Nenhuma música tocada na última semana" />
           )}
         </CardContent>
       </Card>
 
-      {/* Próximos eventos */}
-      <Card className="mt-6">
+      <Card>
         <CardHeader>
-          <CardTitle>Próximos Eventos</CardTitle>
+          <CardTitle>Próximos eventos</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            Em breve - próximos eventos agendados...
-          </p>
+          <EmptyState icon={CalendarClock} title="Em breve" description="Os próximos eventos agendados aparecerão aqui." />
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

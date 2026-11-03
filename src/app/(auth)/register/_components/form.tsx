@@ -1,14 +1,13 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, type RegisterData } from "@/validators/register";
+import { registerSchema, type RegisterData, type RegisterInput } from "@/validators/register";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { api } from "@/trpc/react";
@@ -16,13 +15,20 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 
+const TAB_FIELDS: { tab: string; fields: (keyof RegisterInput)[] }[] = [
+  { tab: "personal", fields: ["firstName", "lastName", "email", "phone", "birthDate", "gender"] },
+  { tab: "address", fields: ["address", "city", "state", "zipCode"] },
+  { tab: "church", fields: ["memberSince", "baptismDate", "baptized"] },
+  { tab: "password", fields: ["password", "confirmPassword"] },
+];
+
 export function RegisterForm() {
   const [activeTab, setActiveTab] = useState("personal");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
-  const form = useForm<RegisterData>({
+  const form = useForm<RegisterInput, unknown, RegisterData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: "",
@@ -43,6 +49,11 @@ export function RegisterForm() {
     },
   });
 
+  const [gender, baptized] = useWatch({
+    control: form.control,
+    name: ["gender", "baptized"],
+  });
+
   const registerMutation = api.register.register.useMutation({
     onSuccess: (data) => {
       toast.success(data.message);
@@ -57,7 +68,11 @@ export function RegisterForm() {
     registerMutation.mutate(data);
   };
 
-  const tabs = ["personal", "address", "church", "password"] as const;
+  const onInvalid = (errors: FieldErrors<RegisterInput>) => {
+    const tabWithError = TAB_FIELDS.find(({ fields }) => fields.some((field) => field in errors));
+    if (tabWithError) setActiveTab(tabWithError.tab);
+    toast.error("Corrija os campos indicados antes de continuar");
+  };
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -68,7 +83,7 @@ export function RegisterForm() {
         <TabsTrigger value="password" className="text-xs">Senha</TabsTrigger>
       </TabsList>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
         <TabsContent value="personal" className="space-y-4">
           <div className="space-y-3">
             <div className="space-y-2">
@@ -80,7 +95,7 @@ export function RegisterForm() {
                 className="text-sm"
               />
               {form.formState.errors.firstName && (
-                <p className="text-xs text-red-500">{form.formState.errors.firstName.message}</p>
+                <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
               )}
             </div>
 
@@ -93,12 +108,12 @@ export function RegisterForm() {
                 className="text-sm"
               />
               {form.formState.errors.lastName && (
-                <p className="text-xs text-red-500">{form.formState.errors.lastName.message}</p>
+                <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">Email *</Label>
+              <Label htmlFor="email" className="text-sm">E-mail *</Label>
               <Input
                 id="email"
                 type="email"
@@ -107,7 +122,7 @@ export function RegisterForm() {
                 className="text-sm"
               />
               {form.formState.errors.email && (
-                <p className="text-xs text-red-500">{form.formState.errors.email.message}</p>
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
               )}
             </div>
 
@@ -136,7 +151,7 @@ export function RegisterForm() {
             <div className="space-y-2">
               <Label className="text-sm">Gênero</Label>
               <Select
-                value={form.watch("gender")}
+                value={gender}
                 onValueChange={(value) => form.setValue("gender", value as "male" | "female")}
               >
                 <SelectTrigger className="text-sm">
@@ -179,6 +194,7 @@ export function RegisterForm() {
                   id="city"
                   {...form.register("city")}
                   placeholder="São Paulo"
+                  maxLength={50}
                   className="text-sm"
                 />
               </div>
@@ -200,6 +216,7 @@ export function RegisterForm() {
                 id="zipCode"
                 {...form.register("zipCode")}
                 placeholder="00000-000"
+                maxLength={10}
                 className="text-sm"
               />
             </div>
@@ -239,7 +256,7 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="baptismDate" className="text-sm">Data do Batismo</Label>
+              <Label htmlFor="baptismDate" className="text-sm">Data do batismo</Label>
               <Input
                 id="baptismDate"
                 type="date"
@@ -251,7 +268,7 @@ export function RegisterForm() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="baptized"
-                checked={form.watch("baptized")}
+                checked={baptized}
                 onCheckedChange={(checked) => form.setValue("baptized", checked)}
               />
               <Label htmlFor="baptized" className="text-sm">Batizado</Label>
@@ -295,8 +312,9 @@ export function RegisterForm() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -306,12 +324,12 @@ export function RegisterForm() {
                 </Button>
               </div>
               {form.formState.errors.password && (
-                <p className="text-xs text-red-500">{form.formState.errors.password.message}</p>
+                <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm">Confirmar Senha *</Label>
+              <Label htmlFor="confirmPassword" className="text-sm">Confirmar senha *</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
@@ -324,8 +342,9 @@ export function RegisterForm() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -335,7 +354,7 @@ export function RegisterForm() {
                 </Button>
               </div>
               {form.formState.errors.confirmPassword && (
-                <p className="text-xs text-red-500">{form.formState.errors.confirmPassword.message}</p>
+                <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
               )}
             </div>
           </div>
@@ -356,7 +375,7 @@ export function RegisterForm() {
               className="flex-1"
             >
               {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Criar Conta
+              Criar conta
             </Button>
           </div>
         </TabsContent>

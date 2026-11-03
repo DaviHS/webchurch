@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { monthlyClosureSchema, type MonthlyClosureFormData } from "@/validators/finance";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Calculator } from "lucide-react";
+import { AlertTriangle, Calculator, Loader2, X } from "lucide-react";
 import { api } from "@/trpc/react";
-import { useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { balanceClassName, formatCurrency } from "./format";
 
 interface MonthlyClosureFormProps {
   onSubmit: (data: MonthlyClosureFormData) => void;
   isLoading?: boolean;
   currentMonth: number;
   currentYear: number;
+  onCancel?: () => void;
 }
 
-export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentYear }: MonthlyClosureFormProps) {
+export function MonthlyClosureForm({ onSubmit, isLoading = false, currentMonth, currentYear, onCancel }: MonthlyClosureFormProps) {
   const form = useForm<MonthlyClosureFormData>({
     resolver: zodResolver(monthlyClosureSchema),
     defaultValues: {
@@ -32,14 +34,13 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
     }
   });
 
-  const selectedMonth = form.watch('month');
-  const selectedYear = form.watch('year');
+  const selectedMonth = useWatch({ control: form.control, name: 'month' });
+  const selectedYear = useWatch({ control: form.control, name: 'year' });
 
-  // Fetch monthly report when month/year changes
-  const { data: monthlyReport, isLoading: isLoadingReport } = api.finance.getMonthlyReport.useQuery(
-    { month: selectedMonth, year: selectedYear },
-    { enabled: !!selectedMonth && !!selectedYear }
-  );
+  const { data: monthlyReport, isLoading: isLoadingReport } = api.finance.getMonthlyReport.useQuery({
+    month: selectedMonth,
+    year: selectedYear,
+  });
 
   const months = [
     { value: 1, label: "Janeiro" },
@@ -56,18 +57,18 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
     { value: 12, label: "Dezembro" },
   ];
 
-  const currentYearOption = currentYear;
-  const yearOptions = [currentYearOption - 1, currentYearOption, currentYearOption + 1];
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
-  const totalIncome = monthlyReport?.summary?.find(s => s.type === 'income')?.total || '0';
-  const totalExpenses = monthlyReport?.summary?.find(s => s.type === 'expense')?.total || '0';
-  const netBalance = parseFloat(totalIncome) - parseFloat(totalExpenses);
+  const totalIncome = monthlyReport?.summary.find((s) => s.type === 'income')?.total ?? '0';
+  const totalExpenses = monthlyReport?.summary.find((s) => s.type === 'expense')?.total ?? '0';
+  const income = Number(totalIncome);
+  const expenses = Number(totalExpenses);
+  const netBalance = income - expenses;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          {/* Mês */}
           <FormField
             control={form.control}
             name="month"
@@ -75,7 +76,7 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
               <FormItem>
                 <FormLabel>Mês *</FormLabel>
                 <Select 
-                  onValueChange={(value) => field.onChange(parseInt(value))} 
+                  onValueChange={(value) => field.onChange(Number(value))} 
                   defaultValue={field.value.toString()}
                 >
                   <FormControl>
@@ -96,7 +97,6 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
             )}
           />
 
-          {/* Ano */}
           <FormField
             control={form.control}
             name="year"
@@ -104,7 +104,7 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
               <FormItem>
                 <FormLabel>Ano *</FormLabel>
                 <Select 
-                  onValueChange={(value) => field.onChange(parseInt(value))} 
+                  onValueChange={(value) => field.onChange(Number(value))} 
                   defaultValue={field.value.toString()}
                 >
                   <FormControl>
@@ -126,27 +126,24 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
           />
         </div>
 
-        {/* Monthly Summary */}
+        {isLoadingReport && <Skeleton className="h-28 w-full rounded-xl" />}
+
         {!isLoadingReport && monthlyReport && (
           <Card>
             <CardContent className="pt-4">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Receitas:</span>
-                  <span className="text-green-600 font-medium">
-                    R$ {parseFloat(totalIncome).toFixed(2)}
-                  </span>
+                  <span className="text-muted-foreground">Total de receitas:</span>
+                  <span className="font-medium text-success">{formatCurrency(income)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Despesas:</span>
-                  <span className="text-red-600 font-medium">
-                    R$ {parseFloat(totalExpenses).toFixed(2)}
-                  </span>
+                  <span className="text-muted-foreground">Total de despesas:</span>
+                  <span className="font-medium text-destructive">{formatCurrency(expenses)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
-                  <span className="font-medium">Resultado Líquido:</span>
-                  <span className={`font-bold ${netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    R$ {netBalance.toFixed(2)}
+                  <span className="font-medium">Resultado líquido:</span>
+                  <span className={`font-bold ${balanceClassName(netBalance)}`}>
+                    {formatCurrency(netBalance)}
                   </span>
                 </div>
               </div>
@@ -154,13 +151,12 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
           </Card>
         )}
 
-        {/* Saldo Inicial */}
         <FormField
           control={form.control}
           name="openingBalance"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Saldo Inicial *</FormLabel>
+              <FormLabel>Saldo inicial *</FormLabel>
               <FormControl>
                 <Input 
                   {...field} 
@@ -174,7 +170,6 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
           )}
         />
 
-        {/* Notas */}
         <FormField
           control={form.control}
           name="notes"
@@ -194,7 +189,6 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
           )}
         />
 
-        {/* Warning Alert */}
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm">
@@ -202,14 +196,18 @@ export function MonthlyClosureForm({ onSubmit, isLoading, currentMonth, currentY
           </AlertDescription>
         </Alert>
 
-        <Button 
-          type="submit" 
-          disabled={isLoading || isLoadingReport} 
-          className="w-full"
-        >
-          <Calculator className="mr-2 h-4 w-4" />
-          {isLoading ? "Processando..." : "Confirmar Fechamento"}
-        </Button>
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              <X className="mr-2 h-4 w-4" />
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading || isLoadingReport}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}
+            {isLoading ? "Processando..." : "Confirmar fechamento"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

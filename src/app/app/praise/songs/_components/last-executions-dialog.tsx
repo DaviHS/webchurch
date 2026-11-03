@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,17 +20,14 @@ import {
   Calendar,
   Music,
   Clock,
-  TrendingUp,
-  ExternalLink,
   Hash,
-  ArrowUp,
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useRouter } from "next/navigation";
-import { getEventTypeColor, getEventTypeName } from "@/lib/formatters";
-import { Song } from "@/types";
+import { getEventTypeName } from "@/lib/formatters";
+import { getEventTypeBadgeVariant } from "../../events/_components/event-type";
+import { type Song } from "@/types";
 
 interface LastExecutionsDialogProps {
   song: Song;
@@ -43,8 +40,6 @@ export function LastExecutionsDialog({
   open,
   onOpenChange,
 }: LastExecutionsDialogProps) {
-  const router = useRouter();
-  const [enabled, setEnabled] = useState(false);
 
   const { data: executions, isLoading: isLoadingExecutions } =
     api.event.getLastExecutions.useQuery(
@@ -52,9 +47,7 @@ export function LastExecutionsDialog({
         songId: song.id,
         limit: 10,
       },
-      {
-        enabled: enabled && open,
-      }
+      { enabled: open }
     );
 
   const { data: stats, isLoading: isLoadingStats } =
@@ -62,32 +55,16 @@ export function LastExecutionsDialog({
       {
         songId: song.id,
       },
-      {
-        enabled: enabled && open,
-      }
+      { enabled: open }
     );
-
-  useEffect(() => {
-    if (open) {
-      const timer = setTimeout(() => setEnabled(true), 100);
-      return () => clearTimeout(timer);
-    } else {
-      setEnabled(false);
-    }
-  }, [open]);
-
-  const navigateToReport = () => {
-    onOpenChange(false);
-    router.push(`/reports?songId=${song.id}`);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <History className="h-5 w-5 text-primary" />
-            Histórico de Execuções
+            Histórico de execuções
           </DialogTitle>
           <DialogDescription className="text-sm">
             <span className="font-semibold">{song.title}</span>
@@ -113,9 +90,8 @@ export function LastExecutionsDialog({
           </div>
         ) : (
           <>
-            {/* Estatísticas */}
             {stats && stats.totalExecutions > 0 && (
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 flex-shrink-0">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 shrink-0">
                 <div className="text-center p-2 sm:p-3 bg-muted/30 rounded-lg">
                   <div className="text-lg sm:text-xl font-bold text-primary">
                     {stats.totalExecutions}
@@ -150,7 +126,6 @@ export function LastExecutionsDialog({
               </div>
             )}
 
-            {/* Lista de execuções */}
             <ScrollArea className="flex-1 min-h-0">
               {executions && executions.length > 0 ? (
                 <div className="space-y-2 pr-2">
@@ -159,11 +134,11 @@ export function LastExecutionsDialog({
                       key={execution.id}
                       className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 border rounded-lg hover:bg-muted/30 transition-colors group"
                     >
-                      <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      <div className="flex flex-col items-center gap-1 shrink-0">
                         <div
                           className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs font-bold ${
                             index === 0
-                              ? "bg-green-500 text-white"
+                              ? "bg-success text-success-foreground"
                               : "bg-primary/10 text-primary"
                           }`}
                         >
@@ -180,19 +155,14 @@ export function LastExecutionsDialog({
                             {execution.eventTitle}
                           </span>
                           <Badge
-                            variant="outline"
-                            className={`text-[8px] sm:text-xs ${getEventTypeColor(
-                              execution.eventType
-                            )}`}
+                            variant={getEventTypeBadgeVariant(execution.eventType)}
+                            className="text-[10px] sm:text-xs"
                           >
                             {getEventTypeName(execution.eventType)}
                           </Badge>
                           {index === 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[8px] sm:text-xs bg-green-100 text-green-800 border-green-200"
-                            >
-                              MAIS RECENTE
+                            <Badge variant="success" className="text-[10px] sm:text-xs">
+                              Mais recente
                             </Badge>
                           )}
                         </div>
@@ -218,7 +188,7 @@ export function LastExecutionsDialog({
                             )}
                           </span>
 
-                          {execution.order && (
+                          {execution.order > 0 && (
                             <span className="flex items-center gap-0.5 sm:gap-1">
                               <Hash className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                               {execution.order}ª música
@@ -232,55 +202,29 @@ export function LastExecutionsDialog({
                           </p>
                         )}
                       </div>
-
-                      {/* <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                        onClick={() =>
-                          router.push(`/events/${execution.eventId}`)
-                        }
-                        title="Ver evento"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button> */}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Music className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Nenhuma execução encontrada
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Esta música ainda não foi tocada em nenhum evento
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Music}
+                  title="Nenhuma execução encontrada"
+                  description="Esta música ainda não foi tocada em nenhum evento."
+                  className="py-8"
+                />
               )}
             </ScrollArea>
           </>
         )}
 
-        <Separator className="flex-shrink-0" />
+        <Separator className="shrink-0" />
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 flex-shrink-0">
+        <DialogFooter className="shrink-0 gap-2 sm:space-x-0">
           <DialogClose asChild>
             <Button variant="outline" size="sm" className="w-full sm:w-auto">
               Fechar
             </Button>
           </DialogClose>
-          {/* {stats && stats.totalExecutions > 0 && (
-            <Button
-              variant="default"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={navigateToReport}
-            >
-              <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-              Ver Relatório Completo
-            </Button>
-          )} */}
         </DialogFooter>
       </DialogContent>
     </Dialog>

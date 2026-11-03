@@ -1,48 +1,48 @@
-// components/audio-upload.tsx
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, X } from "lucide-react";
+import { Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export function AudioUpload({ onUpload }: { onUpload: (file: File) => void }) {
   const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
 
     if (!file.type.startsWith('audio/')) {
-      toast.error("Por favor, selecione um arquivo de áudio válido");
+      toast.error("Selecione um arquivo de áudio válido");
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      toast.error("O arquivo deve ter menos de 10MB");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 10 MB");
       return;
     }
 
     setIsUploading(true);
     try {
-      // Aqui você faria o upload para o servidor
-      // Por enquanto, apenas passa o arquivo para o componente pai
       onUpload(file);
       toast.success("Áudio carregado com sucesso!");
-    } catch (error) {
-      toast.error("Erro ao fazer upload do áudio");
+    } catch {
+      toast.error("Erro ao carregar o áudio");
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-      <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-      <p className="text-sm text-muted-foreground mb-2">
-        Arraste um arquivo de áudio ou clique para selecionar
+    <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 text-center">
+      <Upload className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+      <p className="mb-2 text-sm text-muted-foreground">
+        Clique para selecionar um arquivo de áudio (até 10 MB)
       </p>
       <input
+        ref={inputRef}
         type="file"
         accept="audio/*"
         onChange={handleUpload}
@@ -50,13 +50,14 @@ export function AudioUpload({ onUpload }: { onUpload: (file: File) => void }) {
         className="hidden"
         id="audio-upload"
       />
-      <label htmlFor="audio-upload">
-        <Button variant="outline" disabled={isUploading} asChild>
-          <span>
-            {isUploading ? "Carregando..." : "Selecionar Áudio"}
-          </span>
-        </Button>
-      </label>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isUploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {isUploading ? "Carregando..." : "Selecionar áudio"}
+      </Button>
     </div>
   );
 }

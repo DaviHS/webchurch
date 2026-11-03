@@ -1,5 +1,6 @@
 "use client";
 
+import type { DateRange } from "@daypicker/react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -9,24 +10,43 @@ import { CalendarIcon, Search, X, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import type { RouterOutputs } from "@/types";
+
+export type FinancialCategory = RouterOutputs["finance"]["listCategories"][number];
+
+export interface FinanceFiltersState {
+  startDate?: Date;
+  endDate?: Date;
+  type: string;
+  categoryId?: number;
+  search: string;
+}
+
+export const emptyFinanceFilters: FinanceFiltersState = {
+  startDate: undefined,
+  endDate: undefined,
+  type: "",
+  categoryId: undefined,
+  search: "",
+};
+
+const ANY = "any";
+
+const typeLabels: Record<string, string> = {
+  income: "Receitas",
+  expense: "Despesas",
+  transfer: "Transferências",
+};
 
 interface FinanceFiltersProps {
-  filters: {
-    startDate?: Date;
-    endDate?: Date;
-    type: string;
-    categoryId?: number;
-  };
-  onFiltersChange: (filters: any) => void;
-  categories: any[];
+  filters: FinanceFiltersState;
+  onFiltersChange: (filters: FinanceFiltersState) => void;
+  categories: FinancialCategory[];
 }
 
 export function FinanceFilters({ filters, onFiltersChange, categories }: FinanceFiltersProps) {
-  const [search, setSearch] = useState("");
-
-  const handleDateSelect = (range: any) => {
+  const handleDateSelect = (range: DateRange | undefined) => {
     onFiltersChange({
       ...filters,
       startDate: range?.from,
@@ -35,30 +55,31 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
   };
 
   const clearFilters = () => {
-    setSearch("");
-    onFiltersChange({
-      startDate: undefined,
-      endDate: undefined,
-      type: "",
-      categoryId: undefined,
-    });
+    onFiltersChange(emptyFinanceFilters);
   };
 
-  const hasActiveFilters = filters.startDate || filters.endDate || filters.type || filters.categoryId;
+  const hasActiveFilters =
+    filters.startDate !== undefined ||
+    filters.endDate !== undefined ||
+    filters.type !== "" ||
+    filters.categoryId !== undefined ||
+    filters.search !== "";
+
+  const selectedCategoryName = categories.find((c) => c.id === filters.categoryId)?.name;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por descrição..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={filters.search}
+            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
             className="pl-9"
           />
         </div>
-        
+
         {hasActiveFilters && (
           <Button variant="outline" onClick={clearFilters} className="sm:w-auto">
             <X className="h-4 w-4 mr-2" />
@@ -113,13 +134,13 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
 
         <Select
           value={filters.type}
-          onValueChange={(value) => onFiltersChange({ ...filters, type: value })}
+          onValueChange={(value) => onFiltersChange({ ...filters, type: value === ANY ? "" : value })}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Todos os tipos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="any">Todos</SelectItem>
+            <SelectItem value={ANY}>Todos</SelectItem>
             <SelectItem value="income">Receitas</SelectItem>
             <SelectItem value="expense">Despesas</SelectItem>
             <SelectItem value="transfer">Transferências</SelectItem>
@@ -127,16 +148,18 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
         </Select>
 
         <Select
-          value={filters.categoryId?.toString() || ""}
-          onValueChange={(value) => onFiltersChange({ ...filters, categoryId: value ? parseInt(value) : undefined })}
+          value={filters.categoryId === undefined ? "" : String(filters.categoryId)}
+          onValueChange={(value) =>
+            onFiltersChange({ ...filters, categoryId: value === ANY ? undefined : Number(value) })
+          }
         >
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Todas categorias" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="any">Todas categorias</SelectItem>
+            <SelectItem value={ANY}>Todas categorias</SelectItem>
             {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id.toString()}>
+              <SelectItem key={category.id} value={String(category.id)}>
                 {category.name}
               </SelectItem>
             ))}
@@ -151,14 +174,14 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
               Período: {format(filters.startDate, "dd/MM/yy", { locale: ptBR })} - {format(filters.endDate, "dd/MM/yy", { locale: ptBR })}
             </Badge>
           )}
-          {filters.type && (
+          {filters.type !== "" && (
             <Badge variant="secondary" className="text-xs">
-              Tipo: {filters.type === 'income' ? 'Receitas' : filters.type === 'expense' ? 'Despesas' : 'Transferências'}
+              Tipo: {typeLabels[filters.type] ?? filters.type}
             </Badge>
           )}
-          {filters.categoryId && (
+          {selectedCategoryName !== undefined && (
             <Badge variant="secondary" className="text-xs">
-              Categoria: {categories.find(c => c.id === filters.categoryId)?.name}
+              Categoria: {selectedCategoryName}
             </Badge>
           )}
         </div>

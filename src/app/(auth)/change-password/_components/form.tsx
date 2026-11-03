@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -26,6 +27,7 @@ export function ChangePasswordForm() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const { update: updateSession } = useSession();
 
   const form = useForm<ChangePasswordData>({
     resolver: zodResolver(changePasswordSchema),
@@ -36,13 +38,10 @@ export function ChangePasswordForm() {
   });
 
   const changePasswordMutation = api.user.changePassword.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Senha alterada com sucesso! Redirecionando...");
-      router.refresh(); 
-      router.push("/app");
-      setTimeout(() => {
-        router.push("/app");
-      }, 2000);
+      await updateSession();
+      router.replace("/app");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -58,20 +57,22 @@ export function ChangePasswordForm() {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="newPassword">Nova Senha</Label>
+        <Label htmlFor="newPassword">Nova senha</Label>
         <div className="relative">
           <Input
             id="newPassword"
             type={showNewPassword ? "text" : "password"}
             {...form.register("newPassword")}
             placeholder="Digite a nova senha"
+            className="pr-10"
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
             onClick={() => setShowNewPassword(!showNewPassword)}
+            aria-label={showNewPassword ? "Ocultar senha" : "Mostrar senha"}
           >
             {showNewPassword ? (
               <EyeOff className="h-4 w-4" />
@@ -81,27 +82,29 @@ export function ChangePasswordForm() {
           </Button>
         </div>
         {form.formState.errors.newPassword && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-destructive">
             {form.formState.errors.newPassword.message}
           </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+        <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
         <div className="relative">
           <Input
             id="confirmPassword"
             type={showConfirmPassword ? "text" : "password"}
             {...form.register("confirmPassword")}
             placeholder="Confirme a nova senha"
+            className="pr-10"
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
           >
             {showConfirmPassword ? (
               <EyeOff className="h-4 w-4" />
@@ -111,7 +114,7 @@ export function ChangePasswordForm() {
           </Button>
         </div>
         {form.formState.errors.confirmPassword && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-destructive">
             {form.formState.errors.confirmPassword.message}
           </p>
         )}
@@ -125,7 +128,7 @@ export function ChangePasswordForm() {
         {changePasswordMutation.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : null}
-        Trocar Senha
+        Trocar senha
       </Button>
     </form>
   );

@@ -2,6 +2,7 @@ import React from "react";
 import { useFormContext } from "react-hook-form";
 
 import { Input as InputSC } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   FormControl,
   FormDescription,
@@ -18,7 +19,7 @@ export interface InputProps extends React.ComponentProps<"input"> {
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ name, label, placeholder, description, ...props }, ref) => {
+  ({ name, label, placeholder, description, className, ...props }, ref) => {
     const form = useFormContext();
 
     return (
@@ -27,14 +28,18 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         name={name}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{label}</FormLabel>
+            {label && <FormLabel>{label}</FormLabel>}
             <FormControl>
               <InputSC
                 placeholder={placeholder}
-                {...field}
-                className="w-full"
-                ref={ref}
                 {...props}
+                {...field}
+                className={cn("w-full", className)}
+                ref={(element) => {
+                  field.ref(element);
+                  if (typeof ref === "function") ref(element);
+                  else if (ref) ref.current = element;
+                }}
               />
             </FormControl>
             {description && <FormDescription>{description}</FormDescription>}

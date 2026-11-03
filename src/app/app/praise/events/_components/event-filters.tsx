@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { eventTypeLabels, selectableEventTypes } from "./event-type";
 
 interface EventFiltersProps {
   search: string;
@@ -27,19 +28,18 @@ export function EventFilters({ search, onSearchChange, type, onTypeChange }: Eve
           onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
-      
+
       <Select value={type} onValueChange={onTypeChange}>
         <SelectTrigger className="w-full sm:w-40">
           <SelectValue placeholder="Todos os tipos" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="any">Todos os tipos</SelectItem>
-          <SelectItem value="cult">Culto</SelectItem>
-          <SelectItem value="celebration">Celebração</SelectItem>
-          <SelectItem value="meeting">Reunião</SelectItem>
-          <SelectItem value="conference">Conferência</SelectItem>
-          <SelectItem value="rehearsal">Ensaio</SelectItem>
-          <SelectItem value="other">Outro</SelectItem>
+          {selectableEventTypes.map((eventType) => (
+            <SelectItem key={eventType} value={eventType}>
+              {eventTypeLabels[eventType]}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>

@@ -7,53 +7,76 @@ import { api } from "@/trpc/react";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { TransactionDialog } from "./_components/transaction-dialog";
-import { TransactionsList } from "./_components/transactions-list";
-import { FinanceFilters } from "./_components/finance-filters";
+import { TransactionsList, type TransactionRow } from "./_components/transactions-list";
+import { FinanceFilters, emptyFinanceFilters, type FinanceFiltersState } from "./_components/finance-filters";
 import { MonthlyClosureDialog } from "./_components/monthly-closure-dialog";
+import type { FinancialTransactionFormData, MonthlyClosureFormData } from "@/validators/finance";
+import { PageContainer, PageHeader } from "@/components/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { balanceClassName, formatCurrency } from "./_components/format";
 
 export default function FinancePage() {
-  const [filters, setFilters] = useState({
-    startDate: undefined as Date | undefined,
-    endDate: undefined as Date | undefined,
-    type: "",
-    categoryId: undefined as number | undefined,
-  });
+  const [filters, setFilters] = useState<FinanceFiltersState>(emptyFinanceFilters);
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
   const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionRow | null>(null);
 
-  const { data: summary, isLoading: isLoadingSummary, refetch: refetchSummary } = api.finance.getFinancialSummary.useQuery({
+  const utils = api.useUtils();
+
+  const { data: summary, isLoading: isLoadingSummary } = api.finance.getFinancialSummary.useQuery({
     startDate: filters.startDate,
     endDate: filters.endDate,
   });
 
-  const { data: transactionsData, isLoading: isLoadingTransactions, refetch: refetchTransactions } = api.finance.listTransactions.useQuery({
-    ...filters,
+  const { data: transactionsData, isLoading: isLoadingTransactions } = api.finance.listTransactions.useQuery({
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    type: filters.type === "" ? undefined : filters.type,
+    categoryId: filters.categoryId,
     page: 1,
     limit: 50,
   });
 
-  const { data: categories } = api.finance.listCategories.useQuery({});
+  const { data: categories = [] } = api.finance.listCategories.useQuery({});
+
+  const refreshTransactions = () =>
+    Promise.all([
+      utils.finance.getFinancialSummary.invalidate(),
+      utils.finance.listTransactions.invalidate(),
+      utils.finance.getMonthlyReport.invalidate(),
+    ]);
 
   const createTransaction = api.finance.createTransaction.useMutation({
-    onSuccess: () => {
-      toast.success("Transação registrada com sucesso!");
+    onSuccess: async () => {
+      toast.success("Transação criada com sucesso");
       setIsTransactionDialogOpen(false);
-      refetchSummary();
-      refetchTransactions();
+      await refreshTransactions();
     },
     onError: (error) => {
-      toast.error("Erro ao registrar transação: " + error.message);
+      toast.error(`Erro ao criar transação: ${error.message}`);
+    },
+  });
+
+  const updateTransaction = api.finance.updateTransaction.useMutation({
+    onSuccess: async () => {
+      toast.success("Transação atualizada com sucesso");
+      setIsTransactionDialogOpen(false);
+      setEditingTransaction(null);
+      await refreshTransactions();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar transação: ${error.message}`);
     },
   });
 
   const closeMonth = api.finance.closeMonth.useMutation({
-    onSuccess: () => {
-      toast.success("Mês fechado com sucesso!");
+    onSuccess: async () => {
+      toast.success("Mês fechado com sucesso");
       setIsClosureDialogOpen(false);
+      await Promise.all([utils.finance.getMonthlyClosures.invalidate(), utils.finance.getMonthlyReport.invalidate()]);
     },
     onError: (error) => {
-      toast.error("Erro ao fechar mês: " + error.message);
+      toast.error(`Erro ao fechar mês: ${error.message}`);
     },
   });
 
@@ -62,31 +85,55 @@ export default function FinancePage() {
     setIsTransactionDialogOpen(true);
   };
 
-  const handleEditTransaction = (transaction: any) => {
+  const handleEditTransaction = (transaction: TransactionRow) => {
     setEditingTransaction(transaction);
     setIsTransactionDialogOpen(true);
   };
 
-  const handleSubmitTransaction = (data: any) => {
-    createTransaction.mutate(data);
+  const handleSubmitTransaction = (data: FinancialTransactionFormData) => {
+    if (editingTransaction) {
+      updateTransaction.mutate({ ...data, id: editingTransaction.transaction.id });
+    } else {
+      createTransaction.mutate(data);
+    }
   };
 
-  const handleCloseMonth = (data: any) => {
+  const handleCloseMonth = (data: MonthlyClosureFormData) => {
     closeMonth.mutate(data);
   };
 
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  const search = filters.search.trim().toLocaleLowerCase("pt-BR");
+  const allTransactions = transactionsData?.transactions ?? [];
+  const visibleTransactions = search === ""
+    ? allTransactions
+    : allTransactions.filter(({ transaction }) =>
+        transaction.description.toLocaleLowerCase("pt-BR").includes(search)
+      );
+
+  const balance = summary?.balance ?? 0;
+  const hasFilters =
+    filters.startDate !== undefined ||
+    filters.endDate !== undefined ||
+    filters.type !== "" ||
+    filters.categoryId !== undefined ||
+    search !== "";
+
+  const summaryValue = (value: number | undefined) =>
+    isLoadingSummary ? <Skeleton className="h-8 w-32" /> : formatCurrency(value);
 
   return (
-    <div className="container mx-auto py-4 space-y-6">
+    <PageContainer>
       <TransactionDialog
         open={isTransactionDialogOpen}
         onOpenChange={setIsTransactionDialogOpen}
         onSubmit={handleSubmitTransaction}
-        initialData={editingTransaction}
-        isLoading={createTransaction.isPending}
-        categories={categories || []}
+        transaction={editingTransaction}
+        isLoading={createTransaction.isPending || updateTransaction.isPending}
+        categories={categories}
       />
 
       <MonthlyClosureDialog
@@ -98,35 +145,32 @@ export default function FinancePage() {
         currentYear={currentYear}
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Controle Financeiro</h1>
-          <p className="text-muted-foreground">Gerencie receitas, despesas e fechamentos mensais</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={() => setIsClosureDialogOpen(true)} variant="outline" className="w-full sm:w-auto">
-            <Calendar className="mr-2 h-4 w-4" />
-            Fechar Mês
-          </Button>
-          <Button onClick={handleCreateTransaction} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Transação
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Controle financeiro"
+        description="Gerencie receitas, despesas e fechamentos mensais"
+        icon={DollarSign}
+        actions={
+          <>
+            <Button onClick={() => setIsClosureDialogOpen(true)} variant="outline" className="w-full sm:w-auto">
+              <Calendar className="mr-2 h-4 w-4" />
+              Fechar mês
+            </Button>
+            <Button onClick={handleCreateTransaction} className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova transação
+            </Button>
+          </>
+        }
+      />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Receitas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Total de receitas</CardTitle>
+            <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {isLoadingSummary ? "..." : `R$ ${summary?.totalIncome.toFixed(2)}`}
-            </div>
+            <div className="text-2xl font-bold text-success">{summaryValue(summary?.totalIncome)}</div>
             <p className="text-xs text-muted-foreground">
               Período selecionado
             </p>
@@ -135,13 +179,11 @@ export default function FinancePage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Despesas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium">Total de despesas</CardTitle>
+            <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {isLoadingSummary ? "..." : `R$ ${summary?.totalExpenses.toFixed(2)}`}
-            </div>
+            <div className="text-2xl font-bold text-destructive">{summaryValue(summary?.totalExpenses)}</div>
             <p className="text-xs text-muted-foreground">
               Período selecionado
             </p>
@@ -151,47 +193,36 @@ export default function FinancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
+            <DollarSign className="h-4 w-4 text-info" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${
-              (summary?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {isLoadingSummary ? "..." : `R$ ${summary?.balance.toFixed(2)}`}
-            </div>
+            <div className={`text-2xl font-bold ${balanceClassName(balance)}`}>{summaryValue(summary?.balance)}</div>
             <p className="text-xs text-muted-foreground">
-              {((summary?.balance || 0) >= 0 ? 'Positivo' : 'Negativo')}
+              {isLoadingSummary ? "Período selecionado" : balance >= 0 ? "Positivo" : "Negativo"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>
-            <FinanceFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              categories={categories || []}
-            />
-          </CardTitle>
-        </CardHeader>
+        <CardContent className="pt-6">
+          <FinanceFilters filters={filters} onFiltersChange={setFilters} categories={categories} />
+        </CardContent>
       </Card>
 
-      {/* Transactions */}
       <Card>
         <CardHeader>
-          <CardTitle>Últimas Transações</CardTitle>
+          <CardTitle>Últimas transações</CardTitle>
         </CardHeader>
         <CardContent>
           <TransactionsList
-            transactions={transactionsData?.transactions || []}
+            transactions={visibleTransactions}
             onEdit={handleEditTransaction}
             isLoading={isLoadingTransactions}
+            hasFilters={hasFilters}
           />
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

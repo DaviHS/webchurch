@@ -1,77 +1,76 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef } from "react";
+import type { z } from "zod";
 
-type MessageType = "NAVIGATE" | "SONG_CHANGE" | "CLOSE" | "BLACK_SCREEN" | "READY";
+export type BroadcastPost<TMessage> = (message: TMessage) => boolean;
 
-interface BroadcastMessage {
-  type: MessageType;
-  payload?: any;
+interface UseBroadcastChannelOptions<TMessage> {
+  schema: z.ZodType<TMessage>;
+  onMessage?: (message: TMessage, post: BroadcastPost<TMessage>) => void;
+  onOpen?: (post: BroadcastPost<TMessage>) => void;
+  onClose?: (post: BroadcastPost<TMessage>) => void;
 }
 
-export function useBroadcastChannel(channelName: string) {
+function postTo<TMessage>(channel: BroadcastChannel, message: TMessage): boolean {
+  try {
+    channel.postMessage(message);
+    return true;
+  } catch (error) {
+    console.error("Erro ao enviar mensagem pelo BroadcastChannel:", error);
+    return false;
+  }
+}
+
+export function useBroadcastChannel<TMessage>(
+  channelName: string | null,
+  { schema, onMessage, onOpen, onClose }: UseBroadcastChannelOptions<TMessage>,
+): BroadcastPost<TMessage> {
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const mountedRef = useRef(true);
+
+  const handleMessage = useEffectEvent((channel: BroadcastChannel, data: unknown) => {
+    const result = schema.safeParse(data);
+    if (!result.success) {
+      console.warn("Mensagem inválida ignorada no BroadcastChannel:", result.error.issues);
+      return;
+    }
+    onMessage?.(result.data, (message) => postTo(channel, message));
+  });
+
+  const handleOpen = useEffectEvent((channel: BroadcastChannel) => {
+    onOpen?.((message) => postTo(channel, message));
+  });
+
+  const handleClose = useEffectEvent((channel: BroadcastChannel) => {
+    onClose?.((message) => postTo(channel, message));
+  });
 
   useEffect(() => {
-    mountedRef.current = true;
-    
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     if (!channelName) return;
 
+    let channel: BroadcastChannel;
     try {
-      channelRef.current = new BroadcastChannel(channelName);
+      channel = new BroadcastChannel(channelName);
     } catch (error) {
       console.error("Erro ao criar BroadcastChannel:", error);
+      return;
     }
 
+    const listener = (event: MessageEvent<unknown>) => handleMessage(channel, event.data);
+    channel.addEventListener("message", listener);
+    channelRef.current = channel;
+    handleOpen(channel);
+
     return () => {
-      try {
-        channelRef.current?.close();
-      } catch (error) {
-        // Canal já pode estar fechado
-      }
-      channelRef.current = null;
+      handleClose(channel);
+      channel.removeEventListener("message", listener);
+      channel.close();
+      if (channelRef.current === channel) channelRef.current = null;
     };
   }, [channelName]);
 
-  const sendMessage = useCallback((message: BroadcastMessage) => {
-    if (!mountedRef.current) return;
-    
-    try {
-      channelRef.current?.postMessage(message);
-    } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
-    }
-  }, []);
-
-  const onMessage = useCallback((handler: (message: BroadcastMessage) => void) => {
+  return useCallback((message: TMessage) => {
     const channel = channelRef.current;
-    if (!channel) {
-      return () => {};
-    }
-
-    const listener = (event: MessageEvent<BroadcastMessage>) => {
-      if (!mountedRef.current) return;
-      handler(event.data);
-    };
-
-    channel.addEventListener("message", listener);
-
-    return () => {
-      try {
-        channel.removeEventListener("message", listener);
-      } catch (error) {
-        // Canal já pode estar fechado
-      }
-    };
+    return channel ? postTo(channel, message) : false;
   }, []);
-
-  return { sendMessage, onMessage };
 }

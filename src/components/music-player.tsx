@@ -37,34 +37,11 @@ export function MusicPlayer({
   const [error, setError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
 
-  // Configurar o áudio
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume;
+  }, [volume, isMuted, audioUrl]);
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnd = () => setIsPlaying(false);
-    const handleError = () => setError("Erro ao carregar áudio");
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('ended', handleEnd);
-    audio.addEventListener('error', handleError);
-
-    audio.volume = isMuted ? 0 : volume;
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('ended', handleEnd);
-      audio.removeEventListener('error', handleError);
-    };
-  }, [volume, isMuted]);
-
-  // Controles do player
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -72,12 +49,8 @@ export function MusicPlayer({
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch(err => {
-        setError("Erro ao reproduzir áudio");
-        console.error("Audio play error:", err);
-      });
+      audio.play().catch(() => setError("Erro ao reproduzir áudio"));
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (value: number[]) => {
@@ -117,7 +90,6 @@ export function MusicPlayer({
     audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
   };
 
-  // Se não há URL de áudio, mostrar botão para YouTube
   if (!audioUrl) {
     return (
       <div className="bg-muted rounded-lg p-4">
@@ -132,7 +104,7 @@ export function MusicPlayer({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(youtubeUrl, '_blank')}
+                onClick={() => window.open(youtubeUrl, "_blank", "noopener,noreferrer")}
                 className="flex items-center gap-2"
               >
                 <ExternalLink className="h-4 w-4" />
@@ -159,14 +131,18 @@ export function MusicPlayer({
 
   return (
     <div className="bg-muted rounded-lg p-4 space-y-4">
-      {/* Áudio element (hidden) */}
       <audio
         ref={audioRef}
         src={audioUrl}
         preload="metadata"
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onError={() => setError("Erro ao carregar áudio")}
       />
 
-      {/* Informações da música */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold truncate">{title}</h4>
@@ -178,6 +154,8 @@ export function MusicPlayer({
             variant="ghost"
             size="sm"
             onClick={onDownload}
+            aria-label="Baixar"
+            title="Baixar"
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
@@ -185,7 +163,6 @@ export function MusicPlayer({
         )}
       </div>
 
-      {/* Barra de progresso */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{formatTime(currentTime)}</span>
@@ -201,12 +178,12 @@ export function MusicPlayer({
         />
       </div>
 
-      {/* Controles principais */}
       <div className="flex items-center justify-center gap-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={skipBackward}
+          aria-label="Voltar 10 segundos"
           disabled={!audioUrl}
         >
           <SkipBack className="h-5 w-5" />
@@ -215,6 +192,7 @@ export function MusicPlayer({
         <Button
           size="icon"
           onClick={togglePlay}
+          aria-label={isPlaying ? "Pausar" : "Reproduzir"}
           disabled={!audioUrl || !!error}
           className="h-12 w-12 rounded-full"
         >
@@ -225,18 +203,19 @@ export function MusicPlayer({
           variant="ghost"
           size="icon"
           onClick={skipForward}
+          aria-label="Avançar 10 segundos"
           disabled={!audioUrl}
         >
           <SkipForward className="h-5 w-5" />
         </Button>
       </div>
 
-      {/* Controle de volume */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleMute}
+          aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
           className="h-8 w-8"
         >
           {isMuted || volume === 0 ? (
@@ -255,19 +234,17 @@ export function MusicPlayer({
         />
       </div>
 
-      {/* Mensagem de erro */}
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+        <div role="alert" className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Fallback para YouTube */}
       {youtubeUrl && !audioUrl && (
         <div className="text-center">
           <Button
             variant="outline"
-            onClick={() => window.open(youtubeUrl, '_blank')}
+            onClick={() => window.open(youtubeUrl, "_blank", "noopener,noreferrer")}
             className="flex items-center gap-2 mx-auto"
           >
             <ExternalLink className="h-4 w-4" />

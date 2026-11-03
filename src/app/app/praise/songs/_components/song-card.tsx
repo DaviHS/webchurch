@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { History, Play, Edit, Trash2, Eye, Youtube, MoreVertical } from "lucide-react";
+import { History, Play, Edit, Trash2, Eye, MoreVertical } from "lucide-react";
+import { Youtube } from "@/components/icons/brand";
 import { getCategoryName } from "@/lib/formatters";
 import type { Song } from "@/types";
 
@@ -20,7 +22,6 @@ interface SongCardProps {
   onViewLyrics: (song: Song) => void;
   onPlayYouTube: (song: Song) => void;
   onViewHistory: (song: Song) => void;
-  onPresent: (song: Song) => void;
 }
 
 export function SongCard({
@@ -30,7 +31,6 @@ export function SongCard({
   onViewLyrics,
   onPlayYouTube,
   onViewHistory,
-  onPresent,
 }: SongCardProps) {
   const handleAction = (e: React.MouseEvent, action: () => void) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ export function SongCard({
 
               <DropdownMenuItem
                 onClick={(e) => handleAction(e, () => onDelete(song))}
-                className="flex items-center gap-2 text-red-600"
+                className="flex items-center gap-2 text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
                 <span>Excluir</span>
@@ -95,7 +95,7 @@ export function SongCard({
                 className="flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
-                <span>Ver Letra</span>
+                <span>Ver letra</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -118,20 +118,19 @@ export function SongCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            variant="default"
-            size="sm"
-            onClick={(e) => handleAction(e, () => onViewLyrics(song))}
-            disabled={!song.lyrics}
-            title="Apresentar música"
-            className="h-6 w-6 p-0"
-          >
-            <Play className="h-3 w-3" />
-          </Button>
+          {song.lyrics ? (
+            <Button asChild variant="default" size="sm" title="Apresentar música" className="h-6 w-6 p-0">
+              <Link href={`/presentation/control?song=${song.id}`} onClick={(e) => e.stopPropagation()}>
+                <Play className="h-3 w-3" />
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="default" size="sm" disabled title="Cadastre a letra para apresentar" className="h-6 w-6 p-0">
+              <Play className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
-
-//onClick={(e) => handleAction(e, () => onViewLyrics(song))}

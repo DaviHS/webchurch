@@ -2,8 +2,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export function SongGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-      {[...Array(12)].map((_, i) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      {Array.from({ length: 12 }, (_, i) => (
         <Card key={i} className="h-full animate-pulse">
           <CardHeader className="space-y-2 pb-2">
             <div className="h-4 bg-muted rounded w-3/4"></div>

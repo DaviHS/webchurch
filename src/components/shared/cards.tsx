@@ -30,7 +30,7 @@ const Card = ({
         },
       }}
       className={cn(
-        "group flex cursor-pointer items-center justify-between rounded-xl border border-l-4 border-gray-500 px-4 py-2",
+        "group flex cursor-pointer items-center justify-between rounded-xl border border-l-4 border-muted-foreground bg-card px-4 py-2 text-card-foreground",
         className,
       )}
     >

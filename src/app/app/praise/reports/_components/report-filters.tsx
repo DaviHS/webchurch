@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Filter, X } from "lucide-react";
+import { AlertTriangle, Filter, X } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { SongSearchInput } from "./song-search-input";
 import type { Song, DateRange } from "@/types";
@@ -111,9 +111,10 @@ export function ReportFilters({
         </div>
 
         {timeRange === "custom" && !isDateRangeValid && (
-          <div className="mt-1.5 text-[10px] sm:text-xs text-amber-500">
-            ⚠️ Selecione a data inicial e final para consultar
-          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            Selecione a data inicial e a final para consultar.
+          </p>
         )}
       </CardContent>
     </Card>

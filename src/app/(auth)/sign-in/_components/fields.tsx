@@ -1,8 +1,7 @@
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 
 interface Props {
   email: string
@@ -21,14 +20,12 @@ export default function Fields({
   showPassword,
   onToggleShowPassword,
 }: Props) {
-  const router = useRouter()
-
   return (
     <>
       <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <Label htmlFor="email">
           E-mail
-        </label>
+        </Label>
         <Input
           id="email"
           type="email"
@@ -40,9 +37,9 @@ export default function Fields({
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
+        <Label htmlFor="password">
           Senha
-        </label>
+        </Label>
         <div className="relative">
           <Input
             id="password"
@@ -57,7 +54,8 @@ export default function Fields({
             variant="ghost"
             size="sm"
             onClick={onToggleShowPassword}
-            className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground hover:text-foreground"
+            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:bg-transparent hover:text-foreground"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>

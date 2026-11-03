@@ -4,98 +4,88 @@ import { api } from "@/trpc/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Loader2, Users, UserCheck, UserX } from "lucide-react";
+import { Check, X, Users, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { PageContainer, PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export default function PendingUsersPage() {
+  const utils = api.useUtils();
   const { data: pendingUsers, isLoading, refetch } = api.user.getPending.useQuery();
-  const approveMutation = api.user.approve.useMutation();
-  const rejectMutation = api.user.reject.useMutation();
 
-  const handleApprove = async (userId: number) => {
-    try {
-      await approveMutation.mutateAsync({ id: userId });
-      toast.success("Usuário aprovado com sucesso!");
-      refetch();
-    } catch (error) {
-      toast.error("Erro ao aprovar usuário");
-    }
+  const refreshPending = async () => {
+    await Promise.all([refetch(), utils.user.getPendingCount.invalidate()]);
   };
 
-  const handleReject = async (userId: number) => {
-    try {
-      await rejectMutation.mutateAsync({ id: userId });
-      toast.success("Acesso rejeitado");
-      refetch();
-    } catch (error) {
-      toast.error("Erro ao rejeitar acesso");
-    }
-  };
+  const approveMutation = api.user.approve.useMutation({
+    onSuccess: async () => {
+      toast.success("Usuário aprovado com sucesso");
+      await refreshPending();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao aprovar usuário: ${error.message}`);
+    },
+  });
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-4">
-        <div className="flex justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  const rejectMutation = api.user.reject.useMutation({
+    onSuccess: async () => {
+      toast.success("Acesso rejeitado com sucesso");
+      await refreshPending();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao rejeitar acesso: ${error.message}`);
+    },
+  });
+
+  const isMutating = approveMutation.isPending || rejectMutation.isPending;
 
   return (
-    <div className="container mx-auto py-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Aprovação de Usuários</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Gerencie as solicitações de acesso ao sistema
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-sm">
-            <Users className="h-4 w-4 mr-1" />
-            {pendingUsers?.length || 0} pendentes
-          </Badge>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Aprovação de usuários"
+        description="Gerencie as solicitações de acesso ao sistema"
+        icon={UserCheck}
+        actions={
+          !isLoading && (
+            <Badge variant="secondary" className="text-sm">
+              <Users className="mr-1 h-4 w-4" />
+              {pendingUsers?.length ?? 0} pendentes
+            </Badge>
+          )
+        }
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5" />
-            Usuários Pendentes de Aprovação
-          </CardTitle>
-          <CardDescription>
-            Aprove ou rejeite solicitações de acesso ao sistema
-          </CardDescription>
+          <CardTitle>Usuários pendentes de aprovação</CardTitle>
+          <CardDescription>Aprove ou rejeite solicitações de acesso ao sistema</CardDescription>
         </CardHeader>
         <CardContent>
-          {!pendingUsers || pendingUsers.length === 0 ? (
-            <div className="text-center py-8">
-              <UserX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Nenhum usuário pendente de aprovação</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Novos usuários aparecerão aqui quando se registrarem
-              </p>
-            </div>
+          {isLoading ? (
+            <LoadingState message="Carregando solicitações..." />
+          ) : !pendingUsers || pendingUsers.length === 0 ? (
+            <EmptyState
+              icon={UserCheck}
+              title="Nenhum usuário pendente de aprovação"
+              description="Novos usuários aparecerão aqui quando se registrarem."
+            />
           ) : (
             <div className="space-y-4">
               {pendingUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4"
+                  className="flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <p className="font-semibold text-base truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-semibold">
                         {user.firstName} {user.lastName}
                       </p>
-                      <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                        Pendente
-                      </Badge>
+                      <Badge variant="warning">Pendente</Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                       <div className="space-y-1">
                         <p className="truncate">
                           <span className="font-medium">Email:</span> {user.email}
@@ -109,31 +99,30 @@ export default function PendingUsersPage() {
                       <div className="space-y-1">
                         <p className="text-xs">
                           <span className="font-medium">Registrado em:</span>{" "}
-                          {new Date(user.createdAt!).toLocaleDateString("pt-BR")}
+                          {new Date(user.createdAt).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* --> Container dos botões: MOBILE = linha 50/50 ; SM+ = coluna (um em cima do outro), alinhada à direita */}
                   <div className="flex w-full gap-2 sm:w-auto sm:flex-col sm:items-end">
                     <Button
-                      className="flex-1 sm:flex-none sm:w-auto"
+                      className="flex-1 sm:w-auto sm:flex-none"
                       size="sm"
-                      onClick={() => handleApprove(user.id)}
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      onClick={() => approveMutation.mutate({ id: user.id })}
+                      disabled={isMutating}
                     >
-                      <Check className="h-4 w-4 mr-1" />
+                      <Check className="mr-1 h-4 w-4" />
                       Aprovar
                     </Button>
                     <Button
-                      className="flex-1 sm:flex-none sm:w-auto"
+                      className="flex-1 sm:w-auto sm:flex-none"
                       size="sm"
                       variant="outline"
-                      onClick={() => handleReject(user.id)}
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      onClick={() => rejectMutation.mutate({ id: user.id })}
+                      disabled={isMutating}
                     >
-                      <X className="h-4 w-4 mr-1" />
+                      <X className="mr-1 h-4 w-4" />
                       Rejeitar
                     </Button>
                   </div>
@@ -143,6 +132,6 @@ export default function PendingUsersPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

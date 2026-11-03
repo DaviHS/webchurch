@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -7,17 +8,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, MoreVertical, BarChart, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Edit, MoreVertical, BarChart, Trash2, Projector } from "lucide-react";
+import type { EventData } from "@/types";
 
 interface EventActionsProps {
-  event: any;
-  onEdit: (event: any) => void;
-  onDelete: (event: any) => void;
-  onViewDetails: (event: any) => void;
+  event: EventData;
+  onEdit: (event: EventData) => void;
+  onDelete: (event: EventData) => void;
+  onViewDetails: (event: EventData) => void;
 }
 
 export function EventActions({ event, onEdit, onDelete, onViewDetails }: EventActionsProps) {
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
+  const handleAction = (e: MouseEvent, action: () => void) => {
     e.preventDefault();
     e.stopPropagation();
     action();
@@ -37,9 +40,9 @@ export function EventActions({ event, onEdit, onDelete, onViewDetails }: EventAc
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="h-6 w-6 p-0"
             onClick={(e) => {
               e.preventDefault();
@@ -49,18 +52,24 @@ export function EventActions({ event, onEdit, onDelete, onViewDetails }: EventAc
             <MoreVertical className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
+        <DropdownMenuContent align="end" className="w-36">
           <DropdownMenuItem onClick={(e) => handleAction(e, () => onEdit(event))}>
             <Edit className="h-4 w-4 mr-2" />
             Editar
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => handleAction(e, () => onDelete(event))} className="text-red-600">
+          <DropdownMenuItem onClick={(e) => handleAction(e, () => onDelete(event))} className="text-destructive focus:text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Excluir
           </DropdownMenuItem>
           <DropdownMenuItem onClick={(e) => handleAction(e, () => onViewDetails(event))}>
             <BarChart className="h-4 w-4 mr-2" />
             Detalhes
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/presentation/control?event=${event.id}`} onClick={(e) => e.stopPropagation()}>
+              <Projector className="h-4 w-4 mr-2" />
+              Apresentar
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

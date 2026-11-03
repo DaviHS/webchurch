@@ -12,6 +12,13 @@ export type Option = {
   value: string
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string")
+}
+
+const MAX_VISIBLE_BADGES = 5
+
 interface MultiSelectProps {
   options: Option[]
   placeholder?: string
@@ -28,16 +35,20 @@ export function MultiSelect({
   className,
 }: MultiSelectProps) {
   const form = useFormContext()
-  const maxVisibleBadges = 5 // Ajuste para o número máximo de badges visíveis
 
   return (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => {
-        // Calcular o número de badges visíveis
-        const visibleBadges = field.value?.slice(0, maxVisibleBadges)
-        const hiddenBadgesCount = field.value?.length - maxVisibleBadges
+        const selected = toStringArray(field.value)
+        const visibleBadges = selected.slice(0, MAX_VISIBLE_BADGES)
+        const hiddenBadgesCount = selected.length - MAX_VISIBLE_BADGES
+        const toggle = (value: string) => {
+          field.onChange(
+            selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value],
+          )
+        }
 
         return (
           <FormItem className={className}>
@@ -48,21 +59,22 @@ export function MultiSelect({
                   <div
                     className={cn(
                       "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-                      "focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                      "focus-within:outline-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
                       "cursor-pointer",
                     )}
                   >
-                    {field.value?.length > 0 ? (
+                    {selected.length > 0 ? (
                       <div className="flex flex-nowrap gap-1.5 overflow-x-hidden">
-                        {visibleBadges?.map((item: string) => (
+                        {visibleBadges.map((item) => (
                           <Badge variant="secondary" key={item} className="flex items-center gap-1 px-2">
                             {options.find((option) => option.value === item)?.label}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                field.onChange(field.value.filter((i: string) => i !== item))
+                                toggle(item)
                               }}
+                              aria-label={`Remover ${options.find((option) => option.value === item)?.label ?? item}`}
                               className="ml-1 rounded-full hover:bg-muted"
                             >
                               <X className="h-3 w-3" />
@@ -80,7 +92,7 @@ export function MultiSelect({
                     )}
                   </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Pesquisar..." />
                     <CommandList>
@@ -89,18 +101,12 @@ export function MultiSelect({
                         {options.map((option) => (
                           <CommandItem
                             key={option.value}
-                            onSelect={() => {
-                              const currentValues = field.value || []
-                              const newValue = currentValues.includes(option.value)
-                                ? currentValues.filter((value: string) => value !== option.value)
-                                : [...currentValues, option.value]
-                              field.onChange(newValue)
-                            }}
+                            onSelect={() => toggle(option.value)}
                           >
                             <div
                               className={cn(
                                 "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                field.value?.includes(option.value)
+                                selected.includes(option.value)
                                   ? "bg-primary text-primary-foreground"
                                   : "opacity-50 [&_svg]:invisible",
                               )}

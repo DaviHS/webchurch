@@ -1,8 +1,8 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { financialTransactionSchema, type FinancialTransactionFormData } from "@/validators/finance";
+import { financialTransactionSchema, type FinancialTransactionFormData, type FinancialTransactionFormInput } from "@/validators/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,61 +10,93 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { FinancialCategory } from "./finance-filters";
+import type { TransactionRow } from "./transactions-list";
+
+const { shape } = financialTransactionSchema;
+
+export function transactionToFormValues({ transaction }: TransactionRow): Partial<FinancialTransactionFormInput> {
+  const type = shape.type.safeParse(transaction.type);
+  const paymentMethod = shape.paymentMethod.safeParse(transaction.paymentMethod);
+  const recurrencePattern = shape.recurrencePattern.safeParse(transaction.recurrencePattern);
+
+  return {
+    categoryId: transaction.categoryId,
+    type: type.success ? type.data : undefined,
+    amount: transaction.amount,
+    description: transaction.description,
+    transactionDate: transaction.transactionDate,
+    paymentMethod: paymentMethod.success ? paymentMethod.data : undefined,
+    referenceNumber: transaction.referenceNumber ?? undefined,
+    memberId: transaction.memberId ?? undefined,
+    isRecurring: transaction.isRecurring ?? undefined,
+    recurrencePattern: recurrencePattern.success ? recurrencePattern.data : undefined,
+    notes: transaction.notes ?? undefined,
+  };
+}
 
 interface TransactionFormProps {
   onSubmit: (data: FinancialTransactionFormData) => void;
-  initialData?: Partial<FinancialTransactionFormData>;
+  initialData?: Partial<FinancialTransactionFormInput>;
   isLoading?: boolean;
-  categories: any[];
+  categories: FinancialCategory[];
+  onCancel?: () => void;
 }
 
-export function TransactionForm({ onSubmit, initialData, isLoading = false, categories }: TransactionFormProps) {
-  const form = useForm<FinancialTransactionFormData>({
+export function TransactionForm({ onSubmit, initialData, isLoading = false, categories, onCancel }: TransactionFormProps) {
+  const form = useForm<FinancialTransactionFormInput, unknown, FinancialTransactionFormData>({
     resolver: zodResolver(financialTransactionSchema),
     defaultValues: {
-      categoryId: initialData?.categoryId || undefined,
-      type: initialData?.type || "income",
-      amount: initialData?.amount || "",
-      description: initialData?.description || "",
-      transactionDate: initialData?.transactionDate ? new Date(initialData.transactionDate) : new Date(),
-      paymentMethod: initialData?.paymentMethod || "cash",
-      referenceNumber: initialData?.referenceNumber || "",
-      memberId: initialData?.memberId || undefined,
-      isRecurring: initialData?.isRecurring || false,
-      recurrencePattern: initialData?.recurrencePattern || "monthly",
-      notes: initialData?.notes || "",
-    }
+      categoryId: initialData?.categoryId,
+      type: initialData?.type ?? "income",
+      amount: initialData?.amount ?? "",
+      description: initialData?.description ?? "",
+      transactionDate: initialData?.transactionDate ?? new Date(),
+      paymentMethod: initialData?.paymentMethod ?? "cash",
+      referenceNumber: initialData?.referenceNumber ?? "",
+      memberId: initialData?.memberId,
+      isRecurring: initialData?.isRecurring ?? false,
+      recurrencePattern: initialData?.recurrencePattern ?? "monthly",
+      notes: initialData?.notes ?? "",
+    },
   });
 
-  const handleSubmit = (data: FinancialTransactionFormData) => {
-    const formattedData = {
-      ...data,
-      transactionDate: data.transactionDate instanceof Date ? data.transactionDate : new Date(data.transactionDate),
-    };
-    
-    onSubmit(formattedData);
-  };
+  const selectedType = useWatch({ control: form.control, name: "type" });
+  const isRecurring = useWatch({ control: form.control, name: "isRecurring" });
 
-  const incomeCategories = categories.filter(cat => cat.type === 'income');
-  const expenseCategories = categories.filter(cat => cat.type === 'expense');
+  const categoryTypeFor = (type: FinancialTransactionFormInput["type"]) => (type === "income" ? "income" : "expense");
+  const visibleCategories = categories.filter((cat) => cat.type === categoryTypeFor(selectedType));
+
+  const handleTypeChange = (type: FinancialTransactionFormInput["type"]) => {
+    form.setValue("type", type, { shouldDirty: true });
+    const currentCategory = categories.find((cat) => cat.id === form.getValues("categoryId"));
+    if (currentCategory && currentCategory.type !== categoryTypeFor(type)) {
+      form.setValue("categoryId", 0, { shouldDirty: true });
+    }
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Tipo */}
           <FormField
             control={form.control}
             name="type"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={(value) => {
+                    const parsed = shape.type.safeParse(value);
+                    if (parsed.success) handleTypeChange(parsed.data);
+                  }}
+                  value={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
@@ -81,32 +113,27 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
             )}
           />
 
-          {/* Categoria */}
           <FormField
             control={form.control}
             name="categoryId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria *</FormLabel>
-                <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
+                <Select
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  value={field.value ? String(field.value) : ""}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {form.watch('type') === 'income' 
-                      ? incomeCategories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
-                            {cat.name}
-                          </SelectItem>
-                        ))
-                      : expenseCategories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
-                            {cat.name}
-                          </SelectItem>
-                        ))
-                    }
+                    {visibleCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -114,7 +141,6 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
             )}
           />
 
-          {/* Valor */}
           <FormField
             control={form.control}
             name="amount"
@@ -129,7 +155,6 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
             )}
           />
 
-          {/* Data */}
           <FormField
             control={form.control}
             name="transactionDate"
@@ -169,13 +194,12 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
             )}
           />
 
-          {/* Método de Pagamento */}
           <FormField
             control={form.control}
             name="paymentMethod"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Método de Pagamento</FormLabel>
+                <FormLabel>Método de pagamento</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -194,13 +218,12 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
             )}
           />
 
-          {/* Número de Referência */}
           <FormField
             control={form.control}
             name="referenceNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Número de Referência</FormLabel>
+                <FormLabel>Número de referência</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -210,7 +233,6 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
           />
         </div>
 
-        {/* Descrição */}
         <FormField
           control={form.control}
           name="description"
@@ -225,7 +247,6 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
           )}
         />
 
-        {/* Recorrente */}
         <FormField
           control={form.control}
           name="isRecurring"
@@ -238,13 +259,13 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Transação Recorrente</FormLabel>
+                <FormLabel>Transação recorrente</FormLabel>
               </div>
             </FormItem>
           )}
         />
 
-        {form.watch("isRecurring") && (
+        {isRecurring && (
           <FormField
             control={form.control}
             name="recurrencePattern"
@@ -269,7 +290,6 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
           />
         )}
 
-        {/* Notas */}
         <FormField
           control={form.control}
           name="notes"
@@ -284,9 +304,18 @@ export function TransactionForm({ onSubmit, initialData, isLoading = false, cate
           )}
         />
 
-        <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
-          {isLoading ? "Salvando..." : initialData ? "Atualizar" : "Salvar"}
-        </Button>
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              <X className="mr-2 h-4 w-4" />
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isLoading ? "Salvando..." : initialData ? "Salvar" : "Criar"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

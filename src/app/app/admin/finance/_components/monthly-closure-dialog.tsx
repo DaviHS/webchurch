@@ -23,7 +23,7 @@ export function MonthlyClosureDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fechamento do Mês</DialogTitle>
+          <DialogTitle>Fechamento do mês</DialogTitle>
           <DialogDescription>
             Realize o fechamento financeiro do mês selecionado. 
             Este processo calculará automaticamente o saldo final.
@@ -34,6 +34,7 @@ export function MonthlyClosureDialog({
           isLoading={isLoading}
           currentMonth={currentMonth}
           currentYear={currentYear}
+          onCancel={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>

@@ -1,4 +1,3 @@
-// components/share-button.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,19 +6,22 @@ import { toast } from "sonner";
 
 export function ShareButton({ title, url }: { title: string; url: string }) {
   const handleShare = async () => {
-    if (navigator.share) {
+    if (typeof navigator.share === "function") {
       try {
-        await navigator.share({
-          title: title,
-          url: url,
-        });
+        await navigator.share({ title, url });
       } catch (error) {
-        console.log('Erro ao compartilhar:', error);
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          toast.error("Não foi possível compartilhar o link.");
+        }
       }
-    } else {
-      // Fallback: copiar para área de transferência
-      navigator.clipboard.writeText(url);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
       toast.success("Link copiado para a área de transferência!");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
     }
   };
 

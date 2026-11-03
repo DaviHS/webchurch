@@ -2,20 +2,23 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Users } from "lucide-react";
 import { api } from "@/trpc/react";
+import { skipToken } from "@tanstack/react-query";
+import type { Ministry } from "./ministry-dialog";
+import { MemberStatusBadge } from "../../members/_components/member-status-badge";
 
 interface MinistryMembersDialogProps {
-  ministry: any;
+  ministry: Ministry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function MinistryMembersDialog({ ministry, open, onOpenChange }: MinistryMembersDialogProps) {
   const { data: ministryMembers = [], isLoading } = api.ministry.getMinistryMembers.useQuery(
-    { ministryId: ministry?.id },
-    { enabled: !!ministry && open }
+    ministry && open ? { ministryId: ministry.id } : skipToken
   );
 
   if (!ministry) return null;
@@ -26,18 +29,15 @@ export function MinistryMembersDialog({ ministry, open, onOpenChange }: Ministry
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Membros do Ministério: {ministry.name}
+            Membros do ministério: {ministry.name}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {isLoading ? (
-            <div className="text-center py-4">Carregando membros...</div>
+            <LoadingState message="Carregando membros..." />
           ) : ministryMembers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum membro vinculado a este ministério</p>
-            </div>
+            <EmptyState icon={Users} title="Nenhum membro vinculado a este ministério" />
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
@@ -52,26 +52,7 @@ export function MinistryMembersDialog({ ministry, open, onOpenChange }: Ministry
                           <span className="font-medium">
                             {member.firstName} {member.lastName}
                           </span>
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs"
-                            style={{
-                              backgroundColor: 
-                                member.status === 'active' ? '#f0fdf4' :
-                                member.status === 'inactive' ? '#fef2f2' :
-                                member.status === 'visiting' ? '#eff6ff' :
-                                '#fefce8',
-                              color: 
-                                member.status === 'active' ? '#166534' :
-                                member.status === 'inactive' ? '#dc2626' :
-                                member.status === 'visiting' ? '#1d4ed8' :
-                                '#ca8a04'
-                            }}
-                          >
-                            {member.status === 'active' ? 'Ativo' :
-                             member.status === 'inactive' ? 'Inativo' :
-                             member.status === 'visiting' ? 'Visitante' : 'Transferido'}
-                          </Badge>
+                          <MemberStatusBadge status={member.status} />
                         </div>
                         {member.functionName && (
                           <p className="text-sm text-muted-foreground">

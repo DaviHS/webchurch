@@ -15,6 +15,8 @@ import {
 import { Calendar, Music } from "lucide-react";
 import { format } from "date-fns";
 import { getEventTypeName } from "@/lib/formatters";
+import { EmptyState } from "@/components/ui/empty-state";
+import { getEventTypeBadgeVariant } from "../../events/_components/event-type";
 import type { Song, SongExecution } from "@/types";
 
 interface SongDetailsDialogProps {
@@ -40,7 +42,7 @@ export function SongDetailsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base sm:text-xl">
             <Music className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            {song?.title || "Detalhes da Música"}
+            {song?.title ?? "Detalhes da música"}
           </DialogTitle>
           {song?.artist && (
             <DialogDescription className="text-xs sm:text-sm">
@@ -71,7 +73,7 @@ export function SongDetailsDialog({
                 </div>
                 <div className="text-center p-2 sm:p-3 bg-muted/30 rounded-lg">
                   <div className="text-sm sm:text-2xl font-bold text-primary">
-                    {format(new Date(executions[0]?.eventDate || new Date()), "dd/MM/yyyy")}
+                    {format(new Date(executions[0]?.eventDate ?? new Date()), "dd/MM/yyyy")}
                   </div>
                   <div className="text-[10px] sm:text-xs text-muted-foreground">
                     Última execução
@@ -95,7 +97,7 @@ export function SongDetailsDialog({
                     key={execution.id}
                     className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 border rounded-lg hover:bg-muted/30 transition-colors"
                   >
-                    <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-primary/10 text-primary rounded-full text-[10px] sm:text-xs font-medium flex-shrink-0 mt-0.5">
+                    <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-primary/10 text-primary rounded-full text-[10px] sm:text-xs font-medium shrink-0 mt-0.5">
                       {index + 1}
                     </div>
 
@@ -104,7 +106,7 @@ export function SongDetailsDialog({
                         <span className="font-medium text-xs sm:text-sm truncate">
                           {execution.eventTitle}
                         </span>
-                        <Badge variant="outline" className="text-[8px] sm:text-xs">
+                        <Badge variant={getEventTypeBadgeVariant(execution.eventType)} className="text-[10px] sm:text-xs">
                           {getEventTypeName(execution.eventType)}
                         </Badge>
                       </div>
@@ -114,7 +116,7 @@ export function SongDetailsDialog({
                           <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           {format(new Date(execution.eventDate), "dd/MM/yyyy")}
                         </span>
-                        {execution.order && (
+                        {execution.order > 0 && (
                           <span className="flex items-center gap-0.5 sm:gap-1">
                             <Music className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             Ordem: {execution.order}
@@ -129,7 +131,7 @@ export function SongDetailsDialog({
                       )}
                     </div>
 
-                    <Badge variant="secondary" className="text-[8px] sm:text-xs flex-shrink-0">
+                    <Badge variant="secondary" className="text-[10px] sm:text-xs shrink-0">
                       #{index + 1}
                     </Badge>
                   </div>
@@ -138,14 +140,15 @@ export function SongDetailsDialog({
             </div>
           </ScrollArea>
         ) : (
-          <div className="text-center py-6 sm:py-8 text-muted-foreground">
-            <Music className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 opacity-50" />
-            <p className="text-sm font-medium">Nenhuma execução encontrada</p>
-            <p className="text-xs sm:text-sm">Para esta música no período selecionado</p>
-          </div>
+          <EmptyState
+            icon={Music}
+            title="Nenhuma execução encontrada"
+            description="Esta música não foi tocada no período selecionado."
+            className="py-8"
+          />
         )}
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2 sm:space-x-0">
           <DialogClose asChild>
             <Button variant="outline" size="sm" className="w-full sm:w-auto">
               Fechar

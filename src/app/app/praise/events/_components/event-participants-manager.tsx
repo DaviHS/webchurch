@@ -1,4 +1,3 @@
-// src/app/praise/events/_components/event-participants-manager.tsx
 "use client";
 
 import { useState } from "react";
@@ -11,10 +10,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Plus, Trash2, Users, User, ChevronDown } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/ui/empty-state";
+import type { EventParticipant } from "@/types";
+
+const COMMON_ROLES = ["Vocalista", "Back Vocal", "Líder"];
+
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : "erro desconhecido");
 
 interface EventParticipantsManagerProps {
   eventId: number;
-  participants: any[];
+  participants: EventParticipant[];
   onUpdate: () => void;
 }
 
@@ -25,9 +30,8 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
   });
   const [isAdding, setIsAdding] = useState(false);
 
-  // Buscar dados
-  const { data: membersData } = api.member.getAll.useQuery({});
-  const allMembers = membersData?.map((item: any) => item.members) || [];
+  const { data: membersData } = api.member.getAll.useQuery({ limit: 100 });
+  const allMembers = membersData?.map((item) => item.members) ?? [];
 
   const addParticipantMutation = api.event.addParticipant.useMutation();
   const removeParticipantMutation = api.event.removeParticipant.useMutation();
@@ -49,7 +53,7 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
       setNewParticipant({ memberId: "", role: "" });
       onUpdate();
     } catch (error) {
-      toast.error("Erro ao adicionar participante");
+      toast.error("Erro ao adicionar participante: " + errorMessage(error));
     }
   };
 
@@ -60,21 +64,13 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
         toast.success("Participante removido com sucesso!");
         onUpdate();
       } catch (error) {
-        toast.error("Erro ao remover participante");
+        toast.error("Erro ao remover participante: " + errorMessage(error));
       }
     }
   };
 
-  // Lista de funções para sugestão
-  const commonRoles = [
-    "Vocalista",
-    "Back Vocal",
-    "Líder"
-  ];
-
   return (
     <div className="space-y-4">
-      {/* Collapsible para Adicionar Participante */}
       <Collapsible open={isAdding} onOpenChange={setIsAdding} className="border rounded-lg">
         <Card className="border-0 shadow-none">
           <CardContent className="p-0">
@@ -85,7 +81,7 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
               >
                 <div className="flex items-center gap-2">
                   <Plus className="h-5 w-5" />
-                  <span className="font-semibold">Adicionar Participante</span>
+                  <span className="font-semibold">Adicionar participante</span>
                 </div>
                 <ChevronDown className={`h-4 w-4 transition-transform ${isAdding ? 'rotate-180' : ''}`} />
               </Button>
@@ -100,11 +96,11 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
                       value={newParticipant.memberId} 
                       onValueChange={(value) => setNewParticipant(prev => ({ ...prev, memberId: value }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="member-select">
                         <SelectValue placeholder="Escolha um membro..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {allMembers.map((member: any) => (
+                        {allMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id.toString()}>
                             {member.firstName} {member.lastName}
                           </SelectItem>
@@ -117,14 +113,15 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
                     <Label htmlFor="role-input" className="text-sm font-medium">Função</Label>
                     <div className="relative">
                       <Input
+                        id="role-input"
                         placeholder="Ex: Vocalista, Back Vocal..."
                         value={newParticipant.role}
                         onChange={(e) => setNewParticipant(prev => ({ ...prev, role: e.target.value }))}
                         list="role-suggestions"
                       />
                       <datalist id="role-suggestions">
-                        {commonRoles.map((role, index) => (
-                          <option key={index} value={role} />
+                        {COMMON_ROLES.map((role) => (
+                          <option key={role} value={role} />
                         ))}
                       </datalist>
                     </div>
@@ -147,7 +144,6 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
         </Card>
       </Collapsible>
 
-      {/* Lista de Participantes */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
@@ -158,21 +154,20 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
           </div>
 
           {participants.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhum participante adicionado</p>
-              <p className="text-sm">Adicione participantes usando o seletor acima</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="Nenhum participante adicionado"
+              description="Adicione participantes usando o formulário acima."
+              className="py-8"
+            />
           ) : (
             <div className="space-y-2">
-              {participants.map((participant: any, index: number) => (
+              {participants.map((participant, index) => (
                 <div key={participant.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  {/* Número/Índice */}
                   <div className="flex items-center justify-center w-8 h-8 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">
                     {index + 1}
                   </div>
 
-                  {/* Informações do Participante */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">
                       {participant.member?.firstName} {participant.member?.lastName}
@@ -183,12 +178,13 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
                     </div>
                   </div>
 
-                  {/* Ações */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleRemoveParticipant(participant.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    title="Remover participante"
+                    aria-label="Remover participante"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

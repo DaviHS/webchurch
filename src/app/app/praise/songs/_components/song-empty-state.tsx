@@ -1,18 +1,34 @@
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Music, Plus, SearchX } from "lucide-react";
 
 interface SongEmptyStateProps {
   onCreateClick: () => void;
+  filtered?: boolean;
 }
 
-export function SongEmptyState({ onCreateClick }: SongEmptyStateProps) {
+export function SongEmptyState({ onCreateClick, filtered = false }: SongEmptyStateProps) {
+  if (filtered) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title="Nenhuma música encontrada"
+        description="Tente buscar por outro termo ou trocar a categoria."
+      />
+    );
+  }
+
   return (
-    <div className="text-center py-12">
-      <p className="text-muted-foreground">Nenhuma música encontrada</p>
-      <Button variant="outline" className="mt-4" onClick={onCreateClick}>
-        <Plus className="mr-2 h-4 w-4" />
-        Criar primeira música
-      </Button>
-    </div>
+    <EmptyState
+      icon={Music}
+      title="Nenhuma música cadastrada"
+      description="Cadastre a primeira música do repertório."
+      action={
+        <Button variant="outline" onClick={onCreateClick}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova música
+        </Button>
+      }
+    />
   );
 }

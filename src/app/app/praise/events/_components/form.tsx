@@ -2,57 +2,48 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DatePicker } from "@/components/ui/date-picker";
-import { EventFormData, eventSchema } from "@/validators/event";
+import { type EventFormData, type EventFormInput, eventSchema, eventTypes } from "@/validators/event";
+import type { EventData } from "@/types";
+import { eventTypeLabels, selectableEventTypes } from "./event-type";
 
 interface EventFormProps {
   onSubmit: (data: EventFormData) => void;
-  initialData?: Partial<EventFormData>;
+  initialData?: EventData | null;
   isLoading?: boolean;
+  onCancel?: () => void;
 }
 
-export function EventForm({ onSubmit, initialData, isLoading = false }: EventFormProps) {
-  const form = useForm<EventFormData>({
+function toFormValues(event: EventData | null | undefined): EventFormInput {
+  return {
+    title: event?.title ?? "",
+    description: event?.description ?? "",
+    type: event?.type ?? "cult",
+    date: event?.date ? new Date(event.date) : new Date(),
+    startTime: event?.startTime ?? "",
+    endTime: event?.endTime ?? "",
+    location: event?.location ?? "",
+    preacher: event?.preacher ?? "",
+    bibleVerse: event?.bibleVerse ?? "",
+  };
+}
+
+export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }: EventFormProps) {
+  const form = useForm<EventFormInput, unknown, EventFormData>({
     resolver: zodResolver(eventSchema),
-    defaultValues: {
-      title: initialData?.title || "",
-      description: initialData?.description || "",
-      type: initialData?.type || "cult",
-      date: initialData?.date ? new Date(initialData.date) : new Date(),
-      startTime: initialData?.startTime || "",
-      endTime: initialData?.endTime || "",
-      location: initialData?.location || "",
-      preacher: initialData?.preacher || "",
-      bibleVerse: initialData?.bibleVerse || "",
-    }
+    defaultValues: toFormValues(initialData),
   });
 
-  const handleSubmit = (data: EventFormData) => {
-    if (!data.date) {
-      form.setError("date", {
-        type: "manual",
-        message: "Data é obrigatória"
-      });
-      return;
-    }
-
-    const formattedData: EventFormData = {
-      ...data,
-      date: data.date,
-    };
-    
-    onSubmit(formattedData);
-  };
+  const typeOptions = initialData?.type === "template" ? eventTypes : selectableEventTypes;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <FormField
@@ -76,18 +67,18 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="cult">Culto</SelectItem>
-                    <SelectItem value="celebration">Celebração</SelectItem>
-                    <SelectItem value="meeting">Reunião</SelectItem>
-                    <SelectItem value="conference">Conferência</SelectItem>
-                    <SelectItem value="other">Outro</SelectItem>
+                    {typeOptions.map((eventType) => (
+                      <SelectItem key={eventType} value={eventType}>
+                        {eventTypeLabels[eventType]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -103,10 +94,8 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
                 <FormLabel>Data *</FormLabel>
                 <FormControl>
                   <DatePicker
-                    date={field.value || undefined}
-                    setDate={(date) => {
-                      field.onChange(date || null);
-                    }}
+                    date={field.value ? new Date(field.value) : undefined}
+                    setDate={(date) => field.onChange(date ?? "")}
                     placeholder="Selecione uma data"
                   />
                 </FormControl>
@@ -137,7 +126,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
               name="startTime"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Hora Início</FormLabel>
+                  <FormLabel>Hora de início</FormLabel>
                   <FormControl>
                     <Input type="time" {...field} className="text-sm" />
                   </FormControl>
@@ -151,7 +140,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
               name="endTime"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Hora Fim</FormLabel>
+                  <FormLabel>Hora de término</FormLabel>
                   <FormControl>
                     <Input type="time" {...field} className="text-sm" />
                   </FormControl>
@@ -180,7 +169,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
             name="bibleVerse"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Versículo Bíblico</FormLabel>
+                <FormLabel>Versículo bíblico</FormLabel>
                 <FormControl>
                   <Input {...field} placeholder="Ex: João 3:16" />
                 </FormControl>
@@ -204,9 +193,16 @@ export function EventForm({ onSubmit, initialData, isLoading = false }: EventFor
           )}
         />
 
-        <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
-          {isLoading ? "Salvando..." : "Salvar"}
-        </Button>
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Salvando..." : initialData ? "Salvar alterações" : "Criar evento"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

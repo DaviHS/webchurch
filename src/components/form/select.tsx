@@ -37,7 +37,7 @@ const Select = React.forwardRef<
           <FormLabel>{label}</FormLabel>
           <SelectSC
             onValueChange={field.onChange}
-            defaultValue={field.value as string}
+            value={typeof field.value === "string" ? field.value : ""}
           >
             <FormControl>
               <SelectTrigger ref={ref}>

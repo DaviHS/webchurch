@@ -61,9 +61,9 @@ export function SongSearchInput({
       {selectedSongs.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-1">
           {selectedSongs.map((song) => (
-            <Badge 
-              key={song.id} 
-              variant="secondary" 
+            <Badge
+              key={song.id}
+              variant="secondary"
               className="gap-1 text-[10px] sm:text-xs h-5 sm:h-6 px-1.5 sm:px-2"
             >
               <span className="max-w-[120px] sm:max-w-[200px] truncate">
@@ -75,8 +75,11 @@ export function SongSearchInput({
                 </span>
               )}
               <button
+                type="button"
                 onClick={() => onSongRemove(song.id)}
                 className="ml-0.5 hover:text-destructive"
+                title={`Remover "${song.title}"`}
+                aria-label={`Remover "${song.title}"`}
               >
                 <X className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
               </button>
@@ -101,7 +104,7 @@ export function SongSearchInput({
       </div>
 
       {showResults && searchTerm && (
-        <div className="absolute z-[9999] w-full mt-1 bg-popover border rounded-lg shadow-2xl max-h-40 sm:max-h-48 overflow-auto">
+        <div className="absolute z-9999 w-full mt-1 bg-popover border rounded-lg shadow-2xl max-h-40 sm:max-h-48 overflow-auto">
           <div className="p-1.5">
             {isLoading ? (
               <div className="text-center py-2 text-xs text-muted-foreground">

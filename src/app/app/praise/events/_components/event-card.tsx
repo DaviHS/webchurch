@@ -4,45 +4,30 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin } from "lucide-react";
 import { EventActions } from "./event-actions";
+import { eventTypeLabels, getEventTypeBadgeVariant } from "./event-type";
 import { formatDate } from "@/lib/formatters";
+import type { EventData } from "@/types";
 
 interface EventCardProps {
-  event: any;
-  onEdit: (event: any) => void;
-  onDelete: (event: any) => void;
-  onViewDetails: (event: any) => void;
+  event: EventData;
+  onEdit: (event: EventData) => void;
+  onDelete: (event: EventData) => void;
+  onViewDetails: (event: EventData) => void;
 }
 
 export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardProps) {
-  const getTypeName = (type: string) => {
-    const types: { [key: string]: string } = {
-      cult: "Culto",
-      celebration: "Celebração",
-      meeting: "Reunião",
-      conference: "Conferência",
-      rehearsal: "Ensaio",
-      other: "Outro",
-      template: "Template",
-    };
-    return types[type] || type;
-  };
-
-  const handleCardClick = () => {
-    onViewDetails(event);
-  };
-
   return (
-    <Card 
+    <Card
       className="h-full flex flex-col transition-all hover:shadow-md cursor-pointer"
-      onClick={handleCardClick}
+      onClick={() => onViewDetails(event)}
     >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-sm leading-tight line-clamp-2 flex-1">
             {event.title}
           </CardTitle>
-          <Badge variant="secondary" className="text-xs whitespace-nowrap">
-            {getTypeName(event.type)}
+          <Badge variant={getEventTypeBadgeVariant(event.type)} className="text-xs whitespace-nowrap">
+            {eventTypeLabels[event.type]}
           </Badge>
         </div>
 

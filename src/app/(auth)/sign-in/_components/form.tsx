@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Fields from "./fields"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
@@ -75,7 +75,7 @@ export default function Form() {
     const encodedMessage = encodeURIComponent(message)
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`
     
-    window.open(whatsappUrl, "_blank")
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer")
   }
 
   return (
@@ -84,13 +84,13 @@ export default function Form() {
         <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
           <Lock className="h-8 w-8 text-primary-foreground" />
         </div>
-        <CardTitle className="font-playfair text-2xl">Acesso ao Sistema</CardTitle>
-        <p className="text-muted-foreground">Digite a senha para acessar as informações</p>
+        <CardTitle className="text-2xl font-bold">Acesso ao sistema</CardTitle>
+        <CardDescription>Entre com seu e-mail e senha para acessar o sistema</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {error && (
-          <div className="p-3 bg-red-100 text-red-600 text-sm rounded">
+          <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -104,7 +104,7 @@ export default function Form() {
             showPassword={showPassword}
             onToggleShowPassword={() => setShowPassword(!showPassword)}
           />
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
@@ -112,8 +112,9 @@ export default function Form() {
 
       <CardFooter className="flex flex-col space-y-2 text-center text-sm">
         <div>
-          <span className="text-gray-500">Perdeu o acesso? </span>
-          <button 
+          <span className="text-muted-foreground">Perdeu o acesso? </span>
+          <button
+            type="button"
             onClick={handleSupportClick}
             className="text-primary hover:underline cursor-pointer"
           >
@@ -121,7 +122,7 @@ export default function Form() {
           </button>
         </div>
         <div>
-          <span className="text-gray-500">Ainda não tem conta? </span>
+          <span className="text-muted-foreground">Ainda não tem conta? </span>
           <Link href="/register" className="text-primary hover:underline">
             Crie a sua aqui.
           </Link>

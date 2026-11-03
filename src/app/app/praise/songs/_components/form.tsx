@@ -1,63 +1,72 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { songSchema, songFormSchema, type SongFormData, type SongFormInput } from "@/validators/song";
+import {
+  songCategories,
+  songSchema,
+  songFormSchema,
+  type SongFormData,
+  type SongFormInput,
+  type SongFormOutput,
+} from "@/validators/song";
+import { getCategoryName } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Info } from "lucide-react";
+import { isSongCategory } from "@/validators/song";
 
 interface SongFormProps {
   onSubmit: (data: SongFormData) => void;
   initialData?: Partial<SongFormData> & { youtubeVideoId?: string };
   isLoading?: boolean;
+  onCancel?: () => void;
 }
 
 const secondsToDurationString = (seconds: number | undefined): string => {
-  if (!seconds || seconds === 0) return '';
+  if (!seconds) return '';
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormProps) {
-  const form = useForm<SongFormInput>({
+export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }: SongFormProps) {
+  const form = useForm<SongFormInput, unknown, SongFormOutput>({
     resolver: zodResolver(songFormSchema),
     defaultValues: {
-      title: initialData?.title || "",
-      artist: initialData?.artist || "",
-      category: initialData?.category || "praise",
-      lyrics: initialData?.lyrics || "",
-      youtubeUrl: initialData?.youtubeUrl || "",
+      title: initialData?.title ?? "",
+      artist: initialData?.artist ?? "",
+      category: initialData?.category ?? "praise",
+      lyrics: initialData?.lyrics ?? "",
+      youtubeUrl: initialData?.youtubeUrl ?? "",
       duration: initialData?.duration ? secondsToDurationString(initialData.duration) : "",
     },
   });
 
   const handleSubmit = form.handleSubmit((formData) => {
-    const apiData = songSchema.parse(formData);
-    console.log(apiData)
-    onSubmit(apiData);
+    onSubmit(songSchema.parse(formData));
   });
 
-  const isLinkedToPlaylist = initialData?.youtubeVideoId;
+  const isLinkedToPlaylist = Boolean(initialData?.youtubeVideoId);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {!initialData?.youtubeVideoId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-          <p className="text-blue-800 text-sm">
-            <strong>📝 Informação:</strong> Esta música será automaticamente adicionada à playlist do YouTube da igreja.
+      {!isLinkedToPlaylist && (
+        <div className="rounded-md border border-info/30 bg-info/10 p-3">
+          <p className="flex items-center gap-2 text-sm text-info">
+            <Info className="h-4 w-4 shrink-0" />
+            <span>Esta música será adicionada automaticamente à playlist do YouTube da igreja.</span>
           </p>
         </div>
       )}
 
       {isLinkedToPlaylist && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3">
-          <p className="text-green-800 text-sm flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
+        <div className="rounded-md border border-success/30 bg-success/10 p-3">
+          <p className="flex items-center gap-2 text-sm text-success">
+            <CheckCircle className="h-4 w-4 shrink-0" />
             <span>Esta música está vinculada à playlist do YouTube</span>
           </p>
         </div>
@@ -75,7 +84,7 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
             className="w-full text-sm"
           />
           {form.formState.errors.title && (
-            <p className="text-red-500 text-xs mt-1">{form.formState.errors.title.message}</p>
+            <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
           )}
         </div>
 
@@ -97,21 +106,29 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
           <Label htmlFor="category" className="text-sm font-medium">
             Categoria
           </Label>
-          <Select
-            value={form.watch("category")}
-            onValueChange={(value) => form.setValue("category", value as any)}
-          >
-            <SelectTrigger className="w-full text-sm">
-              <SelectValue placeholder="Selecione a categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hymn" className="text-sm">Hino</SelectItem>
-              <SelectItem value="praise" className="text-sm">Louvor</SelectItem>
-              <SelectItem value="worship" className="text-sm">Adoração</SelectItem>
-              <SelectItem value="chorus" className="text-sm">Coro</SelectItem>
-              <SelectItem value="special" className="text-sm">Especial</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  if (isSongCategory(value)) field.onChange(value);
+                }}
+              >
+                <SelectTrigger id="category" className="w-full text-sm">
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {songCategories.map((category) => (
+                    <SelectItem key={category} value={category} className="text-sm">
+                      {getCategoryName(category)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div className="space-y-2">
@@ -125,10 +142,10 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
             className="w-full text-sm"
           />
           {form.formState.errors.duration && (
-            <p className="text-red-500 text-xs mt-1">{form.formState.errors.duration.message}</p>
+            <p className="text-xs text-destructive">{form.formState.errors.duration.message}</p>
           )}
-          <p className="text-xs text-gray-500 mt-1">
-            Exemplo: 03:30 para 3 minutos e 30 segundos
+          <p className="text-xs text-muted-foreground">
+            Ex.: 03:30. Em branco, usa a duração do vídeo do YouTube.
           </p>
         </div>
       </div>
@@ -144,9 +161,9 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
           className="w-full text-sm"
         />
         {form.formState.errors.youtubeUrl && (
-          <p className="text-red-500 text-xs mt-1">{form.formState.errors.youtubeUrl.message}</p>
+          <p className="text-xs text-destructive">{form.formState.errors.youtubeUrl.message}</p>
         )}
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground">
           {!initialData?.youtubeUrl 
             ? "Deixe em branco para buscar automaticamente pelo título e artista"
             : "Atualize a URL para modificar o vídeo vinculado"
@@ -165,18 +182,19 @@ export function SongForm({ onSubmit, initialData, isLoading = false }: SongFormP
           placeholder="Digite a letra da música..."
           className="resize-none w-full text-sm"
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground">
           Utilize quebras de linha para separar os versos
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 pt-4">
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          className="flex-1 text-sm sm:text-base"
-        >
-          {isLoading ? "Salvando..." : "Salvar Música"}
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Salvando..." : initialData ? "Salvar alterações" : "Criar música"}
         </Button>
       </div>
     </form>
