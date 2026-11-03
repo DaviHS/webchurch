@@ -1,17 +1,21 @@
-/**
- * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
- * for Docker builds.
- */
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  //trailingSlash: true,
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     AUTH_SECRET: process.env.AUTH_SECRET,
+  },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
   },
 };
 
