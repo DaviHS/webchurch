@@ -1,14 +1,16 @@
-// validators/song.ts
 import { z } from "zod"
 
-// Função para converter minutos:segundos em segundos
 const durationToSeconds = (duration: string): number => {
-  if (!duration) return 0;
-  const [minutes, seconds] = duration.split(':').map(Number);
-  return (minutes! * 60) + (seconds || 0);
+  const [minutes = 0, seconds = 0] = duration
+    .split(":")
+    .map((part) => Number.parseInt(part, 10))
+    .map((n) => (Number.isNaN(n) ? 0 : n));
+  return minutes * 60 + seconds;
 };
 
-// Schema para entrada (formulário)
+export const songCategories = ["hymn", "praise", "worship", "chorus", "special"] as const;
+export type SongCategory = (typeof songCategories)[number];
+
 export const songFormSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   artist: z.string().optional().default(""),
@@ -22,7 +24,6 @@ export const songFormSchema = z.object({
     .default(""),
 })
 
-// Schema para a API (aceita número ou string)
 export const songSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   artist: z.string().optional().default(""),
@@ -43,4 +44,8 @@ export const songSchema = z.object({
 })
 
 export type SongFormData = z.infer<typeof songSchema>
-export type SongFormInput = z.infer<typeof songFormSchema>
+export type SongFormInput = z.input<typeof songFormSchema>
+export type SongFormOutput = z.output<typeof songFormSchema>
+export function isSongCategory(value: string | null | undefined): value is SongCategory {
+  return songCategories.some((category) => category === value);
+}

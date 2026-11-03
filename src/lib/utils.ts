@@ -31,8 +31,7 @@ export const statusTranslations: Record<string, string> = {
   inbound: "Recebida",
 }
 
-export const cleanNullValues = (obj: Record<string, any>) => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, value]) => value !== null && value !== undefined)
-  );
-};
+export const cleanNullValues = <T extends Record<string, unknown>>(obj: T): Partial<{ [K in keyof T]: NonNullable<T[K]> }> =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== null && value !== undefined)
+  ) as Partial<{ [K in keyof T]: NonNullable<T[K]> }>;

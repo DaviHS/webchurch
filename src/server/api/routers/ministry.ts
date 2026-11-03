@@ -2,8 +2,10 @@ import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { ministries, functions, ministryFunctions, memberMinistries, members } from "@/server/db/schema"
-import { eq, and, inArray, desc, asc, sql, not } from "drizzle-orm"
+import { eq, and, inArray, asc, not, countDistinct } from "drizzle-orm"
 import { ministrySchema, functionSchema, ministryFunctionSchema } from "@/validators/ministry"
+
+const presentMemberStatuses = ["active", "visiting"] as const
 
 export const ministryRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async () => {
@@ -114,9 +116,11 @@ export const ministryRouter = createTRPCRouter({
     .query(async ({ input }) => {
       return await db
         .select({
+          id: ministryFunctions.id,
           ministryId: ministryFunctions.ministryId,
           functionId: ministryFunctions.functionId,
           functionName: functions.name,
+          functionDescription: functions.description,
         })
         .from(ministryFunctions)
         .innerJoin(functions, eq(ministryFunctions.functionId, functions.id))
@@ -133,13 +137,33 @@ export const ministryRouter = createTRPCRouter({
   addFunctionToMinistry: protectedProcedure
     .input(ministryFunctionSchema)
     .mutation(async ({ input }) => {
+      const [existing] = await db
+        .select({ id: ministryFunctions.id })
+        .from(ministryFunctions)
+        .where(
+          and(
+            eq(ministryFunctions.ministryId, input.ministryId),
+            eq(ministryFunctions.functionId, input.functionId)
+          )
+        )
+        .limit(1)
+
+      if (existing) {
+        const [reactivated] = await db
+          .update(ministryFunctions)
+          .set({ isActive: true, updatedAt: new Date() })
+          .where(eq(ministryFunctions.id, existing.id))
+          .returning()
+        return reactivated
+      }
+
       const [newRelation] = await db
         .insert(ministryFunctions)
         .values(input)
         .returning()
       return newRelation
     }),
-    
+
   getAllMinistryFunctions: protectedProcedure.query(async () => {
     return await db
       .select({
@@ -171,55 +195,53 @@ export const ministryRouter = createTRPCRouter({
       return removedRelation
     }),
 
-getAvailableFunctions: protectedProcedure
-  .input(z.object({ ministryId: z.number() }))
-  .query(async ({ input }) => {
-    const currentFunctions = await db
-      .select({ functionId: ministryFunctions.functionId })
-      .from(ministryFunctions)
-      .where(
-        and(
-          eq(ministryFunctions.ministryId, input.ministryId),
-          eq(ministryFunctions.isActive, true)
+  getAvailableFunctions: protectedProcedure
+    .input(z.object({ ministryId: z.number() }))
+    .query(async ({ input }) => {
+      const currentFunctions = await db
+        .select({ functionId: ministryFunctions.functionId })
+        .from(ministryFunctions)
+        .where(
+          and(
+            eq(ministryFunctions.ministryId, input.ministryId),
+            eq(ministryFunctions.isActive, true)
+          )
         )
-      )
 
-    const currentFunctionIds = currentFunctions.map(f => f.functionId)
+      const currentFunctionIds = currentFunctions.map(f => f.functionId)
 
-    if (currentFunctionIds.length === 0) {
       return await db
         .select()
         .from(functions)
-        .where(eq(functions.isActive, true))
-        .orderBy(asc(functions.displayOrder), asc(functions.name))
-    }
-
-    // CORREÇÃO: Use not(inArray()) em vez da comparação booleana
-    return await db
-      .select()
-      .from(functions)
-      .where(
-        and(
-          eq(functions.isActive, true),
-          not(inArray(functions.id, currentFunctionIds))
+        .where(
+          currentFunctionIds.length === 0
+            ? eq(functions.isActive, true)
+            : and(
+                eq(functions.isActive, true),
+                not(inArray(functions.id, currentFunctionIds))
+              )
         )
-      )
-      .orderBy(asc(functions.displayOrder), asc(functions.name))
-  }),
-  
-  // Estatísticas
+        .orderBy(asc(functions.displayOrder), asc(functions.name))
+    }),
+
   getMinistryStats: protectedProcedure.query(async () => {
-    const ministriesWithCounts = await db
+    return await db
       .select({
         ministry: ministries,
-        memberCount: sql<number>`COUNT(DISTINCT ${memberMinistries.memberId})`,
-        functionCount: sql<number>`COUNT(DISTINCT ${ministryFunctions.functionId})`,
+        memberCount: countDistinct(members.id),
+        functionCount: countDistinct(ministryFunctions.functionId),
       })
       .from(ministries)
-      .leftJoin(memberMinistries, 
+      .leftJoin(memberMinistries,
         and(
           eq(memberMinistries.ministryId, ministries.id),
           eq(memberMinistries.isActive, true)
+        )
+      )
+      .leftJoin(members,
+        and(
+          eq(members.id, memberMinistries.memberId),
+          inArray(members.status, [...presentMemberStatuses])
         )
       )
       .leftJoin(ministryFunctions,
@@ -231,31 +253,29 @@ getAvailableFunctions: protectedProcedure
       .where(eq(ministries.isActive, true))
       .groupBy(ministries.id)
       .orderBy(asc(ministries.name))
-
-    return ministriesWithCounts
   }),
 
   getMinistryMembers: protectedProcedure
-  .input(z.object({ ministryId: z.number() }))
-  .query(async ({ input }) => {
-    return await db
-      .select({
-        memberId: memberMinistries.memberId,
-        firstName: members.firstName,
-        lastName: members.lastName,
-        functionName: functions.name,
-        status: members.status,
-      })
-      .from(memberMinistries)
-      .innerJoin(members, eq(memberMinistries.memberId, members.id))
-      .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
-      .where(
-        and(
-          eq(memberMinistries.ministryId, input.ministryId),
-          eq(memberMinistries.isActive, true),
-          eq(members.isActive, true)
+    .input(z.object({ ministryId: z.number() }))
+    .query(async ({ input }) => {
+      return await db
+        .select({
+          memberId: memberMinistries.memberId,
+          firstName: members.firstName,
+          lastName: members.lastName,
+          functionName: functions.name,
+          status: members.status,
+        })
+        .from(memberMinistries)
+        .innerJoin(members, eq(memberMinistries.memberId, members.id))
+        .leftJoin(functions, eq(memberMinistries.functionId, functions.id))
+        .where(
+          and(
+            eq(memberMinistries.ministryId, input.ministryId),
+            eq(memberMinistries.isActive, true),
+            inArray(members.status, [...presentMemberStatuses])
+          )
         )
-      )
-      .orderBy(asc(members.firstName), asc(members.lastName))
-  }),
+        .orderBy(asc(members.firstName), asc(members.lastName))
+    }),
 })

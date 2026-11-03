@@ -1,29 +1,10 @@
-export interface ReportItem {
-  songId: number;
-  title: string;
-  artist: string | null;
-  count: number | string;
-}
+import type { RouterOutputs } from "./api";
 
-export interface SongExecution {
-  id: number;
-  eventId: number;
-  eventTitle: string;
-  eventDate: Date;
-  eventType: string;
-  order: number;
-  notes: string | null;
-  songId: number;
-  songTitle: string;
-  songArtist: string | null;
-}
+export type ReportItem = RouterOutputs["event"]["getSongsReport"][number];
 
-export interface SongStats {
-  totalExecutions: number;
-  firstExecution: Date | null;
-  lastExecution: Date | null;
-  averageOrder: number | null;
-}
+export type SongExecution = RouterOutputs["event"]["getSongExecutions"][number];
+
+export type SongStats = NonNullable<RouterOutputs["event"]["getSongStats"]>;
 
 export interface ReportStats {
   totalMusicas: number;

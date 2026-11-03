@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
+import { TRPCError } from "@trpc/server";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import {
   members,
@@ -18,33 +19,35 @@ import {
   sql,
   inArray,
   asc,
+  type SQL,
 } from "drizzle-orm";
-import { cleanEmptyStrings } from "@/lib/formatters";
+import { cleanEmptyStrings, emptyStringsToNull } from "@/lib/formatters";
+
+type MinistryInput = { ministryId: number; functionId?: number | null };
+
+const toMemberMinistryRows = (memberId: number, ministriesInput: MinistryInput[] = []) =>
+  ministriesInput
+    .filter((m) => m.ministryId > 0)
+    .map((m) => ({
+      memberId,
+      ministryId: m.ministryId,
+      functionId: m.functionId ?? null,
+    }));
 
 export const memberRouter = createTRPCRouter({
-  create: publicProcedure.input(memberSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(memberSchema).mutation(async ({ input }) => {
     const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
-    const result = await db.insert(members).values(cleanedData).returning();
+    const [newMember] = await db.insert(members).values(cleanedData).returning();
 
-    if (!result || result.length === 0) {
-      throw new Error("Falha ao criar membro");
+    if (!newMember) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Falha ao criar membro" });
     }
 
-    const newMember = result[0];
-
-    if (ministriesInput && ministriesInput.length > 0) {
-      const validMinistries = ministriesInput.filter(m => m.ministryId > 0);
-      if (validMinistries.length > 0) {
-        const memberMinistryData = validMinistries.map((ministry) => ({
-          memberId: newMember!.id,
-          ministryId: ministry.ministryId,
-          functionId: ministry.functionId ?? null,
-        }));
-
-        await db.insert(memberMinistries).values(memberMinistryData);
-      }
+    const rows = toMemberMinistryRows(newMember.id, ministriesInput);
+    if (rows.length > 0) {
+      await db.insert(memberMinistries).values(rows);
     }
 
     return newMember;
@@ -64,40 +67,30 @@ export const memberRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const { page, limit, search, status, gender, hasAccess } = input;
       const offset = (page - 1) * limit;
-      
-      // Usando apenas status para filtrar membros ativos
-      const baseConditions = [eq(members.status, "active")];
 
-      const optionalConditions = [];
+      const conditions: SQL[] = [eq(members.status, status ?? "active")];
 
-      if (status && status !== "active") {
-        // Se um status específico foi fornecido (diferente de "active"), usamos ele
-        optionalConditions.push(eq(members.status, status));
-      }
-      
       if (gender) {
-        optionalConditions.push(eq(members.gender, gender));
+        conditions.push(eq(members.gender, gender));
       }
 
-      if (search && search.trim() !== '') {
-        const searchLower = `%${search.toLowerCase()}%`;
+      const term = search?.trim().toLowerCase();
+      if (term) {
+        const searchLower = `%${term}%`;
         const searchConditions = or(
           sql`LOWER(${members.firstName}) LIKE ${searchLower}`,
           sql`LOWER(${members.lastName}) LIKE ${searchLower}`,
-          sql`LOWER(${members.email}) LIKE ${searchLower}`
+          sql`LOWER(${members.email}) LIKE ${searchLower}`,
+          sql`LOWER(${members.firstName} || ' ' || ${members.lastName}) LIKE ${searchLower}`
         );
-        optionalConditions.push(searchConditions);
+        if (searchConditions) conditions.push(searchConditions);
       }
 
       if (hasAccess === "true") {
-        optionalConditions.push(isNotNull(users.id));
+        conditions.push(isNotNull(users.id));
       } else if (hasAccess === "false") {
-        optionalConditions.push(isNull(users.id));
+        conditions.push(isNull(users.id));
       }
-
-      const allConditions = optionalConditions.length > 0 
-        ? and(...baseConditions, ...optionalConditions)
-        : and(...baseConditions);
 
       const result = await db
         .select({
@@ -106,7 +99,7 @@ export const memberRouter = createTRPCRouter({
         })
         .from(members)
         .leftJoin(users, eq(members.id, users.memberId))
-        .where(allConditions) 
+        .where(and(...conditions))
         .orderBy(asc(members.firstName), asc(members.lastName))
         .limit(limit)
         .offset(offset);
@@ -135,34 +128,30 @@ export const memberRouter = createTRPCRouter({
         )
         .orderBy(asc(ministries.name));
 
-      const ministriesByMember: Record<number, { 
-        ministryId: number; 
-        ministryName: string; 
-        functionId: number | null; 
-        functionName: string | null 
+      const ministriesByMember: Record<number, {
+        ministryId: number;
+        ministryName: string;
+        functionId: number | null;
+        functionName: string | null
       }[]> = {};
-      
+
       ministriesData.forEach((cur) => {
-        if (cur.memberId) {
-          if (!ministriesByMember[cur.memberId]) {
-            ministriesByMember[cur.memberId] = [];
-          }
-          ministriesByMember[cur.memberId]!.push({
-            ministryId: cur.ministryId,
-            ministryName: cur.ministryName || "Ministério sem nome",
-            functionId: cur.functionId,
-            functionName: cur.functionName,
-          });
-        }
+        (ministriesByMember[cur.memberId] ??= []).push({
+          ministryId: cur.ministryId,
+          ministryName: cur.ministryName || "Ministério sem nome",
+          functionId: cur.functionId,
+          functionName: cur.functionName,
+        });
       });
 
-      // Formatar resposta final
       return result.map(r => ({
         members: {
           ...r.member,
-          ministries: ministriesByMember[r.member.id] || [],
+          ministries: ministriesByMember[r.member.id] ?? [],
         },
-        users: r.user,
+        users: r.user
+          ? (({ passwordHash: _ph, resetToken: _rt, resetTokenExpires: _rte, ...safeUser }) => safeUser)(r.user)
+          : null,
       }));
     }),
 
@@ -175,7 +164,7 @@ export const memberRouter = createTRPCRouter({
         .where(eq(members.id, input.id))
         .limit(1);
 
-      if (!member) throw new Error("Membro não encontrado");
+      if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
 
       const memberMinistriesData = await db
         .select({
@@ -213,39 +202,34 @@ export const memberRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const { ministries: ministriesInput, ...memberData } = input.data;
-      const cleanedData = cleanEmptyStrings(memberData);
+      const updateData = {
+        ...emptyStringsToNull(memberData),
+        firstName: memberData.firstName,
+        lastName: memberData.lastName,
+      };
 
-      const result = await db
+      const updateMember = db
         .update(members)
         .set({
-          ...cleanedData,
+          ...updateData,
           updatedAt: new Date(),
         })
         .where(eq(members.id, input.id))
         .returning();
 
-      if (!result || result.length === 0) {
-        throw new Error("Falha ao atualizar membro");
-      }
+      const rows = toMemberMinistryRows(input.id, ministriesInput);
+      const deactivateMinistries = db
+        .update(memberMinistries)
+        .set({ isActive: false, leftAt: new Date() })
+        .where(and(eq(memberMinistries.memberId, input.id), eq(memberMinistries.isActive, true)));
+
+      const [result] = rows.length > 0
+        ? await db.batch([updateMember, deactivateMinistries, db.insert(memberMinistries).values(rows)])
+        : await db.batch([updateMember, deactivateMinistries]);
 
       const updatedMember = result[0];
-
-      if (ministriesInput) {
-        await db
-          .update(memberMinistries)
-          .set({ isActive: false })
-          .where(eq(memberMinistries.memberId, input.id));
-
-        const validMinistries = ministriesInput.filter(m => m.ministryId > 0);
-        if (validMinistries.length > 0) {
-          const memberMinistryData = validMinistries.map((ministry) => ({
-            memberId: input.id,
-            ministryId: ministry.ministryId,
-            functionId: ministry.functionId ?? null,
-          }));
-
-          await db.insert(memberMinistries).values(memberMinistryData);
-        }
+      if (!updatedMember) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
       }
 
       return updatedMember;
@@ -254,19 +238,19 @@ export const memberRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      const result = await db
+      const [deleted] = await db
         .update(members)
         .set({
-          status: "inactive", // Usando apenas status
+          status: "inactive",
           updatedAt: new Date(),
         })
         .where(eq(members.id, input.id))
         .returning();
 
-      if (!result || result.length === 0) {
-        throw new Error("Falha ao desativar membro");
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
       }
 
-      return result[0];
+      return deleted;
     }),
 });

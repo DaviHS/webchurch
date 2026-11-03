@@ -1,26 +1,43 @@
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc"
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { db } from "@/server/db"
 import { users, members } from "@/server/db/schema"
 import { compare, hash } from "bcrypt-ts"
-import { eq, asc, sql } from "drizzle-orm"
+import { eq, asc, count } from "drizzle-orm"
 import { userCreateSchema, userUpdateSchema } from "@/validators/user"
+import { DEFAULT_PASSWORD } from "@/lib/default-password"
+
+const safeUserColumns = {
+  id: users.id,
+  memberId: users.memberId,
+  email: users.email,
+  isAdmin: users.isAdmin,
+  status: users.status,
+  approvedAt: users.approvedAt,
+  lastLogin: users.lastLogin,
+  passwordCreatedAt: users.passwordCreatedAt,
+  passwordUpdatedAt: users.passwordUpdatedAt,
+  createdAt: users.createdAt,
+  updatedAt: users.updatedAt,
+}
 
 export const userRouter = createTRPCRouter({
-  // Criar novo usuário
-  create: publicProcedure
+  create: protectedProcedure
     .input(userCreateSchema)
     .mutation(async ({ input }) => {
       const existing = await db
-        .select()
+        .select({ id: users.id })
         .from(users)
         .where(eq(users.email, input.email))
+        .limit(1)
 
       if (existing.length > 0) {
-        throw new Error("Já existe um usuário com esse e-mail.")
+        throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com esse e-mail." })
       }
 
       const passwordHash = await hash(input.password, 10)
+      const now = new Date()
 
       const [newUser] = await db
         .insert(users)
@@ -28,14 +45,14 @@ export const userRouter = createTRPCRouter({
           memberId: input.memberId,
           email: input.email,
           passwordHash,
-          status: "pending", // Status padrão como pending
+          passwordCreatedAt: now,
+          status: "pending",
         })
-        .returning()
+        .returning(safeUserColumns)
 
       return newUser
     }),
 
-  // Buscar todos os usuários
   getAll: protectedProcedure.query(async () => {
     return await db
       .select({
@@ -51,35 +68,34 @@ export const userRouter = createTRPCRouter({
       .leftJoin(members, eq(users.memberId, members.id))
   }),
 
-  // Buscar um usuário por ID
   getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const [user] = await db
       .select({
         id: users.id,
         email: users.email,
         isAdmin: users.isAdmin,
-        status: users.status, // Usando status
+        status: users.status,
         memberId: users.memberId,
       })
       .from(users)
       .where(eq(users.id, input.id))
       .limit(1)
 
-    if (!user) throw new Error("Usuário não encontrado")
+    if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" })
 
     return user
   }),
-  
+
   getByMemberId: protectedProcedure
     .input(z.object({ memberId: z.number() }))
     .query(async ({ input }) => {
       const [user] = await db
-        .select()
+        .select(safeUserColumns)
         .from(users)
         .where(eq(users.memberId, input.memberId))
         .limit(1);
 
-      return user || null;
+      return user ?? null;
     }),
 
   update: protectedProcedure
@@ -88,35 +104,40 @@ export const userRouter = createTRPCRouter({
     }))
     .mutation(async ({ input }) => {
       const { id, password, ...rest } = input
+      const now = new Date()
 
       const dataToUpdate: Partial<typeof users.$inferInsert> = {
         ...rest,
-        updatedAt: new Date(),
+        updatedAt: now,
       }
 
       if (password) {
         dataToUpdate.passwordHash = await hash(password, 10)
+        dataToUpdate.passwordUpdatedAt = now
       }
 
       const [updatedUser] = await db
         .update(users)
         .set(dataToUpdate)
         .where(eq(users.id, id))
-        .returning()
+        .returning(safeUserColumns)
+
+      if (!updatedUser) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" })
+      }
 
       return updatedUser
     }),
 
-  // "Deletar" usuário - agora usando status
   delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const [deletedUser] = await db
       .update(users)
       .set({
-        status: "inactive", // Usando status em vez de isActive
+        status: "inactive",
         updatedAt: new Date(),
       })
       .where(eq(users.id, input.id))
-      .returning()
+      .returning(safeUserColumns)
 
     return deletedUser
   }),
@@ -132,16 +153,15 @@ export const userRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(users.id, input.id))
-        .returning();
+        .returning(safeUserColumns);
 
       if (!updatedUser) {
-        throw new Error("Falha ao aprovar usuário");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Falha ao aprovar usuário" });
       }
 
       return updatedUser;
     }),
 
-  // Rejeitar usuário
   reject: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
@@ -152,16 +172,15 @@ export const userRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(users.id, input.id))
-        .returning();
+        .returning(safeUserColumns);
 
       if (!updatedUser) {
-        throw new Error("Falha ao rejeitar usuário");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Falha ao rejeitar usuário" });
       }
 
       return updatedUser;
     }),
 
-  // Buscar usuários pendentes
   getPending: protectedProcedure.query(async () => {
     return await db
       .select({
@@ -182,54 +201,58 @@ export const userRouter = createTRPCRouter({
       .orderBy(asc(users.createdAt));
   }),
 
-  // Contar usuários pendentes (para o badge)
   getPendingCount: protectedProcedure.query(async () => {
     const [result] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: count() })
       .from(users)
       .where(eq(users.status, "pending"));
-    
-    return result?.count || 0;
+
+    return result?.count ?? 0;
   }),
+
   changePassword: protectedProcedure
-  .input(z.object({
-    newPassword: z.string().min(6),
-  }))
-  .mutation(async ({ input, ctx }) => {
-    const { newPassword } = input;
-    const userId = ctx.session.user.id;
+    .input(z.object({
+      newPassword: z.string().min(6),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { newPassword } = input;
+      const userId = Number(ctx.session.user.id);
 
-    // Buscar o usuário atual
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, parseInt(userId!)))
-      .then((res) => res[0]);
+      if (!Number.isInteger(userId)) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
 
-    if (!user) {
-      throw new Error("Usuário não encontrado");
-    }
+      const user = await db
+        .select({ id: users.id, passwordHash: users.passwordHash })
+        .from(users)
+        .where(eq(users.id, userId))
+        .then((res) => res[0]);
 
-    // Verificar se a senha atual é a padrão (123456)
-    const isDefaultPassword = await compare("123456", user.passwordHash);
-    
-    if (!isDefaultPassword) {
-      throw new Error("Esta funcionalidade é apenas para usuários com senha padrão");
-    }
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" });
+      }
 
-    // Criptografar a nova senha
-    const newPasswordHash = await hash(newPassword, 10);
+      const isDefaultPassword = await compare(DEFAULT_PASSWORD, user.passwordHash);
 
-    // Atualizar a senha
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        passwordHash: newPasswordHash,
-        passwordUpdatedAt: new Date(),
-      })
-      .where(eq(users.id, parseInt(userId!)))
-      .returning();
+      if (!isDefaultPassword) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Esta funcionalidade é apenas para usuários com senha padrão" });
+      }
 
-    return updatedUser;
-  }),
+      if (newPassword === DEFAULT_PASSWORD) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "A nova senha deve ser diferente da senha padrão" });
+      }
+
+      const now = new Date();
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          passwordHash: await hash(newPassword, 10),
+          passwordUpdatedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(users.id, userId))
+        .returning(safeUserColumns);
+
+      return updatedUser;
+    }),
 })

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { members, users } from "@/server/db/schema";
@@ -13,7 +12,6 @@ export const registerRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { password, confirmPassword, ...memberData } = input;
 
-      // Verificar se email já existe
       const existingMember = await db
         .select()
         .from(members)
@@ -34,10 +32,8 @@ export const registerRouter = createTRPCRouter({
         throw new Error("Já existe um usuário com este email");
       }
 
-      // Limpar dados vazios
       const cleanedData = cleanEmptyStrings(memberData);
 
-      // Criar member
       const [newMember] = await db
         .insert(members)
         .values({
@@ -51,7 +47,6 @@ export const registerRouter = createTRPCRouter({
         throw new Error("Falha ao criar membro");
       }
 
-      // Criar user com status pending
       const passwordHash = await hash(password, 10);
       const [newUser] = await db
         .insert(users)
@@ -59,13 +54,13 @@ export const registerRouter = createTRPCRouter({
           memberId: newMember.id,
           email: memberData.email,
           passwordHash,
-          status: "pending", // Status de aprovação pendente
+          passwordCreatedAt: new Date(),
+          status: "pending",
           isAdmin: false,
         })
-        .returning();
+        .returning({ id: users.id, email: users.email, status: users.status });
 
       if (!newUser) {
-        // Rollback: remover member se user falhar
         await db.delete(members).where(eq(members.id, newMember.id));
         throw new Error("Falha ao criar usuário");
       }

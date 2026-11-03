@@ -2,25 +2,17 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@/server/auth";// 👈 importa prisma
+import { auth } from "@/server/auth";
 
-/**
- * 1. CONTEXT
- *
- * Define o contexto com sessão e banco de dados
- */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
 
   return {
-    session, // 👈 adiciona prisma ao contexto
+    session,
     ...opts,
   };
 };
 
-/**
- * 2. INITIALIZATION
- */
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
@@ -35,9 +27,6 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
-/**
- * 3. ROUTER & PROCEDURE
- */
 export const createTRPCRouter = t.router;
 
 const timingMiddleware = t.middleware(async ({ next, path }) => {
@@ -50,8 +39,9 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 
   const result = await next();
 
-  const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+  if (t._config.isDev) {
+    console.info(`[TRPC] ${path} took ${Date.now() - start}ms to execute`);
+  }
 
   return result;
 });
@@ -61,7 +51,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.session || !ctx.session.user) {
+    if (!ctx.session?.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
     return next({

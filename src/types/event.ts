@@ -1,39 +1,9 @@
-export interface EventData {
-  id: number;
-  title: string;
-  type: string;
-  date: Date;
-  description?: string | null;
-  location?: string | null;
-  preacher?: string | null;
-  bibleVerse?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import type { RouterOutputs } from "./api";
 
-export interface EventWithDetails extends EventData {
-  songs: EventSong[];
-  participants: EventParticipant[];
-}
+export type EventData = RouterOutputs["event"]["list"]["events"][number];
 
-export interface EventSong {
-  id: number;
-  eventId: number;
-  songId: number;
-  order: number;
-  leaderId?: number | null;
-  notes?: string | null;
-  song?: any;
-  leader?: any;
-}
+export type EventWithDetails = NonNullable<RouterOutputs["event"]["getById"]>;
 
-export interface EventParticipant {
-  id: number;
-  eventId: number;
-  memberId: number;
-  role: string;
-  instrument?: string | null;
-  member?: any;
-}
+export type EventSong = EventWithDetails["songs"][number];
+
+export type EventParticipant = EventWithDetails["participants"][number];

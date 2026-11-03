@@ -1,20 +1,13 @@
-/**
- * Converte qualquer valor para número de forma segura
- */
-export function safeParseNumber(value: any): number {
+export function safeParseNumber(value: unknown): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
     const parsed = parseFloat(value);
-    return isNaN(parsed) ? 0 : parsed;
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
   return 0;
 }
 
-/**
- * Formata números grandes para exibição compacta
- * Ex: 1000 -> "1K", 1000000 -> "1M"
- */
-export function formatNumber(num: any): string {
+export function formatNumber(num: unknown): string {
   const number = safeParseNumber(num);
 
   if (number === 0) return '0';
@@ -40,10 +33,7 @@ export function formatNumber(num: any): string {
   return number.toFixed(1);
 }
 
-/**
- * Formata média aritmética
- */
-export function formatMedia(num: any): string {
+export function formatMedia(num: unknown): string {
   const number = safeParseNumber(num);
 
   if (number === 0) return '0';
@@ -60,9 +50,6 @@ export function formatMedia(num: any): string {
   return number.toFixed(1);
 }
 
-/**
- * Formata porcentagem
- */
 export function formatPercent(value: number, total: number): string {
   if (total === 0) return '0';
   return ((value / total) * 100).toFixed(1);

@@ -1,4 +1,3 @@
-// validators/ministry.ts
 import { z } from "zod"
 
 export const ministrySchema = z.object({
@@ -20,3 +19,4 @@ export const ministryFunctionSchema = z.object({
 export type MinistryFormData = z.infer<typeof ministrySchema>
 export type FunctionFormData = z.infer<typeof functionSchema>
 export type MinistryFunctionData = z.infer<typeof ministryFunctionSchema>
+export type FunctionFormInput = z.input<typeof functionSchema>

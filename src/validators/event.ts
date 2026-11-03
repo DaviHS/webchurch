@@ -1,18 +1,13 @@
 import { z } from "zod"
 
-// Função para converter para Date object
-const dateTransformer = z.union([z.date(), z.string()]).transform((val) => {
-  if (typeof val === 'string') {
-    return new Date(val);
-  }
-  return val;
-});
+export const eventTypes = ["cult", "celebration", "meeting", "conference", "rehearsal", "other", "template"] as const;
+export type EventType = (typeof eventTypes)[number];
 
 export const eventSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
-  type: z.enum(["cult", "celebration", "meeting", "conference", "rehearsal", "other", "template"]),
-  date: z.coerce.date(),
+  type: z.enum(eventTypes),
+  date: z.union([z.date(), z.string().min(1, "Data é obrigatória")]).pipe(z.coerce.date()),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   location: z.string().optional(),
@@ -39,3 +34,4 @@ export const eventParticipantSchema = z.object({
 export type EventFormData = z.infer<typeof eventSchema>
 export type EventSongFormData = z.infer<typeof eventSongSchema>
 export type EventParticipantFormData = z.infer<typeof eventParticipantSchema>
+export type EventFormInput = z.input<typeof eventSchema>

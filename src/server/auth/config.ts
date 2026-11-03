@@ -4,8 +4,9 @@ import { users, members } from "../db/schema";
 import { signInSchema } from "@/validators/auth";
 import { compare } from "bcrypt-ts";
 import Credentials from "next-auth/providers/credentials";
-import { NextAuthConfig } from "next-auth";
+import { type NextAuthConfig } from "next-auth";
 import { env } from "@/env";
+import { DEFAULT_PASSWORD } from "@/lib/default-password";
 
 class InvalidLoginError extends Error {
   code: string;
@@ -73,7 +74,7 @@ export const authConfig: NextAuthConfig = {
 
         const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
-        const isDefaultPassword = await compare("123456", user.passwordHash);
+        const isDefaultPassword = await compare(DEFAULT_PASSWORD, user.passwordHash);
 
         return {
           id: user.userId.toString(),
@@ -88,7 +89,18 @@ export const authConfig: NextAuthConfig = {
   ],
 
   callbacks: {
-    jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user, trigger }) {
+      if (trigger === "update" && token.userId) {
+        const [current] = await db
+          .select({ passwordHash: users.passwordHash })
+          .from(users)
+          .where(eq(users.id, token.userId))
+          .limit(1);
+        if (current) {
+          token.hasDefaultPassword = await compare(DEFAULT_PASSWORD, current.passwordHash);
+        }
+      }
+
       if (user) {
         token.userId = user.userId;
         token.email = user.email;
@@ -100,15 +112,13 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
 
-    session({ session, token }: { session: any; token: any }) {
-      if (token && session.user) {
-        session.user.id = token.sub;
-        session.user.userId = token.userId;
-        session.user.email = token.email;
-        session.user.name = token.name;
-        session.user.memberId = token.memberId;
-        session.user.hasDefaultPassword = token.hasDefaultPassword;
-      }
+    session({ session, token }) {
+      if (token.sub) session.user.id = token.sub;
+      session.user.userId = token.userId;
+      session.user.email = token.email ?? session.user.email;
+      session.user.name = token.name;
+      session.user.memberId = token.memberId;
+      session.user.hasDefaultPassword = token.hasDefaultPassword;
       return session;
     },
   },

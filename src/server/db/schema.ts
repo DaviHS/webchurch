@@ -1,7 +1,5 @@
-// server/db/schema.ts
 import { pgTableCreator, pgEnum } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
-import { sql } from "drizzle-orm"
 
 export const createTable = pgTableCreator((name) => `${name}`)
 
@@ -26,7 +24,6 @@ export const songCategoryEnum = pgEnum("song_category", [
 ])
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "inactive"])
 
-// Ministérios
 export const ministries = createTable("ministries", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull().unique(),
@@ -36,7 +33,6 @@ export const ministries = createTable("ministries", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Funções
 export const functions = createTable("functions", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull().unique(),
@@ -47,7 +43,6 @@ export const functions = createTable("functions", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Relacionamento Ministério-Função (quais funções são permitidas em cada ministério)
 export const ministryFunctions = createTable("ministry_functions", (d) => ({
   id: d.serial("id").primaryKey(),
   ministryId: d.integer("ministry_id").notNull().references(() => ministries.id),
@@ -57,7 +52,6 @@ export const ministryFunctions = createTable("ministry_functions", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Membros
 export const members = createTable("members", (d) => ({
   id: d.serial("id").primaryKey(),
   firstName: d.varchar("first_name", { length: 50 }).notNull(),
@@ -84,7 +78,6 @@ export const members = createTable("members", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Relacionamento Membro-Ministério
 export const memberMinistries = createTable("member_ministries", (d) => ({
   id: d.serial("id").primaryKey(),
   memberId: d.integer("member_id").notNull().references(() => members.id),
@@ -96,7 +89,6 @@ export const memberMinistries = createTable("member_ministries", (d) => ({
   notes: d.text("notes"),
 }))
 
-// Usuários
 export const users = createTable("users", (d) => ({
   id: d.serial("id").primaryKey(),
   memberId: d.integer("member_id").references(() => members.id),
@@ -114,7 +106,6 @@ export const users = createTable("users", (d) => ({
   resetTokenExpires: d.timestamp("reset_token_expires", { mode: "date", withTimezone: true }).defaultNow(),
 }))
 
-// Tabela de Músicas/Louvor
 export const songs = createTable("songs", (d) => ({
   id: d.serial("id").primaryKey(),
   title: d.varchar("title", { length: 200 }).notNull(),
@@ -124,22 +115,18 @@ export const songs = createTable("songs", (d) => ({
   chords: d.text("chords"),
   youtubeUrl: d.varchar("youtube_url", { length: 255 }),
   youtubeVideoId: d.varchar("youtube_video_id", { length: 20 }), 
-  duration: d.integer("duration"), // em segundos
+  duration: d.integer("duration"),
   bpm: d.integer("bpm"),
   key: d.varchar("key", { length: 10 }),
 
   spotifyUrl: d.varchar("spotify_url", { length: 255 }),
   spotifyTrackId: d.varchar("spotify_track_id", { length: 50 }),
-  // spotifyPreviewUrl: d.varchar("spotify_preview_url", { length: 255 }),
-  // spotifyArtistId: d.varchar("spotify_artist_id", { length: 50 }),
-  // spotifyAlbumImage: d.varchar("spotify_album_image", { length: 255 }),
 
   isActive: d.boolean("is_active").notNull().default(true),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Tabela de Eventos
 export const events = createTable("events", (d) => ({
   id: d.serial("id").primaryKey(),
   title: d.varchar("title", { length: 200 }).notNull(),
@@ -156,7 +143,6 @@ export const events = createTable("events", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Tabela de Músicas do Evento
 export const eventSongs = createTable("event_songs", (d) => ({
   id: d.serial("id").primaryKey(),
   eventId: d.integer("event_id").notNull().references(() => events.id),
@@ -167,47 +153,43 @@ export const eventSongs = createTable("event_songs", (d) => ({
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
 }))
 
-// Tabela de Participantes do Evento (músicos, equipe de louvor)
 export const eventParticipants = createTable("event_participants", (d) => ({
   id: d.serial("id").primaryKey(),
   eventId: d.integer("event_id").notNull().references(() => events.id),
   memberId: d.integer("member_id").notNull().references(() => members.id),
-  role: d.varchar("role", { length: 50 }).notNull(), // vocal, guitarra, bateria, etc.
+  role: d.varchar("role", { length: 50 }).notNull(),
   instrument: d.varchar("instrument", { length: 50 }),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
 }))
 
-// Financial Categories
 export const financialCategories = createTable("financial_categories", (d) => ({
   id: d.serial("id").primaryKey(),
   name: d.varchar("name", { length: 100 }).notNull(),
-  type: d.varchar("type", { length: 20 }).notNull(), // 'income' or 'expense'
+  type: d.varchar("type", { length: 20 }).notNull(),
   description: d.text("description"),
   isActive: d.boolean("is_active").notNull().default(true),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-// Financial Transactions
 export const financialTransactions = createTable("financial_transactions", (d) => ({
   id: d.serial("id").primaryKey(),
   categoryId: d.integer("category_id").notNull().references(() => financialCategories.id),
-  type: d.varchar("type", { length: 20 }).notNull(), // 'income', 'expense', 'transfer'
+  type: d.varchar("type", { length: 20 }).notNull(),
   amount: d.numeric("amount", { precision: 10, scale: 2 }).notNull(),
   description: d.varchar("description", { length: 255 }).notNull(),
   transactionDate: d.timestamp("transaction_date").notNull().defaultNow(),
-  paymentMethod: d.varchar("payment_method", { length: 50 }), // 'cash', 'card', 'transfer', 'check'
+  paymentMethod: d.varchar("payment_method", { length: 50 }),
   referenceNumber: d.varchar("reference_number", { length: 100 }),
   memberId: d.integer("member_id").references(() => members.id),
   isRecurring: d.boolean("is_recurring").default(false),
-  recurrencePattern: d.varchar("recurrence_pattern", { length: 50 }), // 'weekly', 'monthly', 'yearly'
-  status: d.varchar("status", { length: 20 }).default('completed'), // 'pending', 'completed', 'cancelled'
+  recurrencePattern: d.varchar("recurrence_pattern", { length: 50 }),
+  status: d.varchar("status", { length: 20 }).default('completed'),
   notes: d.text("notes"),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }));
 
-// Monthly Closures
 export const monthlyClosures = createTable("monthly_closures", (d) => ({
   id: d.serial("id").primaryKey(),
   month: d.integer("month").notNull(),
@@ -216,7 +198,7 @@ export const monthlyClosures = createTable("monthly_closures", (d) => ({
   totalIncome: d.numeric("total_income", { precision: 10, scale: 2 }).notNull(),
   totalExpenses: d.numeric("total_expenses", { precision: 10, scale: 2 }).notNull(),
   closingBalance: d.numeric("closing_balance", { precision: 10, scale: 2 }).notNull(),
-  status: d.varchar("status", { length: 20 }).default('open'), // 'open', 'closed', 'locked'
+  status: d.varchar("status", { length: 20 }).default('open'),
   closedAt: d.timestamp("closed_at"),
   closedBy: d.integer("closed_by").references(() => users.id),
   notes: d.text("notes"),
@@ -224,7 +206,6 @@ export const monthlyClosures = createTable("monthly_closures", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }));
 
-// Budgets
 export const budgets = createTable("budgets", (d) => ({
   id: d.serial("id").primaryKey(),
   categoryId: d.integer("category_id").notNull().references(() => financialCategories.id),
@@ -237,7 +218,6 @@ export const budgets = createTable("budgets", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }));
 
-// Relações
 export const membersRelations = relations(members, ({ many, one }) => ({
   memberMinistries: many(memberMinistries),
   user: one(users, {
@@ -327,7 +307,6 @@ export const eventParticipantsRelations = relations(eventParticipants, ({ one })
   }),
 }))
 
-// Tipos TypeScript
 export type Member = typeof members.$inferSelect
 export type NewMember = typeof members.$inferInsert
 export type Ministry = typeof ministries.$inferSelect
