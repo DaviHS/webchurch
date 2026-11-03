@@ -45,19 +45,21 @@ export function ReportFilters({
   isDateRangeValid,
 }: ReportFiltersProps) {
   return (
-    <Card className="overflow-visible relative">
-      <CardHeader className="p-3 sm:p-4">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-          <Filter className="h-4 w-4 text-primary" />
+    <Card className="relative overflow-visible">
+      <CardHeader className="p-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Filter className="size-4 shrink-0 text-primary" />
           Filtros
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4 pt-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-          <div className="space-y-1">
-            <Label className="text-[10px] sm:text-xs font-medium">Período</Label>
+      <CardContent className="space-y-3 p-4 pt-0">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="report-period" className="text-xs font-medium sm:text-sm">
+              Período
+            </Label>
             <Select value={timeRange} onValueChange={onTimeRangeChange}>
-              <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+              <SelectTrigger id="report-period" className="h-10 sm:h-9">
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
@@ -73,8 +75,8 @@ export function ReportFilters({
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-[10px] sm:text-xs font-medium">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium sm:text-sm">
               {timeRange === "custom" ? "Período personalizado" : "Visualização"}
             </Label>
             <DateRangePicker
@@ -82,14 +84,16 @@ export function ReportFilters({
               onChange={onDateRangeChange}
               placeholder={timeRange === "custom" ? "Selecione as datas" : "Período definido"}
               disabled={timeRange !== "custom"}
-              className="h-8 sm:h-9 text-xs sm:text-sm"
               closeOnSelect={false}
             />
           </div>
 
-          <div className="sm:col-span-2 lg:col-span-3">
-            <Label className="text-[10px] sm:text-xs font-medium">Músicas</Label>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+            <Label htmlFor="report-song-search" className="text-xs font-medium sm:text-sm">
+              Músicas
+            </Label>
             <SongSearchInput
+              id="report-song-search"
               searchTerm={searchTerm}
               onSearchChange={onSearchChange}
               showResults={showSearchResults}
@@ -103,16 +107,14 @@ export function ReportFilters({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-3">
-          <Button variant="outline" onClick={onClearFilters} size="sm" className="h-7 sm:h-8 text-xs">
-            <X className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
-            Limpar filtros
-          </Button>
-        </div>
+        <Button variant="outline" onClick={onClearFilters} className="w-full sm:w-auto">
+          <X />
+          Limpar filtros
+        </Button>
 
         {timeRange === "custom" && !isDateRangeValid && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-center gap-1.5 text-xs text-warning">
+            <AlertTriangle className="size-3.5 shrink-0" />
             Selecione a data inicial e a final para consultar.
           </p>
         )}

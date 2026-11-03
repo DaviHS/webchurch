@@ -2,39 +2,34 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
+import { Calendar, Plus, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import { PageContainer, PageHeader } from "@/components/page-header";
-import { useCreateRequest } from "@/hooks/use-create-request";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 import { api } from "@/trpc/react";
-import { Calendar, Plus, SearchX } from "lucide-react";
-import { toast } from "sonner";
 import type { EventFormData } from "@/validators/event";
 import type { EventData } from "@/types";
-import { EventDialog } from "./_components/event-dialog";
 import { EventDetailDialog } from "./_components/event-detail-dialog";
+import { EventDialog } from "./_components/event-dialog";
 import { EventFilters } from "./_components/event-filters";
-import { EventsGrid } from "./_components/events-grid";
-import { SongPagination } from "../songs/_components/song-pagination";
+import { EventGrid } from "./_components/event-grid";
 
 export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [type, setType] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
 
+  const confirm = useConfirm();
+  const utils = api.useUtils();
+  const eventDialog = useEntityDialog<EventData>({ fromUrl: true });
   const debouncedSearch = useDebounce(search, 300);
-
-  const createRequest = useCreateRequest();
-  const dialogOpen = isDialogOpen || createRequest.requested;
-  const setDialogOpen = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) createRequest.dismiss();
-  };
   const isFiltered = debouncedSearch !== "" || (type !== "" && type !== "any");
 
   const { data, isLoading, refetch } = api.event.list.useQuery({
@@ -48,61 +43,62 @@ export default function EventsPage() {
     selectedEvent ? selectedEvent.id : skipToken
   );
 
-  const createEvent = api.event.create.useMutation({
-    onSuccess: () => {
-      toast.success("Evento criado com sucesso!");
-      setDialogOpen(false);
-      void refetch();
-    },
-    onError: (error) => {
-      toast.error("Erro ao criar evento: " + error.message);
-    },
-  });
+  const createEventMutation = api.event.create.useMutation(
+    mutationFeedback({
+      success: "Evento criado com sucesso",
+      error: "Erro ao criar evento",
+      onSuccess: () => {
+        eventDialog.close();
+        return refetch();
+      },
+    })
+  );
 
-  const updateEvent = api.event.update.useMutation({
-    onSuccess: () => {
-      toast.success("Evento atualizado com sucesso!");
-      setDialogOpen(false);
-      setEditingEvent(null);
-      void refetch();
-    },
-    onError: (error) => {
-      toast.error("Erro ao atualizar evento: " + error.message);
-    },
-  });
+  const updateEventMutation = api.event.update.useMutation(
+    mutationFeedback({
+      success: "Evento atualizado com sucesso",
+      error: "Erro ao atualizar evento",
+      onSuccess: () => {
+        eventDialog.close();
+        return Promise.all([refetch(), utils.event.getById.invalidate()]);
+      },
+    })
+  );
 
-  const deleteEvent = api.event.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Evento excluído com sucesso!");
-      void refetch();
-    },
-    onError: (error) => {
-      toast.error("Erro ao excluir evento: " + error.message);
-    },
-  });
-
-  const handleEdit = (event: EventData) => {
-    setEditingEvent(event);
-    setIsDialogOpen(true);
-  };
-
-  const handleCreate = () => {
-    setEditingEvent(null);
-    setIsDialogOpen(true);
-  };
+  const deleteEventMutation = api.event.delete.useMutation(
+    mutationFeedback({
+      success: "Evento excluído com sucesso",
+      error: "Erro ao excluir evento",
+      onSuccess: () => refetch(),
+    })
+  );
 
   const handleSubmit = (formData: EventFormData) => {
-    if (editingEvent) {
-      updateEvent.mutate({ id: editingEvent.id, data: formData });
+    if (eventDialog.editing) {
+      updateEventMutation.mutate({ id: eventDialog.editing.id, data: formData });
     } else {
-      createEvent.mutate(formData);
+      createEventMutation.mutate(formData);
     }
   };
 
-  const handleDelete = (event: EventData) => {
-    if (confirm(`Tem certeza que deseja excluir o evento "${event.title}"?`)) {
-      deleteEvent.mutate(event.id);
-    }
+  const handleDelete = async (event: EventData) => {
+    const confirmed = await confirm({
+      title: "Excluir evento?",
+      description: `O evento "${event.title}" será excluído permanentemente.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (confirmed) deleteEventMutation.mutate(event.id);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleTypeChange = (value: string) => {
+    setType(value);
+    setPage(1);
   };
 
   const events = data?.events ?? [];
@@ -111,11 +107,11 @@ export default function EventsPage() {
   return (
     <PageContainer>
       <EventDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={eventDialog.open}
+        onOpenChange={eventDialog.onOpenChange}
         onSubmit={handleSubmit}
-        initialData={editingEvent}
-        isLoading={createEvent.isPending || updateEvent.isPending}
+        initialData={eventDialog.editing}
+        isLoading={createEventMutation.isPending || updateEventMutation.isPending}
       />
 
       {eventToDisplay && (
@@ -134,30 +130,25 @@ export default function EventsPage() {
         icon={Calendar}
         description="Cultos, ensaios e demais eventos com o repertório de cada um."
         actions={
-          <Button onClick={handleCreate} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
+          <Button onClick={eventDialog.openCreate} className="w-full sm:w-auto">
+            <Plus />
             Novo evento
           </Button>
         }
       />
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
           <EventFilters
             search={search}
-            onSearchChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
+            onSearchChange={handleSearchChange}
             type={type}
-            onTypeChange={(value) => {
-              setType(value);
-              setPage(1);
-            }}
+            onTypeChange={handleTypeChange}
+            isSearching={search !== debouncedSearch}
           />
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           {!isLoading && events.length === 0 ? (
             isFiltered ? (
               <EmptyState
@@ -171,8 +162,8 @@ export default function EventsPage() {
                 title="Nenhum evento cadastrado"
                 description="Crie o primeiro evento para montar o repertório."
                 action={
-                  <Button variant="outline" onClick={handleCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button variant="outline" onClick={eventDialog.openCreate}>
+                    <Plus />
                     Novo evento
                   </Button>
                 }
@@ -180,15 +171,15 @@ export default function EventsPage() {
             )
           ) : (
             <>
-              <EventsGrid
+              <EventGrid
                 events={events}
-                onEdit={handleEdit}
+                onEdit={eventDialog.openEdit}
                 onDelete={handleDelete}
                 onViewDetails={setSelectedEvent}
                 isLoading={isLoading}
               />
 
-              <SongPagination
+              <PaginationBar
                 page={page}
                 totalPages={data?.totalPages ?? 1}
                 total={data?.total ?? 0}

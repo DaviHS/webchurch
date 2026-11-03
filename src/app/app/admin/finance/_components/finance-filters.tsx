@@ -1,17 +1,20 @@
 "use client";
 
 import type { DateRange } from "@daypicker/react";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Search, X, Filter } from "lucide-react";
+import { CalendarIcon, X, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/search-input";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { formatDate } from "@/lib/formatters";
 import type { RouterOutputs } from "@/types";
+import { TRANSACTION_TYPES } from "./format";
 
 export type FinancialCategory = RouterOutputs["finance"]["listCategories"][number];
 
@@ -31,13 +34,17 @@ export const emptyFinanceFilters: FinanceFiltersState = {
   search: "",
 };
 
-const ANY = "any";
+export function hasActiveFinanceFilters(filters: FinanceFiltersState): boolean {
+  return (
+    filters.startDate !== undefined ||
+    filters.endDate !== undefined ||
+    filters.type !== "" ||
+    filters.categoryId !== undefined ||
+    filters.search.trim() !== ""
+  );
+}
 
-const typeLabels: Record<string, string> = {
-  income: "Receitas",
-  expense: "Despesas",
-  transfer: "Transferências",
-};
+const ANY = "any";
 
 interface FinanceFiltersProps {
   filters: FinanceFiltersState;
@@ -46,6 +53,8 @@ interface FinanceFiltersProps {
 }
 
 export function FinanceFilters({ filters, onFiltersChange, categories }: FinanceFiltersProps) {
+  const isMobile = useIsMobile();
+
   const handleDateSelect = (range: DateRange | undefined) => {
     onFiltersChange({
       ...filters,
@@ -54,43 +63,34 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
     });
   };
 
-  const clearFilters = () => {
+  const handleClearFilters = () => {
     onFiltersChange(emptyFinanceFilters);
   };
 
-  const hasActiveFilters =
-    filters.startDate !== undefined ||
-    filters.endDate !== undefined ||
-    filters.type !== "" ||
-    filters.categoryId !== undefined ||
-    filters.search !== "";
-
-  const selectedCategoryName = categories.find((c) => c.id === filters.categoryId)?.name;
+  const hasFilters = hasActiveFinanceFilters(filters);
+  const selectedCategoryName = categories.find((category) => category.id === filters.categoryId)?.name;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por descrição..."
-            value={filters.search}
-            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-            className="pl-9"
-          />
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <SearchInput
+          value={filters.search}
+          onChange={(search) => onFiltersChange({ ...filters, search })}
+          placeholder="Buscar por descrição..."
+          className="flex-1"
+        />
 
-        {hasActiveFilters && (
-          <Button variant="outline" onClick={clearFilters} className="sm:w-auto">
-            <X className="h-4 w-4 mr-2" />
+        {hasFilters && (
+          <Button variant="outline" onClick={handleClearFilters} className="w-full sm:w-auto">
+            <X />
             Limpar
           </Button>
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Filter className="h-4 w-4" />
+          <Filter className="size-4" />
           Filtros:
         </div>
 
@@ -99,26 +99,21 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
             <Button
               variant="outline"
               className={cn(
-                "w-full sm:w-[280px] justify-start text-left font-normal",
+                "w-full justify-start text-left font-normal sm:w-[280px]",
                 !filters.startDate && "text-muted-foreground"
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {filters.startDate ? (
-                filters.endDate ? (
-                  <>
-                    {format(filters.startDate, "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                    {format(filters.endDate, "dd/MM/yyyy", { locale: ptBR })}
-                  </>
-                ) : (
-                  format(filters.startDate, "dd/MM/yyyy", { locale: ptBR })
-                )
-              ) : (
-                "Selecione o período"
-              )}
+              <CalendarIcon />
+              <span className="truncate">
+                {filters.startDate
+                  ? filters.endDate
+                    ? `${formatDate(filters.startDate)} - ${formatDate(filters.endDate)}`
+                    : formatDate(filters.startDate)
+                  : "Selecione o período"}
+              </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] p-0" align="start">
             <Calendar
               mode="range"
               selected={{
@@ -126,7 +121,7 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
                 to: filters.endDate,
               }}
               onSelect={handleDateSelect}
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               locale={ptBR}
             />
           </PopoverContent>
@@ -136,14 +131,16 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
           value={filters.type}
           onValueChange={(value) => onFiltersChange({ ...filters, type: value === ANY ? "" : value })}
         >
-          <SelectTrigger className="w-full sm:w-[140px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Todos os tipos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Todos</SelectItem>
-            <SelectItem value="income">Receitas</SelectItem>
-            <SelectItem value="expense">Despesas</SelectItem>
-            <SelectItem value="transfer">Transferências</SelectItem>
+            <SelectItem value={ANY}>Todos os tipos</SelectItem>
+            {Object.entries(TRANSACTION_TYPES).map(([value, { label }]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -167,16 +164,17 @@ export function FinanceFilters({ filters, onFiltersChange, categories }: Finance
         </Select>
       </div>
 
-      {hasActiveFilters && (
+      {hasFilters && (
         <div className="flex flex-wrap gap-2">
           {filters.startDate && filters.endDate && (
             <Badge variant="secondary" className="text-xs">
-              Período: {format(filters.startDate, "dd/MM/yy", { locale: ptBR })} - {format(filters.endDate, "dd/MM/yy", { locale: ptBR })}
+              Período: {format(filters.startDate, "dd/MM/yy", { locale: ptBR })} -{" "}
+              {format(filters.endDate, "dd/MM/yy", { locale: ptBR })}
             </Badge>
           )}
           {filters.type !== "" && (
             <Badge variant="secondary" className="text-xs">
-              Tipo: {typeLabels[filters.type] ?? filters.type}
+              Tipo: {TRANSACTION_TYPES[filters.type]?.label ?? filters.type}
             </Badge>
           )}
           {selectedCategoryName !== undefined && (

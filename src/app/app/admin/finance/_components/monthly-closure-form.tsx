@@ -13,7 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, Calculator, Loader2, X } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { balanceClassName, formatCurrency } from "./format";
+import { ResponsiveDialogBody, ResponsiveDialogFooter } from "@/components/ui/responsive-dialog";
+import { balanceClassName, formatCurrency, normalizeMoneyInput } from "./format";
 
 interface MonthlyClosureFormProps {
   onSubmit: (data: MonthlyClosureFormData) => void;
@@ -67,8 +68,9 @@ export function MonthlyClosureForm({ onSubmit, isLoading = false, currentMonth, 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+        <ResponsiveDialogBody className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
           <FormField
             control={form.control}
             name="month"
@@ -158,11 +160,13 @@ export function MonthlyClosureForm({ onSubmit, isLoading = false, currentMonth, 
             <FormItem>
               <FormLabel>Saldo inicial *</FormLabel>
               <FormControl>
-                <Input 
-                  {...field} 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0,00" 
+                <Input
+                  {...field}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="0,00"
+                  onChange={(event) => field.onChange(normalizeMoneyInput(event.target.value))}
                 />
               </FormControl>
               <FormMessage />
@@ -196,18 +200,20 @@ export function MonthlyClosureForm({ onSubmit, isLoading = false, currentMonth, 
           </AlertDescription>
         </Alert>
 
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        </ResponsiveDialogBody>
+
+        <ResponsiveDialogFooter>
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-              <X className="mr-2 h-4 w-4" />
+              <X />
               Cancelar
             </Button>
           )}
           <Button type="submit" disabled={isLoading || isLoadingReport}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}
+            {isLoading ? <Loader2 className="animate-spin" /> : <Calculator />}
             {isLoading ? "Processando..." : "Confirmar fechamento"}
           </Button>
-        </div>
+        </ResponsiveDialogFooter>
       </form>
     </Form>
   );

@@ -24,7 +24,7 @@ export function YouTubePlayer({ song, open, onOpenChange }: YouTubePlayerProps) 
   if (!videoId) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] sm:max-w-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Vídeo não disponível</DialogTitle>
             <DialogDescription>
@@ -39,18 +39,18 @@ export function YouTubePlayer({ song, open, onOpenChange }: YouTubePlayerProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl overflow-hidden p-0">
-        <DialogHeader className="px-6 pb-2 pt-6">
-          <DialogTitle className="text-lg sm:text-xl">{song.title}</DialogTitle>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl sm:p-0">
+        <DialogHeader className="px-4 pb-3 pr-12 pt-4 text-left sm:px-6 sm:pt-6">
+          <DialogTitle className="break-words text-lg sm:text-xl">{song.title}</DialogTitle>
           <DialogDescription className="flex flex-wrap items-center gap-x-3">
             {song.artist && <span>{song.artist}</span>}
             <a
               href={youtubeWatchUrl(videoId)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 hover:underline"
+              className="inline-flex min-h-10 items-center gap-1 underline-offset-4 hover:underline sm:min-h-0"
             >
-              Abrir no YouTube <ExternalLink className="h-3 w-3" />
+              Abrir no YouTube <ExternalLink className="size-3.5" />
             </a>
           </DialogDescription>
         </DialogHeader>

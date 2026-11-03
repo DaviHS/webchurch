@@ -24,9 +24,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { buildDeck, samePosition, type Position } from "../deck";
+import { buildDeck, samePosition, type DeckSongSource, type Position } from "../deck";
 import { loadCachedDeck, saveCachedDeck } from "../deck-cache";
 import { formatElapsed } from "../hooks";
 import { ProjectorView } from "../projector-view";
@@ -64,6 +65,18 @@ const SHORTCUTS: [string, string][] = [
   ["Esc", "Voltar a letra"],
 ];
 
+type ConsoleTab = "setlist" | "slides" | "outputs";
+
+const CONSOLE_TABS: { value: ConsoleTab; label: string }[] = [
+  { value: "setlist", label: "Repertório" },
+  { value: "slides", label: "Estrofes" },
+  { value: "outputs", label: "Saídas" },
+];
+
+const isConsoleTab = (value: string): value is ConsoleTab => CONSOLE_TABS.some((tab) => tab.value === value);
+
+const PANEL_CLASS = "mt-0 min-h-0 data-[state=inactive]:hidden lg:data-[state=inactive]:block";
+
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -88,7 +101,7 @@ function OutputControls({ controller }: { controller: PresentationController }) 
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="hidden flex-wrap items-center gap-2 md:flex">
       {OUTPUT_ROLES.map((role) => {
         const Icon = OUTPUT_ICONS[role];
         const connected = controller.connections[role];
@@ -124,10 +137,26 @@ function SidePanel({ controller }: { controller: PresentationController }) {
   return (
     <ScrollArea className="h-full pr-2">
       <div className="space-y-4">
+        <section className="space-y-2 md:hidden">
+          {OUTPUT_ROLES.map((role) => {
+            const Icon = OUTPUT_ICONS[role];
+            const connected = controller.connections[role];
+            return (
+              <div key={role} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-emerald-500" : "bg-red-500")} />
+                <Icon className="size-4 shrink-0" />
+                <span className="font-medium">{OUTPUT_LABELS[role]}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{connected ? "Conectado" : "Desconectado"}</span>
+              </div>
+            );
+          })}
+          <p className="text-xs text-muted-foreground">Abra o projetor e o retorno no computador ligado às telas.</p>
+        </section>
+
         <section className="space-y-1.5">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <Projector className="h-3.5 w-3.5" /> Projetor
-            <span className={cn("ml-auto rounded px-1.5 text-[10px] font-bold", mode === "live" ? "bg-red-500 text-white" : "bg-muted")}>
+            <span className={cn("ml-auto rounded px-1.5 text-xs font-bold", mode === "live" ? "bg-red-500 text-white" : "bg-muted")}>
               {mode === "live" ? "AO VIVO" : MODE_BUTTONS.find((b) => b.mode === mode)?.label.toUpperCase()}
             </span>
           </h2>
@@ -145,18 +174,19 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           </div>
         </section>
 
-        <section className="grid grid-cols-3 gap-2">
+        <section className="hidden grid-cols-3 gap-2 lg:grid">
           {MODE_BUTTONS.map(({ mode: target, label, key, icon: Icon }) => (
             <Button
               key={target}
               type="button"
               variant={mode === target ? "default" : "outline"}
               className="h-auto flex-col gap-1 py-2"
+              aria-pressed={mode === target}
               onClick={() => controller.toggleMode(target)}
             >
               <Icon className="h-4 w-4" />
               <span className="text-xs">{label}</span>
-              <kbd className="text-[10px] opacity-60">{key}</kbd>
+              <kbd className="hidden text-xs opacity-60 [@media(hover:hover)]:inline">{key}</kbd>
             </Button>
           ))}
         </section>
@@ -172,8 +202,14 @@ function SidePanel({ controller }: { controller: PresentationController }) {
               controller.setStageMessage(draft.trim());
             }}
           >
-            <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ex.: Repetir refrão" className="h-9" />
-            <Button type="submit" size="sm" disabled={draft.trim() === ""}>
+            <Input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Ex.: Repetir refrão"
+              enterKeyHint="send"
+              aria-label="Aviso no retorno"
+            />
+            <Button type="submit" disabled={draft.trim() === ""}>
               Enviar
             </Button>
           </form>
@@ -182,16 +218,16 @@ function SidePanel({ controller }: { controller: PresentationController }) {
               <span className="truncate">Exibindo: “{stageMessage}”</span>
               <Button
                 type="button"
-                size="icon"
+                size="icon-sm"
                 variant="ghost"
-                className="h-6 w-6"
+                className="shrink-0"
                 onClick={() => {
                   controller.setStageMessage("");
                   setDraft("");
                 }}
                 aria-label="Remover aviso"
               >
-                <X className="h-3 w-3" />
+                <X />
               </Button>
             </div>
           )}
@@ -215,7 +251,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           )}
         </section>
 
-        <section className="space-y-1 rounded-md border p-2 text-xs">
+        <section className="hidden space-y-1 rounded-md border p-2 text-xs [@media(hover:hover)]:block">
           <p className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-muted-foreground">
             <Keyboard className="h-3.5 w-3.5" /> Atalhos
           </p>
@@ -252,6 +288,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
   const { deck, live, next } = controller;
 
   const [pin, setPin] = useState<{ song: number; liveAtPin: Position | null } | null>(null);
+  const [tab, setTab] = useState<ConsoleTab>("slides");
   const selectedSong = pin && samePosition(pin.liveAtPin, live) ? pin.song : (live?.song ?? pin?.song ?? 0);
 
   useEffect(() => {
@@ -259,7 +296,16 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
   }, []);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (!deck || isTypingTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (
+      !deck ||
+      event.defaultPrevented ||
+      isTypingTarget(event.target) ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey
+    ) {
+      return;
+    }
     const { key: pressed } = event;
 
     if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(pressed)) {
@@ -322,14 +368,22 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
     );
   }
 
+  const handleSelectSong = (song: number) => {
+    setPin({ song, liveAtPin: live });
+    setTab("slides");
+  };
+
+  const handleAddSong = (song: DeckSongSource) => {
+    controller.addSong(song);
+    setPin({ song: deck.songs.length, liveAtPin: live });
+    setTab("slides");
+  };
+
   return (
-    <div className="flex h-dvh flex-col bg-background">
-      <header className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
-        <Button asChild variant="ghost" size="icon" aria-label="Voltar ao app">
-          <Link
-            href={backHref}
-            onClick={() => controller.closeOutputs()}
-          >
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <header className="flex shrink-0 items-center gap-2 border-b px-2 py-2 sm:gap-3 sm:px-4 md:flex-wrap">
+        <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="Voltar ao app">
+          <Link href={backHref} onClick={() => controller.closeOutputs()}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -346,7 +400,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
           </p>
         </div>
         <OutputControls controller={controller} />
-        <div className="flex items-center gap-1">
+        <div className="hidden items-center gap-1 lg:flex">
           <Button type="button" size="icon" variant="outline" onClick={controller.goPrevious} aria-label="Estrofe anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -356,29 +410,73 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[260px_minmax(0,1fr)_340px]">
-        <aside className="min-h-0">
-          <Setlist
-            deck={deck}
-            live={live}
-            selectedSong={selectedSong}
-            onSelect={(song) => setPin({ song, liveAtPin: live })}
-            onAddSong={(song) => {
-              controller.addSong(song);
-              setPin({ song: deck.songs.length, liveAtPin: live });
-            }}
-            onRemoveSong={controller.removeSong}
-          />
-        </aside>
-        <main className="min-h-0">
-          <ScrollArea className="h-full pr-3">
-            <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} />
-          </ScrollArea>
-        </main>
-        <aside className="min-h-0">
-          <SidePanel controller={controller} />
-        </aside>
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (isConsoleTab(value)) setTab(value);
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-3 lg:hidden">
+          {CONSOLE_TABS.map(({ value, label }) => (
+            <TabsTrigger key={value} value={value} className="h-9">
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] gap-4 p-3 lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:p-4">
+          <TabsContent value="setlist" forceMount className={PANEL_CLASS}>
+            <Setlist
+              deck={deck}
+              live={live}
+              selectedSong={selectedSong}
+              onSelect={handleSelectSong}
+              onAddSong={handleAddSong}
+              onRemoveSong={controller.removeSong}
+            />
+          </TabsContent>
+          <TabsContent value="slides" forceMount className={PANEL_CLASS}>
+            <ScrollArea className="h-full pr-3">
+              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} />
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="outputs" forceMount className={PANEL_CLASS}>
+            <SidePanel controller={controller} />
+          </TabsContent>
+        </div>
+      </Tabs>
+
+      <nav
+        aria-label="Controles da apresentação"
+        className="shrink-0 space-y-2 border-t bg-background px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden"
+      >
+        <div className="grid grid-cols-3 gap-2">
+          {MODE_BUTTONS.map(({ mode: target, label, icon: Icon }) => (
+            <Button
+              key={target}
+              type="button"
+              size="sm"
+              variant={controller.mode === target ? "default" : "outline"}
+              className="gap-1.5 px-2 text-xs"
+              aria-pressed={controller.mode === target}
+              onClick={() => controller.toggleMode(target)}
+            >
+              <Icon />
+              {label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="h-14 flex-1 text-base [&_svg]:size-5" onClick={controller.goPrevious}>
+            <ChevronLeft />
+            Anterior
+          </Button>
+          <Button type="button" className="h-14 flex-1 text-base [&_svg]:size-5" onClick={controller.goNext}>
+            Próxima
+            <ChevronRight />
+          </Button>
+        </div>
+      </nav>
     </div>
   );
 }

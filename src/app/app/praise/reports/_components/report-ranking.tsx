@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { List, Music, ChevronRight } from "lucide-react";
+import { formatPercent } from "@/lib/formatters";
+import { RankBadge } from "../../_components/rank-badge";
 import type { ReportItem, Song } from "@/types";
 
 interface ReportRankingProps {
@@ -15,15 +17,15 @@ export function ReportRanking({ report, isLoading, isDateRangeValid, onSongClick
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
-        <CardHeader className="p-3 sm:p-4">
-          <Skeleton className="h-5 w-32 sm:w-48" />
-          <Skeleton className="h-3 w-40 sm:w-64" />
+        <CardHeader className="space-y-2 p-4">
+          <Skeleton className="h-5 w-40 sm:w-48" />
+          <Skeleton className="h-4 w-48 sm:w-64" />
         </CardHeader>
-        <CardContent className="p-3 sm:p-4 pt-0">
+        <CardContent className="p-4 pt-0">
           <div className="space-y-2">
-            <Skeleton className="h-12 sm:h-16 w-full" />
-            <Skeleton className="h-12 sm:h-16 w-full" />
-            <Skeleton className="h-12 sm:h-16 w-full" />
+            <Skeleton className="h-14 w-full sm:h-16" />
+            <Skeleton className="h-14 w-full sm:h-16" />
+            <Skeleton className="h-14 w-full sm:h-16" />
           </div>
         </CardContent>
       </Card>
@@ -34,64 +36,51 @@ export function ReportRanking({ report, isLoading, isDateRangeValid, onSongClick
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="p-3 sm:p-4">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-          <List className="h-4 w-4 text-primary" />
+      <CardHeader className="space-y-1 p-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <List className="size-4 shrink-0 text-primary" />
           Ranking de músicas
         </CardTitle>
-        <p className="text-[10px] sm:text-sm text-muted-foreground">
-          Clique em uma música para ver detalhes
-        </p>
+        <p className="text-sm text-muted-foreground">Toque em uma música para ver detalhes</p>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4 pt-0">
+      <CardContent className="p-4 pt-0">
         {report && report.length > 0 ? (
-          <div className="space-y-1.5 sm:space-y-2">
-            {report.map((item, index) => {
-              const percent = total > 0 ? ((item.count / total) * 100).toFixed(1) : "0";
-
-              return (
+          <ol className="space-y-2">
+            {report.map((item, index) => (
+              <li key={item.songId}>
                 <button
                   type="button"
-                  key={item.songId}
-                  className="group flex w-full items-center justify-between rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-3"
-                  onClick={() => onSongClick({
-                    id: item.songId,
-                    title: item.title,
-                    artist: item.artist ?? "",
-                  })}
+                  className="group flex min-h-14 w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() =>
+                    onSongClick({
+                      id: item.songId,
+                      title: item.title,
+                      artist: item.artist ?? "",
+                    })
+                  }
                 >
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-primary text-primary-foreground rounded-full text-[10px] sm:text-xs font-medium shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate text-xs sm:text-sm">{item.title}</div>
-                      <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                        {item.artist === null || item.artist === "" ? "Artista desconhecido" : item.artist}
-                      </div>
+                  <RankBadge rank={index + 1} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{item.title}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {item.artist === null || item.artist === "" ? "Artista desconhecido" : item.artist}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
-                    <div className="text-right">
-                      <div className="font-bold text-xs sm:text-sm">{item.count}x</div>
-                      <div className="text-[10px] text-muted-foreground hidden sm:block">
-                        {percent}%
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-bold tabular-nums">{item.count}x</div>
+                    <div className="text-xs tabular-nums text-muted-foreground">{formatPercent(item.count, total)}%</div>
                   </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" />
                 </button>
-              );
-            })}
-          </div>
+              </li>
+            ))}
+          </ol>
         ) : (
           <EmptyState
             icon={Music}
             title="Nenhuma música encontrada"
             description={
-              !isDateRangeValid
-                ? "Selecione um período válido para consultar."
-                : "Ajuste os filtros para ver os resultados."
+              isDateRangeValid ? "Ajuste os filtros para ver os resultados." : "Selecione um período válido para consultar."
             }
             className="py-8"
           />

@@ -1,14 +1,22 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Briefcase, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Briefcase, Link2, Plus, Trash2, Users, X } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "sonner";
-import { useState } from "react";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 import type { Ministry } from "./ministry-dialog";
-import { MemberStatusBadge } from "../../members/_components/member-status-badge";
+import { MinistryMemberItem } from "./ministry-member-item";
 
 interface MinistryFunctionsDialogProps {
   ministry: Ministry | null;
@@ -20,21 +28,20 @@ export function MinistryFunctionsDialog({ ministry, open, onOpenChange }: Minist
   if (!ministry) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Ministério: {ministry.name}</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="min-w-0 break-words">Ministério: {ministry.name}</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
 
         <MinistryFunctionsContent key={ministry.id} ministryId={ministry.id} />
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
 function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
-  const [addingFunction, setAddingFunction] = useState(false);
-  const [viewMembers, setViewMembers] = useState(false);
+  const [isAddingFunction, setIsAddingFunction] = useState(false);
 
   const utils = api.useUtils();
 
@@ -42,7 +49,7 @@ function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
 
   const { data: availableFunctions = [] } = api.ministry.getAvailableFunctions.useQuery(
     { ministryId },
-    { enabled: addingFunction }
+    { enabled: isAddingFunction }
   );
 
   const { data: ministryMembers = [] } = api.ministry.getMinistryMembers.useQuery({ ministryId });
@@ -52,29 +59,27 @@ function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
       utils.ministry.getMinistryFunctions.invalidate({ ministryId }),
       utils.ministry.getAvailableFunctions.invalidate({ ministryId }),
       utils.ministry.getMinistryStats.invalidate(),
-      utils.ministry.getAllMinistryFunctions.invalidate(),
+      utils.ministry.listMinistryFunctions.invalidate(),
     ]);
 
-  const addFunctionMutation = api.ministry.addFunctionToMinistry.useMutation({
-    onSuccess: async () => {
-      toast.success("Função adicionada ao ministério com sucesso");
-      setAddingFunction(false);
-      await invalidateMinistryFunctions();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao adicionar função: ${error.message}`);
-    },
-  });
+  const addFunctionMutation = api.ministry.addFunctionToMinistry.useMutation(
+    mutationFeedback({
+      success: "Função vinculada ao ministério com sucesso",
+      error: "Erro ao vincular função",
+      onSuccess: async () => {
+        setIsAddingFunction(false);
+        await invalidateMinistryFunctions();
+      },
+    })
+  );
 
-  const removeFunctionMutation = api.ministry.removeFunctionFromMinistry.useMutation({
-    onSuccess: async () => {
-      toast.success("Função removida do ministério com sucesso");
-      await invalidateMinistryFunctions();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao remover função: ${error.message}`);
-    },
-  });
+  const removeFunctionMutation = api.ministry.removeFunctionFromMinistry.useMutation(
+    mutationFeedback({
+      success: "Função removida do ministério com sucesso",
+      error: "Erro ao remover função",
+      onSuccess: invalidateMinistryFunctions,
+    })
+  );
 
   const handleAddFunction = (functionId: number) => {
     addFunctionMutation.mutate({ ministryId, functionId });
@@ -85,149 +90,116 @@ function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex border-b">
-        <Button
-          variant="ghost"
-          onClick={() => setViewMembers(false)}
-          aria-pressed={!viewMembers}
-          className={`-mb-px rounded-none border-b-2 ${!viewMembers ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
-        >
-          <Briefcase className="h-4 w-4 mr-2" />
-          Funções
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => setViewMembers(true)}
-          aria-pressed={viewMembers}
-          className={`-mb-px rounded-none border-b-2 ${viewMembers ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
-        >
-          <Users className="h-4 w-4 mr-2" />
-          Membros ({ministryMembers.length})
-        </Button>
+    <Tabs defaultValue="functions" className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-4 pt-2 sm:px-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="functions" className="gap-2">
+            <Briefcase className="size-4" />
+            Funções
+          </TabsTrigger>
+          <TabsTrigger value="members" className="gap-2">
+            <Users className="size-4" />
+            Membros ({ministryMembers.length})
+          </TabsTrigger>
+        </TabsList>
       </div>
 
-      {!viewMembers ? (
-        <div className="space-y-4">
-          <div className="space-y-2">
+      <ResponsiveDialogBody className="pb-4 sm:pb-6">
+        <TabsContent value="functions" className="mt-2 space-y-6">
+          <section className="space-y-2">
             <h3 className="font-semibold">Funções vinculadas</h3>
             {ministryFunctions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma função vinculada</p>
+              <EmptyState icon={Briefcase} title="Nenhuma função vinculada" className="py-6" />
             ) : (
               <div className="space-y-2">
-                {ministryFunctions.map((mf) => (
-                  <Card key={mf.id}>
-                    <CardContent className="p-3 flex justify-between items-center">
-                      <div className="flex-1">
-                        <span className="font-medium">{mf.functionName}</span>
-                        {mf.functionDescription && (
-                          <p className="text-sm text-muted-foreground">
-                            {mf.functionDescription}
+                {ministryFunctions.map((ministryFunction) => (
+                  <Card key={ministryFunction.id}>
+                    <CardContent className="flex items-center justify-between gap-2 p-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="break-words font-medium">{ministryFunction.functionName}</span>
+                        {ministryFunction.functionDescription && (
+                          <p className="break-words text-sm text-muted-foreground">
+                            {ministryFunction.functionDescription}
                           </p>
                         )}
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveFunction(mf.id)}
+                        size="icon"
+                        onClick={() => handleRemoveFunction(ministryFunction.id)}
                         disabled={removeFunctionMutation.isPending}
-                        aria-label="Remover função"
+                        aria-label={`Remover função ${ministryFunction.functionName}`}
+                        title="Remover função"
                         className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 />
                       </Button>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">Adicionar função</h3>
+          <section className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold">Vincular função</h3>
               <Button
-                variant={addingFunction ? "default" : "outline"}
-                size="sm"
-                onClick={() => setAddingFunction((adding) => !adding)}
+                variant={isAddingFunction ? "default" : "outline"}
+                onClick={() => setIsAddingFunction((adding) => !adding)}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                {addingFunction ? "Cancelar" : "Adicionar"}
+                {isAddingFunction ? <X /> : <Plus />}
+                {isAddingFunction ? "Cancelar" : "Adicionar"}
               </Button>
             </div>
 
-            {addingFunction && (
-              <div className="space-y-2">
-                {availableFunctions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Todas as funções já estão vinculadas a este ministério
-                  </p>
-                ) : (
-                  availableFunctions.map((func) => (
-                    <Card key={func.id}>
-                      <CardContent className="p-3 flex justify-between items-center">
-                        <div className="flex-1">
-                          <span className="font-medium">{func.name}</span>
-                          {func.description && (
-                            <p className="text-sm text-muted-foreground">
-                              {func.description}
-                            </p>
+            {isAddingFunction &&
+              (availableFunctions.length === 0 ? (
+                <EmptyState
+                  icon={Briefcase}
+                  title="Todas as funções já estão vinculadas a este ministério"
+                  className="py-6"
+                />
+              ) : (
+                <div className="space-y-2">
+                  {availableFunctions.map((availableFunction) => (
+                    <Card key={availableFunction.id}>
+                      <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <span className="break-words font-medium">{availableFunction.name}</span>
+                          {availableFunction.description && (
+                            <p className="break-words text-sm text-muted-foreground">{availableFunction.description}</p>
                           )}
                         </div>
                         <Button
-                          size="sm"
-                          onClick={() => handleAddFunction(func.id)}
+                          onClick={() => handleAddFunction(availableFunction.id)}
                           disabled={addFunctionMutation.isPending}
+                          className="w-full sm:w-auto"
                         >
-                          <Briefcase className="h-4 w-4 mr-2" />
+                          <Link2 />
                           Vincular
                         </Button>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold">
-              Membros do ministério ({ministryMembers.length})
-            </h3>
-            {ministryMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhum membro vinculado a este ministério
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {ministryMembers.map((member) => (
-                  <Card key={member.memberId}>
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium">
-                              {member.firstName} {member.lastName}
-                            </span>
-                            <MemberStatusBadge status={member.status} />
-                          </div>
-                          {member.functionName && (
-                            <p className="text-sm text-muted-foreground">
-                              Função: {member.functionName}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+                  ))}
+                </div>
+              ))}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="members" className="mt-2 space-y-2">
+          <h3 className="font-semibold">Membros do ministério ({ministryMembers.length})</h3>
+          {ministryMembers.length === 0 ? (
+            <EmptyState icon={Users} title="Nenhum membro vinculado a este ministério" className="py-6" />
+          ) : (
+            <div className="space-y-2">
+              {ministryMembers.map((member) => (
+                <MinistryMemberItem key={member.memberId} member={member} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </ResponsiveDialogBody>
+    </Tabs>
   );
 }

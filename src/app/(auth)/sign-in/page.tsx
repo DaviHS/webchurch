@@ -1,13 +1,11 @@
-"use client"
-
 import Link from "next/link"
-import Form from "./_components/form"
+import { SignInForm } from "./_components/sign-in-form"
 
-export default function SignIn() {
+export default function SignInPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-md mx-auto">
-        <Form />
+        <SignInForm />
       </div>
 
       <div className="mt-6 text-center">

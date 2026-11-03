@@ -1,18 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { History, Play, Edit, Trash2, Eye, MoreVertical } from "lucide-react";
+import { RowActionsMenu } from "@/components/row-actions-menu";
+import { History, Play, Pencil, Trash2, Eye } from "lucide-react";
 import { Youtube } from "@/components/icons/brand";
-import { getCategoryName } from "@/lib/formatters";
+import { songCategoryLabel } from "@/lib/labels";
 import type { Song } from "@/types";
 
 interface SongCardProps {
@@ -24,109 +19,45 @@ interface SongCardProps {
   onViewHistory: (song: Song) => void;
 }
 
-export function SongCard({
-  song,
-  onEdit,
-  onDelete,
-  onViewLyrics,
-  onPlayYouTube,
-  onViewHistory,
-}: SongCardProps) {
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
-    e.preventDefault();
-    e.stopPropagation();
-    action();
-  };
-
+export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, onViewHistory }: SongCardProps) {
   return (
-    <Card className="h-full flex flex-col transition-all hover:shadow-md">
-      <CardContent className="p-3 flex items-center justify-between gap-2">
-        <div className="flex flex-col min-w-0">
-          <CardTitle className="text-sm leading-tight line-clamp-1">
+    <Card className="flex h-full flex-col transition-shadow [@media(hover:hover)]:hover:shadow-md">
+      <CardContent className="flex flex-1 items-center justify-between gap-2 p-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <h3 className="truncate text-sm font-semibold leading-tight" title={song.title}>
             {song.title}
-          </CardTitle>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="line-clamp-1">
-              {song.artist || "Artista não informado"}
-            </span>
+          </h3>
+          <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <span className="truncate">{song.artist || "Artista não informado"}</span>
             {song.category && (
-              <Badge variant="outline" className="text-xs">
-                {getCategoryName(song.category)}
+              <Badge variant="outline" className="shrink-0">
+                {songCategoryLabel(song.category)}
               </Badge>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onClick={(e) => handleAction(e, () => onEdit(song))}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                <span>Editar</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={(e) => handleAction(e, () => onDelete(song))}
-                className="flex items-center gap-2 text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Excluir</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={(e) => handleAction(e, () => onViewLyrics(song))}
-                className="flex items-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                <span>Ver letra</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={(e) => handleAction(e, () => onViewHistory(song))}
-                className="flex items-center gap-2"
-              >
-                <History className="h-4 w-4" />
-                <span>Histórico</span>
-              </DropdownMenuItem>
-
-              {song.youtubeUrl && (
-                <DropdownMenuItem
-                  onClick={(e) => handleAction(e, () => onPlayYouTube(song))}
-                  className="flex items-center gap-2"
-                >
-                  <Youtube className="h-4 w-4" />
-                  <span>YouTube</span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-1">
+          <RowActionsMenu
+            label={`Ações de ${song.title}`}
+            actions={[
+              { label: "Ver letra", icon: Eye, onSelect: () => onViewLyrics(song) },
+              { label: "Histórico", icon: History, onSelect: () => onViewHistory(song) },
+              { label: "Vídeo do YouTube", icon: Youtube, onSelect: () => onPlayYouTube(song), hidden: !song.youtubeUrl },
+              { label: "Editar", icon: Pencil, onSelect: () => onEdit(song) },
+              { label: "Excluir", icon: Trash2, onSelect: () => onDelete(song), destructive: true },
+            ]}
+          />
 
           {song.lyrics ? (
-            <Button asChild variant="default" size="sm" title="Apresentar música" className="h-6 w-6 p-0">
-              <Link href={`/presentation/control?song=${song.id}`} onClick={(e) => e.stopPropagation()}>
-                <Play className="h-3 w-3" />
+            <Button asChild size="icon" title="Apresentar música" aria-label={`Apresentar ${song.title}`}>
+              <Link href={`/presentation/control?song=${song.id}`}>
+                <Play />
               </Link>
             </Button>
           ) : (
-            <Button variant="default" size="sm" disabled title="Cadastre a letra para apresentar" className="h-6 w-6 p-0">
-              <Play className="h-3 w-3" />
+            <Button size="icon" disabled title="Cadastre a letra para apresentar" aria-label="Cadastre a letra para apresentar">
+              <Play />
             </Button>
           )}
         </div>

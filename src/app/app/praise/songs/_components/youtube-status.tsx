@@ -6,33 +6,36 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Youtube } from "@/components/icons/brand";
 import { api } from "@/trpc/react";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 
 export function YouTubeStatus() {
   const utils = api.useUtils();
-  const { data: status, isFetching } = api.song.youtubeStatus.useQuery(undefined, {
+  const { data: status, isFetching } = api.song.getYouTubeStatus.useQuery(undefined, {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
-  const recheck = async () => {
-    const fresh = await utils.song.youtubeStatus.fetch({ force: true });
-    utils.song.youtubeStatus.setData(undefined, fresh);
-    if (fresh.ok) toast.success("YouTube conectado!");
+  const handleRecheck = async () => {
+    const fresh = await utils.song.getYouTubeStatus.fetch({ force: true });
+    utils.song.getYouTubeStatus.setData(undefined, fresh);
+    if (fresh.ok) toast.success("YouTube conectado");
   };
 
-  const sync = api.song.syncYouTubePlaylist.useMutation({
-    onSuccess: async (result) => {
-      const parts = [
-        result.added > 0 ? `${result.added} vídeo(s) adicionado(s) à playlist` : null,
-        result.durationsFilled > 0 ? `${result.durationsFilled} duração(ões) preenchida(s)` : null,
-        result.failed > 0 ? `${result.failed} vídeo(s) indisponível(is)` : null,
-        result.remaining > 0 ? `${result.remaining} ficaram para a próxima (limite diário de cota)` : null,
-      ].filter(Boolean);
-      toast.success(parts.length === 0 ? "Tudo em dia: playlist completa e durações preenchidas." : parts.join(" · "));
-      await Promise.all([utils.song.youtubeStatus.invalidate(), utils.song.list.invalidate()]);
-    },
-    onError: (error) => toast.error("Erro ao sincronizar a playlist: " + error.message),
-  });
+  const syncPlaylistMutation = api.song.syncYouTubePlaylist.useMutation(
+    mutationFeedback({
+      success: (result) => {
+        const parts = [
+          result.added > 0 ? `${result.added} vídeo(s) adicionado(s) à playlist` : null,
+          result.durationsFilled > 0 ? `${result.durationsFilled} duração(ões) preenchida(s)` : null,
+          result.failed > 0 ? `${result.failed} vídeo(s) indisponível(is)` : null,
+          result.remaining > 0 ? `${result.remaining} ficaram para a próxima (limite diário de cota)` : null,
+        ].filter(Boolean);
+        return parts.length === 0 ? "Tudo em dia: playlist completa e durações preenchidas" : parts.join(" · ");
+      },
+      error: "Erro ao sincronizar a playlist",
+      onSuccess: () => Promise.all([utils.song.getYouTubeStatus.invalidate(), utils.song.list.invalidate()]),
+    })
+  );
 
   if (!status?.configured) return null;
 
@@ -63,8 +66,8 @@ export function YouTubeStatus() {
             Enquanto isso, as músicas continuam sendo salvas — só não entram na playlist. Depois de corrigir, use
             “Sincronizar”.
           </p>
-          <Button type="button" size="sm" variant="outline" onClick={() => void recheck()} disabled={isFetching}>
-            {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          <Button type="button" size="sm" variant="outline" onClick={() => void handleRecheck()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Verificar novamente
           </Button>
         </AlertDescription>
@@ -84,22 +87,22 @@ export function YouTubeStatus() {
           href={status.playlist.url}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline"
+          className="flex min-h-10 min-w-0 items-center gap-1 break-words text-muted-foreground hover:text-foreground hover:underline sm:min-h-0"
         >
           {status.playlist.title} · {status.playlist.itemCount} vídeos
-          <ExternalLink className="h-3 w-3" />
+          <ExternalLink className="size-3.5 shrink-0" />
         </a>
       )}
       <Button
         type="button"
         size="sm"
-        variant="ghost"
-        className="ml-auto h-7"
-        onClick={() => sync.mutate()}
-        disabled={sync.isPending}
+        variant="outline"
+        className="w-full sm:ml-auto sm:w-auto"
+        onClick={() => syncPlaylistMutation.mutate()}
+        disabled={syncPlaylistMutation.isPending}
         title="Adiciona à playlist os vídeos das músicas que ficaram de fora"
       >
-        {sync.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}
+        {syncPlaylistMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
         Sincronizar playlist
       </Button>
     </div>

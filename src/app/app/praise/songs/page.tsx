@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/trpc/react";
 import { Music, Plus } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/page-header";
+import { PaginationBar } from "@/components/pagination-bar";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { SongForm } from "./_components/form";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
+import { SongForm } from "./_components/song-form";
 import { isSongCategory } from "@/validators/song";
 import { LyricsDialog } from "./_components/lyrics-dialog";
 import { YouTubePlayer } from "./_components/youtube-player";
@@ -22,10 +22,9 @@ import { LastExecutionsDialog } from "./_components/last-executions-dialog";
 import { SongCard } from "./_components/song-card";
 import { SongFilters } from "./_components/song-filters";
 import { SongGridSkeleton } from "./_components/song-grid-skeleton";
-import { SongPagination } from "./_components/song-pagination";
 import { SongEmptyState } from "./_components/song-empty-state";
 import { useSongMutations } from "@/hooks/use-song-mutations";
-import { useCreateRequest } from "@/hooks/use-create-request";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { Song } from "@/types";
 import type { SongFormData } from "@/validators/song";
@@ -36,24 +35,16 @@ export default function SongsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historySong, setHistorySong] = useState<Song | null>(null);
 
+  const songDialog = useEntityDialog<Song>({ fromUrl: true });
   const debouncedSearch = useDebounce(search, 300);
 
-  const createRequest = useCreateRequest();
-  const dialogOpen = isDialogOpen || createRequest.requested;
-  const setDialogOpen = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) createRequest.dismiss();
-  };
-
-  const { data, isLoading } = api.song.list.useQuery({
+  const { data, isLoading, isFetching } = api.song.list.useQuery({
     search: debouncedSearch,
     category: category === "" ? undefined : category,
     page,
@@ -61,32 +52,19 @@ export default function SongsPage() {
   });
 
   const { handleSubmit, handleDelete, isPending } = useSongMutations({
-    onSuccess: () => {
-      setDialogOpen(false);
-      setEditingSong(null);
-    },
+    onSuccess: songDialog.close,
   });
 
-  const handleEdit = (song: Song) => {
-    setEditingSong(song);
-    setIsDialogOpen(true);
-  };
+  const editingSong = songDialog.editing;
 
-  const handleCreate = () => {
-    setEditingSong(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleFormSubmit = (data: SongFormData) => {
-    handleSubmit(data, editingSong);
+  const handleFormSubmit = (formData: SongFormData) => {
+    handleSubmit(formData, editingSong);
   };
 
   const initialFormData = editingSong
     ? {
         ...editingSong,
-        category: isSongCategory(editingSong.category)
-          ? editingSong.category
-          : undefined,
+        category: isSongCategory(editingSong.category) ? editingSong.category : undefined,
       }
     : undefined;
 
@@ -105,6 +83,16 @@ export default function SongsPage() {
     setHistoryDialogOpen(true);
   };
 
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
+    setPage(1);
+  };
+
   const songs: Song[] = (data?.songs ?? []).map((song) => ({
     ...song,
     artist: song.artist ?? "",
@@ -119,11 +107,7 @@ export default function SongsPage() {
     <PageContainer>
       {selectedSong && (
         <>
-          <LyricsDialog
-            song={selectedSong}
-            open={lyricsDialogOpen}
-            onOpenChange={setLyricsDialogOpen}
-          />
+          <LyricsDialog song={selectedSong} open={lyricsDialogOpen} onOpenChange={setLyricsDialogOpen} />
           <YouTubePlayer
             key={selectedSong.id}
             song={selectedSong}
@@ -134,61 +118,50 @@ export default function SongsPage() {
       )}
 
       {historySong && (
-        <LastExecutionsDialog
-          song={historySong}
-          open={historyDialogOpen}
-          onOpenChange={setHistoryDialogOpen}
-        />
+        <LastExecutionsDialog song={historySong} open={historyDialogOpen} onOpenChange={setHistoryDialogOpen} />
       )}
+
+      <ResponsiveDialog open={songDialog.open} onOpenChange={songDialog.onOpenChange}>
+        <ResponsiveDialogContent size="lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{songDialog.isEditing ? "Editar música" : "Nova música"}</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
+          <SongForm
+            key={editingSong?.id ?? "new"}
+            onSubmit={handleFormSubmit}
+            initialData={initialFormData}
+            isLoading={isPending}
+            onCancel={songDialog.close}
+          />
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       <PageHeader
         title="Músicas"
         icon={Music}
         description="Repertório do ministério de louvor."
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreate} className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Nova música
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] w-[95vw] max-w-2xl overflow-y-auto sm:w-full">
-              <DialogHeader>
-                <DialogTitle className="text-lg sm:text-xl">
-                  {editingSong ? "Editar música" : "Nova música"}
-                </DialogTitle>
-              </DialogHeader>
-              <SongForm
-                onSubmit={handleFormSubmit}
-                initialData={initialFormData}
-                isLoading={isPending}
-                onCancel={() => setDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={songDialog.openCreate} className="w-full sm:w-auto">
+            <Plus />
+            Nova música
+          </Button>
         }
       />
 
       <YouTubeStatus />
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
           <SongFilters
             search={search}
-            onSearchChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
+            onSearchChange={handleSearchChange}
             category={category}
-            onCategoryChange={(value) => {
-              setCategory(value);
-              setPage(1);
-            }}
+            onCategoryChange={handleCategoryChange}
+            isSearching={isFetching && search !== ""}
           />
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           {isLoading ? (
             <SongGridSkeleton />
           ) : songs.length > 0 ? (
@@ -198,8 +171,8 @@ export default function SongsPage() {
                   <SongCard
                     key={song.id}
                     song={song}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onEdit={songDialog.openEdit}
+                    onDelete={(target) => void handleDelete(target)}
                     onViewLyrics={handleViewLyrics}
                     onPlayYouTube={handlePlayYouTube}
                     onViewHistory={handleViewHistory}
@@ -207,17 +180,18 @@ export default function SongsPage() {
                 ))}
               </div>
 
-              <SongPagination
+              <PaginationBar
                 page={page}
                 totalPages={data?.totalPages ?? 1}
                 total={data?.total ?? 0}
                 showing={songs.length}
                 onPageChange={setPage}
+                itemLabel="músicas"
               />
             </>
           ) : (
             <SongEmptyState
-              onCreateClick={handleCreate}
+              onCreateClick={songDialog.openCreate}
               filtered={debouncedSearch !== "" || category !== ""}
             />
           )}

@@ -1,8 +1,13 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { TransactionForm, transactionToFormValues } from "./transaction-form";
 import type { FinancialTransactionFormData } from "@/validators/finance";
 import type { FinancialCategory } from "./finance-filters";
-import type { TransactionRow } from "./transactions-list";
+import type { TransactionRow } from "./transaction-list";
 
 interface TransactionDialogProps {
   open: boolean;
@@ -22,13 +27,11 @@ export function TransactionDialog({
   categories,
 }: TransactionDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">
-            {transaction ? "Editar transação" : "Nova transação"}
-          </DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{transaction ? "Editar transação" : "Nova transação"}</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         <TransactionForm
           key={transaction?.transaction.id ?? "new"}
           onSubmit={onSubmit}
@@ -37,7 +40,7 @@ export function TransactionDialog({
           categories={categories}
           onCancel={() => onOpenChange(false)}
         />
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

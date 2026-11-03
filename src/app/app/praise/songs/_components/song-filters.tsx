@@ -1,49 +1,39 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { SearchInput } from "@/components/search-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SONG_CATEGORY_LABELS } from "@/lib/labels";
+import { songCategories } from "@/validators/song";
 
 interface SongFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
   category: string;
   onCategoryChange: (value: string) => void;
+  isSearching?: boolean;
 }
 
-export function SongFilters({ search, onSearchChange, category, onCategoryChange }: SongFiltersProps) {
+export function SongFilters({ search, onSearchChange, category, onCategoryChange, isSearching }: SongFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-center">
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por música ou artista..."
-          className="pl-10 w-full text-sm sm:text-base"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <SearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Buscar por música ou artista..."
+        isLoading={isSearching}
+      />
 
-      <Select
-        value={category || "any"}
-        onValueChange={(val) => onCategoryChange(val === "any" ? "" : val)}
-      >
-        <SelectTrigger className="w-full sm:w-40">
-          <SelectValue placeholder="Todas categorias" />
+      <Select value={category || "any"} onValueChange={(value) => onCategoryChange(value === "any" ? "" : value)}>
+        <SelectTrigger className="w-full sm:w-44" aria-label="Categoria">
+          <SelectValue placeholder="Todas as categorias" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="any">Todas categorias</SelectItem>
-          <SelectItem value="hymn">Hino</SelectItem>
-          <SelectItem value="praise">Louvor</SelectItem>
-          <SelectItem value="worship">Adoração</SelectItem>
-          <SelectItem value="chorus">Coro</SelectItem>
-          <SelectItem value="special">Especial</SelectItem>
+          <SelectItem value="any">Todas as categorias</SelectItem>
+          {songCategories.map((value) => (
+            <SelectItem key={value} value={value}>
+              {SONG_CATEGORY_LABELS[value]}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>

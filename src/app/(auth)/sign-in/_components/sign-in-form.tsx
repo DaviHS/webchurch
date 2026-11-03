@@ -6,15 +6,14 @@ import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import Fields from "./fields"
+import { SignInFields } from "./sign-in-fields"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
 
-export default function Form() {
+export function SignInForm() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -53,13 +52,9 @@ export default function Form() {
             break
         }
       } else {
-        toast.success("Login realizado com sucesso!", { id: toastId })
+        toast.success("Login realizado com sucesso", { id: toastId })
         
-        if (password === "123456") {
-          router.push("/change-password")
-        } else {
-          router.push("/app")
-        }
+        router.push("/app")
       }
     } catch {
       setError("Ocorreu um erro ao fazer login. Por favor, tente novamente.")
@@ -96,13 +91,11 @@ export default function Form() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Fields
+          <SignInFields
             email={email}
             password={password}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
-            showPassword={showPassword}
-            onToggleShowPassword={() => setShowPassword(!showPassword)}
           />
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Entrando..." : "Entrar"}
@@ -116,7 +109,7 @@ export default function Form() {
           <button
             type="button"
             onClick={handleSupportClick}
-            className="text-primary hover:underline cursor-pointer"
+            className="cursor-pointer text-primary hover:underline"
           >
             Fale com o suporte.
           </button>

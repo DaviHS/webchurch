@@ -39,7 +39,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo }: SlideGridProp
         <h2 className="text-lg font-bold leading-tight">{song.title}</h2>
         {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
       </div>
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr))]">
         {song.slides.map((text, slide) => {
           const position = { song: songIndex, slide };
           const isLive = samePosition(position, live);
@@ -59,7 +59,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo }: SlideGridProp
                     : "border-border hover:border-primary/60 hover:bg-accent"
               )}
             >
-              <span className="absolute left-2 top-1.5 text-[11px] font-bold text-muted-foreground">
+              <span className="absolute left-2 top-1.5 text-xs font-bold text-muted-foreground">
                 {slide + 1}
                 {isLive && <span className="ml-2 rounded bg-red-500 px-1 text-white">AO VIVO</span>}
                 {isNext && <span className="ml-2 rounded bg-sky-600 px-1 text-white">PRÓXIMA</span>}

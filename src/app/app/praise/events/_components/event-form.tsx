@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,13 +9,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { DatePicker } from "@/components/ui/date-picker";
 import { type EventFormData, type EventFormInput, eventSchema, eventTypes } from "@/validators/event";
 import type { EventData } from "@/types";
-import { eventTypeLabels, selectableEventTypes } from "./event-type";
+import { eventTypeLabel, SELECTABLE_EVENT_TYPES } from "@/lib/labels";
 
 interface EventFormProps {
+  id: string;
   onSubmit: (data: EventFormData) => void;
   initialData?: EventData | null;
-  isLoading?: boolean;
-  onCancel?: () => void;
 }
 
 function toFormValues(event: EventData | null | undefined): EventFormInput {
@@ -33,19 +31,19 @@ function toFormValues(event: EventData | null | undefined): EventFormInput {
   };
 }
 
-export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }: EventFormProps) {
+export function EventForm({ id, onSubmit, initialData }: EventFormProps) {
   const form = useForm<EventFormInput, unknown, EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: toFormValues(initialData),
   });
 
-  const typeOptions = initialData?.type === "template" ? eventTypes : selectableEventTypes;
+  const typeOptions = initialData?.type === "template" ? eventTypes : SELECTABLE_EVENT_TYPES;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
+      <form id={id} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <FormField
               control={form.control}
               name="title"
@@ -76,7 +74,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
                   <SelectContent>
                     {typeOptions.map((eventType) => (
                       <SelectItem key={eventType} value={eventType}>
-                        {eventTypeLabels[eventType]}
+                        {eventTypeLabel(eventType)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -104,7 +102,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
             )}
           />
 
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <FormField
               control={form.control}
               name="location"
@@ -120,7 +118,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:col-span-2">
+          <div className="grid grid-cols-2 gap-3 sm:col-span-2">
             <FormField
               control={form.control}
               name="startTime"
@@ -128,7 +126,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
                 <FormItem>
                   <FormLabel>Hora de início</FormLabel>
                   <FormControl>
-                    <Input type="time" {...field} className="text-sm" />
+                    <Input type="time" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,7 +140,7 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
                 <FormItem>
                   <FormLabel>Hora de término</FormLabel>
                   <FormControl>
-                    <Input type="time" {...field} className="text-sm" />
+                    <Input type="time" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -192,17 +190,6 @@ export function EventForm({ onSubmit, initialData, isLoading = false, onCancel }
             </FormItem>
           )}
         />
-
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-              Cancelar
-            </Button>
-          )}
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Salvando..." : initialData ? "Salvar alterações" : "Criar evento"}
-          </Button>
-        </div>
       </form>
     </Form>
   );

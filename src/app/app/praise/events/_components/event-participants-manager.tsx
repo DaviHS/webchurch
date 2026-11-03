@@ -1,21 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Trash2, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Trash2, Users, User, ChevronDown } from "lucide-react";
+import { useConfirm } from "@/components/confirm-dialog";
+import { SearchInput } from "@/components/search-input";
+import { fullName } from "@/lib/formatters";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 import { api } from "@/trpc/react";
-import { toast } from "sonner";
-import { EmptyState } from "@/components/ui/empty-state";
-import type { EventParticipant } from "@/types";
+import type { EventParticipant, RouterOutputs } from "@/types";
+import { CollapsibleAddPanel } from "./collapsible-add-panel";
+import { SearchPickList, SelectedPick } from "./search-pick-list";
+
+type MemberOption = RouterOutputs["member"]["list"][number]["members"];
 
 const COMMON_ROLES = ["Vocalista", "Back Vocal", "Líder"];
 
-const errorMessage = (error: unknown) => (error instanceof Error ? error.message : "erro desconhecido");
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 
 interface EventParticipantsManagerProps {
   eventId: number;
@@ -24,134 +33,117 @@ interface EventParticipantsManagerProps {
 }
 
 export function EventParticipantsManager({ eventId, participants, onUpdate }: EventParticipantsManagerProps) {
-  const [newParticipant, setNewParticipant] = useState({
-    memberId: "",
-    role: "",
-  });
-  const [isAdding, setIsAdding] = useState(false);
+  const confirm = useConfirm();
+  const [selectedMember, setSelectedMember] = useState<MemberOption | null>(null);
+  const [role, setRole] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
 
-  const { data: membersData } = api.member.getAll.useQuery({ limit: 100 });
+  const { data: membersData, isLoading: isLoadingMembers } = api.member.list.useQuery({ limit: 100 });
   const allMembers = membersData?.map((item) => item.members) ?? [];
+  const searchTerm = normalize(memberSearch.trim());
+  const filteredMembers = searchTerm
+    ? allMembers.filter((member) => normalize(fullName(member)).includes(searchTerm))
+    : allMembers;
 
-  const addParticipantMutation = api.event.addParticipant.useMutation();
-  const removeParticipantMutation = api.event.removeParticipant.useMutation();
+  const addParticipantMutation = api.event.addParticipant.useMutation(
+    mutationFeedback({
+      success: "Participante adicionado com sucesso",
+      error: "Erro ao adicionar participante",
+      onSuccess: () => {
+        setSelectedMember(null);
+        setRole("");
+        setMemberSearch("");
+        onUpdate();
+      },
+    })
+  );
 
-  const handleAddParticipant = async () => {
-    if (!newParticipant.memberId || !newParticipant.role) {
-      toast.error("Preencha o membro e a função");
-      return;
-    }
+  const removeParticipantMutation = api.event.removeParticipant.useMutation(
+    mutationFeedback({
+      success: "Participante removido com sucesso",
+      error: "Erro ao remover participante",
+      onSuccess: onUpdate,
+    })
+  );
 
-    try {
-      await addParticipantMutation.mutateAsync({
-        eventId,
-        memberId: parseInt(newParticipant.memberId),
-        role: newParticipant.role,
-      });
+  const trimmedRole = role.trim();
 
-      toast.success("Participante adicionado com sucesso!");
-      setNewParticipant({ memberId: "", role: "" });
-      onUpdate();
-    } catch (error) {
-      toast.error("Erro ao adicionar participante: " + errorMessage(error));
-    }
+  const handleAddParticipant = () => {
+    if (!selectedMember || !trimmedRole) return;
+    addParticipantMutation.mutate({ eventId, memberId: selectedMember.id, role: trimmedRole });
   };
 
-  const handleRemoveParticipant = async (participantId: number) => {
-    if (confirm("Tem certeza que deseja remover este participante?")) {
-      try {
-        await removeParticipantMutation.mutateAsync(participantId);
-        toast.success("Participante removido com sucesso!");
-        onUpdate();
-      } catch (error) {
-        toast.error("Erro ao remover participante: " + errorMessage(error));
-      }
-    }
+  const handleRemoveParticipant = async (participant: EventParticipant) => {
+    const confirmed = await confirm({
+      title: "Remover participante?",
+      description: `${fullName(participant.member, "Este participante")} será removido do evento.`,
+      confirmLabel: "Remover",
+      destructive: true,
+    });
+    if (confirmed) removeParticipantMutation.mutate(participant.id);
   };
 
   return (
     <div className="space-y-4">
-      <Collapsible open={isAdding} onOpenChange={setIsAdding} className="border rounded-lg">
-        <Card className="border-0 shadow-none">
-          <CardContent className="p-0">
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between p-4 h-auto hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  <span className="font-semibold">Adicionar participante</span>
-                </div>
-                <ChevronDown className={`h-4 w-4 transition-transform ${isAdding ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent>
-              <div className="px-4 pb-4 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-4">
-                  <div className="md:col-span-5">
-                    <Label htmlFor="member-select" className="text-sm font-medium">Membro</Label>
-                    <Select 
-                      value={newParticipant.memberId} 
-                      onValueChange={(value) => setNewParticipant(prev => ({ ...prev, memberId: value }))}
-                    >
-                      <SelectTrigger id="member-select">
-                        <SelectValue placeholder="Escolha um membro..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            {member.firstName} {member.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+      <CollapsibleAddPanel title="Adicionar participante">
+        <div className="space-y-2">
+          <Label>Membro</Label>
+          {selectedMember ? (
+            <SelectedPick onClear={() => setSelectedMember(null)} clearLabel="Trocar membro">
+              <p className="truncate font-medium">{fullName(selectedMember)}</p>
+            </SelectedPick>
+          ) : (
+            <>
+              <SearchInput value={memberSearch} onChange={setMemberSearch} placeholder="Buscar membro…" />
+              <SearchPickList
+                label="Membros"
+                items={filteredMembers}
+                isLoading={isLoadingMembers}
+                getKey={(member) => member.id}
+                onSelect={setSelectedMember}
+                emptyMessage={memberSearch ? "Nenhum membro encontrado" : "Nenhum membro cadastrado"}
+                renderItem={(member) => <span className="block w-full truncate font-medium">{fullName(member)}</span>}
+              />
+            </>
+          )}
+        </div>
 
-                  <div className="md:col-span-4">
-                    <Label htmlFor="role-input" className="text-sm font-medium">Função</Label>
-                    <div className="relative">
-                      <Input
-                        id="role-input"
-                        placeholder="Ex: Vocalista, Back Vocal..."
-                        value={newParticipant.role}
-                        onChange={(e) => setNewParticipant(prev => ({ ...prev, role: e.target.value }))}
-                        list="role-suggestions"
-                      />
-                      <datalist id="role-suggestions">
-                        {COMMON_ROLES.map((role) => (
-                          <option key={role} value={role} />
-                        ))}
-                      </datalist>
-                    </div>
-                  </div>
+        <div className="space-y-2">
+          <Label htmlFor="role-input">Função</Label>
+          <Input
+            id="role-input"
+            placeholder="Ex: Vocalista, Back Vocal…"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            list="role-suggestions"
+            autoComplete="off"
+            enterKeyHint="done"
+          />
+          <datalist id="role-suggestions">
+            {COMMON_ROLES.map((commonRole) => (
+              <option key={commonRole} value={commonRole} />
+            ))}
+          </datalist>
+        </div>
 
-                  <div className="md:col-span-3">
-                    <Button 
-                      onClick={handleAddParticipant} 
-                      disabled={!newParticipant.memberId || !newParticipant.role || addParticipantMutation.isPending}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </CardContent>
-        </Card>
-      </Collapsible>
+        <div className="flex justify-end">
+          <Button
+            onClick={handleAddParticipant}
+            disabled={!selectedMember || !trimmedRole || addParticipantMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            <Plus />
+            Adicionar
+          </Button>
+        </div>
+      </CollapsibleAddPanel>
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Participantes ({participants.length} pessoas)
-            </h3>
-          </div>
+          <h3 className="mb-4 flex items-center gap-2 font-semibold">
+            <Users className="size-5" />
+            Participantes ({participants.length} pessoas)
+          </h3>
 
           {participants.length === 0 ? (
             <EmptyState
@@ -161,36 +153,35 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
               className="py-8"
             />
           ) : (
-            <div className="space-y-2">
+            <ul className="space-y-2">
               {participants.map((participant, index) => (
-                <div key={participant.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-center w-8 h-8 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">
+                <li key={participant.id} className="flex items-center gap-3 rounded-lg border p-2 sm:p-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium text-secondary-foreground">
                     {index + 1}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">
-                      {participant.member?.firstName} {participant.member?.lastName}
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <User className="h-3 w-3" />
-                      <span>{participant.role}</span>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{fullName(participant.member)}</p>
+                    <p className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+                      <User className="size-3 shrink-0" />
+                      <span className="truncate">{participant.role}</span>
+                    </p>
                   </div>
 
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveParticipant(participant.id)}
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    size="icon"
+                    onClick={() => handleRemoveParticipant(participant)}
+                    disabled={removeParticipantMutation.isPending}
+                    className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     title="Remover participante"
                     aria-label="Remover participante"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 />
                   </Button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </CardContent>
       </Card>

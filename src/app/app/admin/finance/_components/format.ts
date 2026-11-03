@@ -29,3 +29,7 @@ export function amountClassName(type: string): string {
 export function balanceClassName(value: number): string {
   return value >= 0 ? "text-success" : "text-destructive";
 }
+
+export function normalizeMoneyInput(value: string): string {
+  return value.replace(/,/g, ".").replace(/[^\d.-]/g, "");
+}

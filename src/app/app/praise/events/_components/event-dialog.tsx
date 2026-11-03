@@ -1,7 +1,21 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EventForm } from "./form";
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import type { EventFormData } from "@/validators/event";
 import type { EventData } from "@/types";
+import { EventForm } from "./event-form";
+
+const EVENT_FORM_ID = "event-form";
 
 interface EventDialogProps {
   open: boolean;
@@ -11,23 +25,34 @@ interface EventDialogProps {
   isLoading?: boolean;
 }
 
-export function EventDialog({ open, onOpenChange, onSubmit, initialData, isLoading }: EventDialogProps) {
+export function EventDialog({ open, onOpenChange, onSubmit, initialData, isLoading = false }: EventDialogProps) {
+  const isEditing = Boolean(initialData);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">
-            {initialData ? "Editar evento" : "Novo evento"}
-          </DialogTitle>
-        </DialogHeader>
-        <EventForm
-          key={initialData?.id ?? "new"}
-          onSubmit={onSubmit}
-          initialData={initialData}
-          isLoading={isLoading}
-          onCancel={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="text-lg sm:text-xl">
+            {isEditing ? "Editar evento" : "Novo evento"}
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            {isEditing ? "Atualize as informações do evento." : "Preencha as informações do novo evento."}
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <ResponsiveDialogBody className="pb-4">
+          <EventForm key={initialData?.id ?? "new"} id={EVENT_FORM_ID} onSubmit={onSubmit} initialData={initialData} />
+        </ResponsiveDialogBody>
+        <ResponsiveDialogFooter>
+          <ResponsiveDialogClose asChild>
+            <Button type="button" variant="outline" disabled={isLoading}>
+              Cancelar
+            </Button>
+          </ResponsiveDialogClose>
+          <Button type="submit" form={EVENT_FORM_ID} disabled={isLoading}>
+            {isLoading ? "Salvando…" : isEditing ? "Salvar" : "Criar evento"}
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

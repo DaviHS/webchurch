@@ -1,19 +1,26 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ministrySchema, type MinistryFormData } from "@/validators/ministry";
-import { Button } from "@/components/ui/button";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, X, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "sonner";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 import type { RouterOutputs } from "@/types";
+import { FormDialogFooterActions } from "./form-dialog-footer-actions";
 
-export type Ministry = RouterOutputs["ministry"]["getAll"][number];
+export type Ministry = RouterOutputs["ministry"]["list"][number];
 
 interface MinistryDialogProps {
   open: boolean;
@@ -22,27 +29,21 @@ interface MinistryDialogProps {
 }
 
 export function MinistryDialog({ open, onOpenChange, ministry }: MinistryDialogProps) {
-  const isEdit = ministry !== null;
+  const isEditing = ministry !== null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Editar ministério" : "Novo ministério"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit ? "Atualize os dados do ministério" : "Adicione um novo ministério à igreja"}
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="sm">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{isEditing ? "Editar ministério" : "Novo ministério"}</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            {isEditing ? "Atualize os dados do ministério" : "Adicione um novo ministério à igreja"}
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
-        <MinistryForm
-          key={ministry?.id ?? "new"}
-          ministry={ministry}
-          onDone={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+        <MinistryForm key={ministry?.id ?? "new"} ministry={ministry} onDone={() => onOpenChange(false)} />
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -52,6 +53,7 @@ interface MinistryFormProps {
 }
 
 function MinistryForm({ ministry, onDone }: MinistryFormProps) {
+  const utils = api.useUtils();
   const form = useForm<MinistryFormData>({
     resolver: zodResolver(ministrySchema),
     defaultValues: {
@@ -60,85 +62,72 @@ function MinistryForm({ ministry, onDone }: MinistryFormProps) {
     },
   });
 
-  const createMinistry = api.ministry.create.useMutation({
-    onSuccess: () => {
-      toast.success("Ministério criado com sucesso");
-      onDone();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao criar ministério: ${error.message}`);
-    },
-  });
+  const handleSaved = async () => {
+    onDone();
+    await Promise.all([utils.ministry.getMinistryStats.invalidate(), utils.ministry.list.invalidate()]);
+  };
 
-  const updateMinistry = api.ministry.update.useMutation({
-    onSuccess: () => {
-      toast.success("Ministério atualizado com sucesso");
-      onDone();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao atualizar ministério: ${error.message}`);
-    },
-  });
+  const createMinistryMutation = api.ministry.create.useMutation(
+    mutationFeedback({
+      success: "Ministério criado com sucesso",
+      error: "Erro ao criar ministério",
+      onSuccess: handleSaved,
+    })
+  );
 
-  const onSubmit = (data: MinistryFormData) => {
+  const updateMinistryMutation = api.ministry.update.useMutation(
+    mutationFeedback({
+      success: "Ministério atualizado com sucesso",
+      error: "Erro ao atualizar ministério",
+      onSuccess: handleSaved,
+    })
+  );
+
+  const handleSubmit = (data: MinistryFormData) => {
     if (ministry) {
-      updateMinistry.mutate({ id: ministry.id, ...data });
+      updateMinistryMutation.mutate({ id: ministry.id, ...data });
     } else {
-      createMinistry.mutate(data);
+      createMinistryMutation.mutate(data);
     }
   };
 
-  const isLoading = createMinistry.isPending || updateMinistry.isPending;
+  const isPending = createMinistryMutation.isPending || updateMinistryMutation.isPending;
   const { errors } = form.formState;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="ministry-name">Nome do ministério *</Label>
-        <Input
-          id="ministry-name"
-          {...form.register("name")}
-          placeholder="Ex: Louvor, Diaconia, Educação..."
-          disabled={isLoading}
-        />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
+    <form onSubmit={form.handleSubmit(handleSubmit)} className="flex min-h-0 flex-1 flex-col">
+      <ResponsiveDialogBody className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="ministry-name">Nome do ministério *</Label>
+          <Input
+            id="ministry-name"
+            {...form.register("name")}
+            placeholder="Ex: Louvor, Diaconia, Educação..."
+            disabled={isPending}
+          />
+          {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="ministry-description">Descrição</Label>
-        <Textarea
-          id="ministry-description"
-          {...form.register("description")}
-          placeholder="Descreva as atividades deste ministério..."
-          rows={3}
-          disabled={isLoading}
-        />
-        {errors.description && (
-          <p className="text-sm text-destructive">{errors.description.message}</p>
-        )}
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="ministry-description">Descrição</Label>
+          <Textarea
+            id="ministry-description"
+            {...form.register("description")}
+            placeholder="Descreva as atividades deste ministério..."
+            rows={3}
+            disabled={isPending}
+          />
+          {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
+        </div>
+      </ResponsiveDialogBody>
 
-      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onDone}
-          disabled={isLoading}
-        >
-          <X className="h-4 w-4 mr-2" />
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          {ministry ? "Salvar" : "Criar"}
-        </Button>
-      </div>
+      <ResponsiveDialogFooter>
+        <FormDialogFooterActions
+          isPending={isPending}
+          submitLabel={ministry ? "Salvar" : "Criar ministério"}
+          onCancel={onDone}
+        />
+      </ResponsiveDialogFooter>
     </form>
   );
 }

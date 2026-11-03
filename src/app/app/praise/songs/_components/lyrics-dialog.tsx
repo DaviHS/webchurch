@@ -1,12 +1,15 @@
 "use client";
 
-import React from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { type Song } from "@/types";
@@ -26,53 +29,40 @@ export function LyricsDialog({ song, open, onOpenChange }: LyricsDialogProps) {
     const content = `${song.title}\n${song.artist ? `por ${song.artist}` : ""}\n\n${song.lyrics}`;
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    const anchor = document.createElement("a");
+    anchor.href = url;
     const filename = (song.title || "letra").replace(/[^\w\d-_]+/g, "_");
-    a.download = `${filename}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    anchor.download = `${filename}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full flex flex-col min-h-0">
-        <DialogHeader className="shrink-0 px-4 pt-4 pb-2">
-          <DialogTitle className="text-lg sm:text-xl line-clamp-1">
-            Letra - {song.title || "Sem título"}
-          </DialogTitle>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="xl" className="h-[95dvh] md:h-auto">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="break-words text-lg sm:text-xl">{song.title || "Sem título"}</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>{song.artist ? `por ${song.artist}` : "Letra da música"}</ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
-          {song.artist && (
-            <p className="text-muted-foreground text-sm mt-2">
-              por {song.artist}
-            </p>
-          )}
+        <ResponsiveDialogBody className="pb-4">
+          <pre className="whitespace-pre-wrap break-words font-sans text-base leading-relaxed">
+            {hasLyrics ? song.lyrics : "Letra não disponível."}
+          </pre>
+        </ResponsiveDialogBody>
 
-          <div className="mt-3 w-full flex justify-center">
-            <div className="w-full sm:w-1/2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExport}
-                className="w-full"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-          <div className="p-2">
-            <pre className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed font-sans">
-              {hasLyrics ? song.lyrics : "Letra não disponível."}
-            </pre>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        <ResponsiveDialogFooter>
+          <ResponsiveDialogClose asChild>
+            <Button variant="outline">Fechar</Button>
+          </ResponsiveDialogClose>
+          <Button onClick={handleExport} disabled={!hasLyrics}>
+            <Download />
+            Exportar
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

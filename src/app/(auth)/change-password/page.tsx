@@ -1,11 +1,11 @@
-import { ChangePasswordForm } from "./_components/form";
+import { ChangePasswordForm } from "./_components/change-password-form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Key } from "lucide-react";
 import Link from "next/link";
 
 export default function ChangePasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
         <Card className="w-full">
           <CardHeader className="text-center">

@@ -1,43 +1,35 @@
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search } from "lucide-react";
-import { eventTypeLabels, selectableEventTypes } from "./event-type";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchInput } from "@/components/search-input";
+import { eventTypeLabel, SELECTABLE_EVENT_TYPES } from "@/lib/labels";
 
 interface EventFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
   type: string;
   onTypeChange: (value: string) => void;
+  isSearching?: boolean;
 }
 
-export function EventFilters({ search, onSearchChange, type, onTypeChange }: EventFiltersProps) {
+export function EventFilters({ search, onSearchChange, type, onTypeChange, isSearching = false }: EventFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-center">
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar eventos..."
-          className="pl-10 w-full text-sm sm:text-base"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <SearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Buscar eventos…"
+        isLoading={isSearching}
+        className="sm:flex-1"
+      />
 
       <Select value={type} onValueChange={onTypeChange}>
-        <SelectTrigger className="w-full sm:w-40">
+        <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por tipo">
           <SelectValue placeholder="Todos os tipos" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="any">Todos os tipos</SelectItem>
-          {selectableEventTypes.map((eventType) => (
+          {SELECTABLE_EVENT_TYPES.map((eventType) => (
             <SelectItem key={eventType} value={eventType}>
-              {eventTypeLabels[eventType]}
+              {eventTypeLabel(eventType)}
             </SelectItem>
           ))}
         </SelectContent>

@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { cn } from "@/lib/utils";
 import { OUTPUT_LABELS, type OutputRole } from "../protocol";
 import {
@@ -71,12 +72,12 @@ function ScreenLayout({
             >
               <RoleIcon className="h-5 w-5 shrink-0" />
               <p className="line-clamp-1 text-xs font-semibold">{screen.label}</p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {screen.width}×{screen.height}
               </p>
               <div className="flex flex-wrap justify-center gap-1">
-                {screen.isCurrent && <Badge variant="secondary" className="px-1 py-0 text-[10px]">Painel</Badge>}
-                {role && <Badge className="px-1 py-0 text-[10px]">{OUTPUT_LABELS[role]}</Badge>}
+                {screen.isCurrent && <Badge variant="secondary" className="text-xs">Painel</Badge>}
+                {role && <Badge className="text-xs">{OUTPUT_LABELS[role]}</Badge>}
               </div>
               <div className="mt-1 flex gap-1">
                 {(["projector", "stage"] as const).map((target) => (
@@ -85,7 +86,7 @@ function ScreenLayout({
                     type="button"
                     size="sm"
                     variant={role === target ? "default" : "outline"}
-                    className="h-6 px-2 text-[10px]"
+                    className="h-9 px-2 text-xs"
                     onClick={() => onPick(screen, target)}
                   >
                     {OUTPUT_LABELS[target]}
@@ -133,67 +134,68 @@ export function ScreenSetupDialog({ open, onOpenChange }: ScreenSetupDialogProps
   const looksHidden = screens.length === 1 && isMultiScreen();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Configurar telas</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="xl">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Configurar telas</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Detecte os monitores e escolha qual é o projetor e qual é a TV de retorno. A escolha fica salva neste computador.
-          </DialogDescription>
-        </DialogHeader>
-
-        {!supported ? (
-          <div className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
-            <p>
-              Este navegador não detecta telas. Use Chrome, Edge ou Brave. Sem detecção, as saídas abrem em janelas
-              comuns: arraste cada uma para a tela certa e tecle <kbd className="rounded border px-1">F</kbd>.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Button type="button" onClick={() => void handleDetect()} disabled={detecting}>
-              {detecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
-              {screens.length > 0 ? "Detectar novamente" : "Detectar telas"}
-            </Button>
-
-            {screens.length > 0 && <ScreenLayout screens={screens} roleOf={roleOf} onPick={handlePick} />}
-
-            {looksHidden && (
-              <div className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
-                <p>
-                  O sistema informa mais de um monitor, mas só um foi listado. No Brave, abra o ícone do leão (Shields)
-                  e desative o bloqueio de fingerprinting para este site, depois detecte novamente.
-                </p>
-              </div>
-            )}
-
-            {screens.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Na primeira vez o navegador pergunta se o site pode gerenciar janelas em todas as telas — clique em{" "}
-                <strong>Permitir</strong>.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <ResponsiveDialogBody className="space-y-4 pb-4 sm:pb-6">
+          {!supported ? (
+            <div className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+              <p>
+                Este navegador não detecta telas. Use Chrome, Edge ou Brave. Sem detecção, as saídas abrem em janelas
+                comuns: arraste cada uma para a tela certa e tecle <kbd className="rounded border px-1">F</kbd>.
               </p>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Button type="button" onClick={() => void handleDetect()} disabled={detecting}>
+                {detecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
+                {screens.length > 0 ? "Detectar novamente" : "Detectar telas"}
+              </Button>
 
-        <div className="grid gap-2 text-sm sm:grid-cols-2">
-          {(["projector", "stage"] as const).map((role) => {
-            const ref = assignments[role];
-            const Icon = ROLE_STYLES[role].icon;
-            return (
-              <div key={role} className="flex items-center gap-2 rounded-md border p-2">
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="font-medium">{OUTPUT_LABELS[role]}:</span>
-                <span className="truncate text-muted-foreground">
-                  {ref ? `${ref.label} (${ref.width}×${ref.height})` : "não definido"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </DialogContent>
-    </Dialog>
+              {screens.length > 0 && <ScreenLayout screens={screens} roleOf={roleOf} onPick={handlePick} />}
+
+              {looksHidden && (
+                <div className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+                  <p>
+                    O sistema informa mais de um monitor, mas só um foi listado. No Brave, abra o ícone do leão (Shields)
+                    e desative o bloqueio de fingerprinting para este site, depois detecte novamente.
+                  </p>
+                </div>
+              )}
+
+              {screens.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Na primeira vez o navegador pergunta se o site pode gerenciar janelas em todas as telas — clique em{" "}
+                  <strong>Permitir</strong>.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            {(["projector", "stage"] as const).map((role) => {
+              const ref = assignments[role];
+              const Icon = ROLE_STYLES[role].icon;
+              return (
+                <div key={role} className="flex items-center gap-2 rounded-md border p-2">
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{OUTPUT_LABELS[role]}:</span>
+                  <span className="truncate text-muted-foreground">
+                    {ref ? `${ref.label} (${ref.width}×${ref.height})` : "não definido"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </ResponsiveDialogBody>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

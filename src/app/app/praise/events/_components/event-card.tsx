@@ -1,11 +1,12 @@
 "use client";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import type { KeyboardEvent } from "react";
+import { Calendar, Edit, Info, MapPin, Projector, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin } from "lucide-react";
-import { EventActions } from "./event-actions";
-import { eventTypeLabels, getEventTypeBadgeVariant } from "./event-type";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { formatDate } from "@/lib/formatters";
+import { eventTypeBadge, eventTypeLabel } from "@/lib/labels";
 import type { EventData } from "@/types";
 
 interface EventCardProps {
@@ -16,42 +17,53 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardProps) {
+  const handleKeyDown = (keyboardEvent: KeyboardEvent<HTMLDivElement>) => {
+    if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
+    if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+      keyboardEvent.preventDefault();
+      onViewDetails(event);
+    }
+  };
+
   return (
     <Card
-      className="h-full flex flex-col transition-all hover:shadow-md cursor-pointer"
+      role="button"
+      tabIndex={0}
+      aria-label={`Ver detalhes de ${event.title}`}
       onClick={() => onViewDetails(event)}
+      onKeyDown={handleKeyDown}
+      className="flex h-full cursor-pointer flex-col transition-shadow hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:bg-muted/50"
     >
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-sm leading-tight line-clamp-2 flex-1">
-            {event.title}
-          </CardTitle>
-          <Badge variant={getEventTypeBadgeVariant(event.type)} className="text-xs whitespace-nowrap">
-            {eventTypeLabels[event.type]}
-          </Badge>
+      <CardHeader className="gap-1 p-3 pl-4">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 space-y-1 pt-1">
+            <CardTitle className="line-clamp-2 break-words text-base leading-tight">{event.title}</CardTitle>
+            <Badge variant={eventTypeBadge(event.type)} className="text-xs">
+              {eventTypeLabel(event.type)}
+            </Badge>
+          </div>
+          <RowActionsMenu
+            label={`Ações do evento ${event.title}`}
+            actions={[
+              { label: "Editar", icon: Edit, onSelect: () => onEdit(event) },
+              { label: "Apresentar", icon: Projector, href: `/presentation/control?event=${event.id}` },
+              { label: "Detalhes", icon: Info, onSelect: () => onViewDetails(event) },
+              { label: "Excluir", icon: Trash2, onSelect: () => onDelete(event), destructive: true },
+            ]}
+          />
         </div>
 
-        {event.location && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-            <MapPin className="h-3 w-3" />
-            <span className="line-clamp-1">{event.location}</span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Calendar className="size-3 shrink-0" />
             {formatDate(event.date)}
-          </div>
-
-          <div onClick={(e) => e.stopPropagation()}>
-            <EventActions
-              event={event}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onViewDetails={onViewDetails}
-            />
-          </div>
+          </span>
+          {event.location && (
+            <span className="flex min-w-0 items-center gap-1">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{event.location}</span>
+            </span>
+          )}
         </div>
       </CardHeader>
     </Card>

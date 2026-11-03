@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Music, Plus, Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Music, Plus, X } from "lucide-react";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { Deck, DeckSongSource, Position } from "../deck";
@@ -20,7 +21,8 @@ interface SetlistProps {
 
 function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
   const [term, setTerm] = useState("");
-  const search = term.trim();
+  const debouncedTerm = useDebounce(term, 300);
+  const search = debouncedTerm.trim();
   const { data, isFetching } = api.song.list.useQuery(
     { search, limit: 8 },
     { enabled: search.length >= 2, staleTime: 60_000 }
@@ -28,25 +30,21 @@ function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={term}
-          onChange={(event) => setTerm(event.target.value)}
-          placeholder="Adicionar música…"
-          className="h-9 pl-8"
-          aria-label="Buscar música para adicionar"
-        />
-        {isFetching && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
-      </div>
-      {search.length >= 2 && data && (
-        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-1">
-          {data.songs.length === 0 && <li className="px-2 py-1 text-xs text-muted-foreground">Nenhuma música encontrada</li>}
+      <SearchInput
+        value={term}
+        onChange={setTerm}
+        placeholder="Adicionar música…"
+        isLoading={isFetching}
+        aria-label="Buscar música para adicionar"
+      />
+      {term.trim().length >= 2 && search.length >= 2 && data && (
+        <ul className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-1">
+          {data.songs.length === 0 && <li className="px-2 py-2.5 text-xs text-muted-foreground">Nenhuma música encontrada</li>}
           {data.songs.map((song) => (
             <li key={song.id}>
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded px-2 py-2.5 text-left text-sm hover:bg-accent"
                 onClick={() => {
                   onAdd({ id: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics });
                   setTerm("");
@@ -85,9 +83,10 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onRemov
                   type="button"
                   onClick={() => onSelect(index)}
                   className={cn(
-                    "flex w-full items-start gap-2 rounded-md border p-2 text-left transition-colors",
+                    "flex min-h-11 w-full items-start gap-2 rounded-md border p-2 text-left transition-colors",
                     index === selectedSong ? "border-primary bg-primary/10" : "border-transparent hover:bg-accent",
-                    isLive && "ring-2 ring-red-500"
+                    isLive && "ring-2 ring-red-500",
+                    song.adHoc && "pr-12"
                   )}
                 >
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted text-xs font-bold">
@@ -100,19 +99,19 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onRemov
                       {song.artist ? ` · ${song.artist}` : ""}
                     </span>
                   </span>
-                  {isLive && <span className="rounded bg-red-500 px-1 text-[10px] font-bold text-white">AO VIVO</span>}
+                  {isLive && <span className="rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
                   {song.slides.length === 0 && <Music className="h-4 w-4 text-amber-500" />}
                 </button>
                 {song.adHoc && (
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                    size="icon-sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                     onClick={() => onRemoveSong(song.uid)}
                     aria-label={`Remover ${song.title}`}
                   >
-                    <X className="h-3 w-3" />
+                    <X />
                   </Button>
                 )}
               </li>

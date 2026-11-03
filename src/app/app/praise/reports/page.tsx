@@ -6,12 +6,13 @@ import { Download, TrendingUp } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api } from "@/trpc/react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { subDays, startOfDay, endOfDay } from "date-fns";
+import { formatDateRange } from "@/lib/formatters";
 import { ReportFilters } from "./_components/report-filters";
 import { ReportStatsCard } from "./_components/report-stats-card";
 import { ReportRanking } from "./_components/report-ranking";
 import { ReportChart } from "./_components/report-chart";
-import { SongDetailsDialog } from "./_components/song-details-dialog";
+import { SongDetailDialog } from "./_components/song-detail-dialog";
 import type { Song, DateRange } from "@/types";
 
 const DEFAULT_TIME_RANGE = "30";
@@ -56,13 +57,13 @@ export default function ReportsPage() {
   const endDate = dateRange.to ? endOfDay(dateRange.to) : undefined;
   const isDateRangeValid = startDate !== undefined && endDate !== undefined;
 
-  const { data: report, isLoading } = api.event.getSongsReport.useQuery(
+  const { data: report, isLoading } = api.report.getSongRanking.useQuery(
     { startDate, endDate, songIds: selectedSongs.length > 0 ? selectedSongs.map(s => s.id) : undefined },
     { enabled: isDateRangeValid, staleTime: 0, refetchOnWindowFocus: false }
   );
 
   const { data: songExecutions, isLoading: isLoadingExecutions } =
-    api.event.getSongExecutions.useQuery(
+    api.report.getSongExecutions.useQuery(
       { songId: selectedSongForDetails?.id ?? 0, startDate, endDate },
       { enabled: isDialogOpen && selectedSongForDetails !== null }
     );
@@ -75,18 +76,18 @@ export default function ReportsPage() {
   const getStats = () => {
     if (!report?.length) return null;
     const counts = report.map((item) => item.count);
-    const totalExecucoes = counts.reduce((sum, count) => sum + count, 0);
+    const totalExecutions = counts.reduce((sum, count) => sum + count, 0);
     return {
-      totalMusicas: report.length,
-      totalExecucoes,
-      media: totalExecucoes / counts.length,
-      maxExecucoes: Math.max(...counts),
+      totalSongs: report.length,
+      totalExecutions,
+      average: totalExecutions / counts.length,
+      maxExecutions: Math.max(...counts),
     };
   };
 
   const getPeriodText = () => {
     if (!dateRange.from || !dateRange.to) return "";
-    return `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`;
+    return formatDateRange(dateRange.from, dateRange.to);
   };
 
   const handleSelectSong = (song: Song) => {
@@ -97,12 +98,12 @@ export default function ReportsPage() {
     setShowSearchResults(false);
   };
 
-  const handleOpenSongDetails = (song: Song) => {
+  const handleOpenSongDetail = (song: Song) => {
     setSelectedSongForDetails(song);
     setIsDialogOpen(true);
   };
 
-  const exportToCSV = () => {
+  const handleExportCsv = () => {
     if (!report) return;
     const headers = ["Posição", "Música", "Artista", "Execuções"];
     const csvContent = [
@@ -120,7 +121,7 @@ export default function ReportsPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const clearFilters = () => {
+  const handleClearFilters = () => {
     setSearchTerm("");
     setSelectedSongs([]);
     setTimeRange(DEFAULT_TIME_RANGE);
@@ -138,8 +139,8 @@ export default function ReportsPage() {
         icon={TrendingUp}
         description="Análise das músicas mais executadas."
         actions={
-          <Button onClick={exportToCSV} disabled={!report?.length} variant="outline" className="w-full sm:w-auto">
-            <Download className="mr-2 h-4 w-4" />
+          <Button onClick={handleExportCsv} disabled={!report?.length} variant="outline" className="w-full sm:w-auto">
+            <Download />
             Exportar CSV
           </Button>
         }
@@ -159,29 +160,29 @@ export default function ReportsPage() {
         onSongRemove={(id) => setSelectedSongs(selectedSongs.filter(s => s.id !== id))}
         allSongs={allSongs}
         isLoadingSongs={songsLoading}
-        onClearFilters={clearFilters}
+        onClearFilters={handleClearFilters}
         isDateRangeValid={isDateRangeValid}
       />
 
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} />
 
         <ReportRanking
           report={report}
           isLoading={showLoading}
           isDateRangeValid={isDateRangeValid}
-          onSongClick={handleOpenSongDetails}
+          onSongClick={handleOpenSongDetail}
         />
 
         <ReportChart
           report={report}
           isLoading={showLoading}
           isDateRangeValid={isDateRangeValid}
-          onBarClick={handleOpenSongDetails}
+          onBarClick={handleOpenSongDetail}
         />
       </div>
 
-      <SongDetailsDialog
+      <SongDetailDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         song={selectedSongForDetails}

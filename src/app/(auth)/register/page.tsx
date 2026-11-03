@@ -1,11 +1,11 @@
-import { RegisterForm } from "./_components/form";
+import { RegisterForm } from "./_components/register-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { User2Icon } from "lucide-react";
 import Link from "next/link";
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
         <Card className="w-full">
           <CardHeader className="text-center">
