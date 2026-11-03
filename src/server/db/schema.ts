@@ -1,4 +1,4 @@
-import { pgTableCreator, pgEnum } from "drizzle-orm/pg-core"
+import { pgTableCreator, pgEnum, uniqueIndex } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
 export const createTable = pgTableCreator((name) => `${name}`)
@@ -204,7 +204,7 @@ export const monthlyClosures = createTable("monthly_closures", (d) => ({
   notes: d.text("notes"),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
-}));
+}), (t) => [uniqueIndex("monthly_closures_month_year_unique").on(t.month, t.year)]);
 
 export const budgets = createTable("budgets", (d) => ({
   id: d.serial("id").primaryKey(),

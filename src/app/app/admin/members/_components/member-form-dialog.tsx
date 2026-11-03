@@ -5,6 +5,7 @@ import { useForm, useFieldArray, useWatch, type FieldErrors } from "react-hook-f
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronLeft, ChevronRight, Key, Loader2, Plus, Save, Trash2, User, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { memberSchema, type MemberFormData, type MemberFormInput } from "@/validators/member";
 import {
   ResponsiveDialog,
@@ -164,6 +165,8 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
   const [defaultValues] = useState(() => buildDefaultValues(requestedMode === "edit" ? member : null));
   const confirm = useConfirm();
   const utils = api.useUtils();
+  const { data: session } = useSession();
+  const isSessionAdmin = session?.user.isAdmin === true;
 
   const { data: ministries = [] } = api.ministry.list.useQuery(undefined, {
     enabled: open,
@@ -250,6 +253,28 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
       onSuccess: () => utils.user.getByMemberId.invalidate(),
     })
   );
+
+  const updateUserAdminMutation = api.user.update.useMutation(
+    mutationFeedback({
+      success: (user) =>
+        user.isAdmin ? "Acesso de administrador concedido com sucesso" : "Acesso de administrador removido com sucesso",
+      error: "Erro ao alterar acesso de administrador",
+      onSuccess: () => utils.user.getByMemberId.invalidate(),
+    })
+  );
+
+  const handleChangeUserAdmin = async (userId: number, isAdmin: boolean) => {
+    if (isAdmin) {
+      const confirmed = await confirm({
+        title: "Dar acesso de administrador?",
+        description: "O usuário poderá ver e alterar as finanças da igreja.",
+        confirmLabel: "Dar acesso",
+      });
+      if (!confirmed) return;
+    }
+
+    updateUserAdminMutation.mutate({ id: userId, isAdmin });
+  };
 
   const handleSubmit = (data: MemberFormData) => {
     const submitData = {
@@ -787,6 +812,25 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                           </div>
                         </div>
                       </div>
+
+                      {isSessionAdmin && (
+                        <div className="flex min-h-10 items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <Label htmlFor="userIsAdmin" className="font-medium">
+                              Administrador (acesso a Finanças)
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Para o pastor e a tesouraria
+                            </p>
+                          </div>
+                          <Switch
+                            id="userIsAdmin"
+                            checked={existingUser.isAdmin}
+                            onCheckedChange={(checked) => void handleChangeUserAdmin(existingUser.id, checked)}
+                            disabled={updateUserAdminMutation.isPending}
+                          />
+                        </div>
+                      )}
 
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Button

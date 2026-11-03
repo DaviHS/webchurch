@@ -102,9 +102,22 @@ export const userRouter = createTRPCRouter({
     .input(userUpdateSchema.extend({
       status: z.enum(["pending", "active", "inactive"]).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, password, ...rest } = input
       const now = new Date()
+
+      if (rest.isAdmin !== undefined) {
+        const callerId = Number(ctx.session.user.id)
+        const [caller] = Number.isInteger(callerId)
+          ? await db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, callerId)).limit(1)
+          : []
+        if (!caller?.isAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o perfil de administrador." })
+        }
+        if (callerId === id && !rest.isAdmin) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode remover o seu próprio acesso de administrador." })
+        }
+      }
 
       const dataToUpdate: Partial<typeof users.$inferInsert> = {
         ...rest,

@@ -48,6 +48,7 @@ export const authConfig: NextAuthConfig = {
             firstName: members.firstName,
             lastName: members.lastName,
             status: users.status,
+            isAdmin: users.isAdmin,
           })
           .from(users)
           .leftJoin(members, eq(users.memberId, members.id))
@@ -83,6 +84,7 @@ export const authConfig: NextAuthConfig = {
           name: fullName,
           memberId: user.memberId,
           hasDefaultPassword: isDefaultPassword,
+          isAdmin: user.isAdmin,
         };
       },
     }),
@@ -92,12 +94,13 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user, trigger }) {
       if (trigger === "update" && token.userId) {
         const [current] = await db
-          .select({ passwordHash: users.passwordHash })
+          .select({ passwordHash: users.passwordHash, isAdmin: users.isAdmin })
           .from(users)
           .where(eq(users.id, token.userId))
           .limit(1);
         if (current) {
           token.hasDefaultPassword = await compare(DEFAULT_PASSWORD, current.passwordHash);
+          token.isAdmin = current.isAdmin;
         }
       }
 
@@ -108,6 +111,7 @@ export const authConfig: NextAuthConfig = {
         token.memberId = user.memberId;
         token.sub = user.id;
         token.hasDefaultPassword = user.hasDefaultPassword;
+        token.isAdmin = user.isAdmin;
       }
       return token;
     },
@@ -119,6 +123,7 @@ export const authConfig: NextAuthConfig = {
       session.user.name = token.name;
       session.user.memberId = token.memberId;
       session.user.hasDefaultPassword = token.hasDefaultPassword;
+      session.user.isAdmin = token.isAdmin ?? false;
       return session;
     },
   },

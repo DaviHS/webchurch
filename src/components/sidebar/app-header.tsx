@@ -26,7 +26,7 @@ export function AppHeader() {
   const [home, ...rest] = getBreadcrumbs(usePathname())
 
   return (
-    <header className="sticky top-2 z-20 mx-4 my-2 flex h-14 shrink-0 items-center gap-2 rounded-md bg-card/95 px-3 shadow-sm ring-1 ring-border backdrop-blur-md sm:px-4">
+    <header className="sticky top-2 z-20 print:hidden mx-4 my-2 flex h-14 shrink-0 items-center gap-2 rounded-md bg-card/95 px-3 shadow-sm ring-1 ring-border backdrop-blur-md sm:px-4">
       <SidebarTrigger className={headerIconButton} />
       <Separator orientation="vertical" className="mx-1 h-5!" />
 

@@ -1,86 +1,92 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { Lock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/trpc/react";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
-import { TransactionDialog } from "./_components/transaction-dialog";
-import { TransactionList, type TransactionRow } from "./_components/transaction-list";
-import {
-  FinanceFilters,
-  emptyFinanceFilters,
-  hasActiveFinanceFilters,
-  type FinanceFiltersState,
-} from "./_components/finance-filters";
-import { MonthlyClosureDialog } from "./_components/monthly-closure-dialog";
-import type { FinancialTransactionFormData, MonthlyClosureFormData } from "@/validators/finance";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/loading-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { mutationFeedback } from "@/lib/mutation-feedback";
-import { balanceClassName, formatCurrency } from "./_components/format";
+import { api } from "@/trpc/react";
+import type { FinancialTransactionFormData } from "@/validators/finance";
+import { CategoryManager } from "./_components/category-manager";
+import { ClosureList } from "./_components/closure-list";
+import { emptyFinanceFilters, type FinanceFiltersState } from "./_components/finance-filters";
+import { currentMonthRef, type MonthRef } from "./_components/format";
+import { MonthSummary } from "./_components/month-summary";
+import { TransactionDialog } from "./_components/transaction-dialog";
+import type { TransactionRow } from "./_components/transaction-list";
+import { TransactionsPanel } from "./_components/transactions-panel";
+
+const TABS = [
+  { value: "summary", label: "Resumo do mês" },
+  { value: "transactions", label: "Lançamentos" },
+  { value: "closures", label: "Fechamentos" },
+  { value: "categories", label: "Categorias" },
+] as const;
+
+type TabValue = (typeof TABS)[number]["value"];
+
+const isTabValue = (value: string): value is TabValue => TABS.some((tab) => tab.value === value);
 
 export default function FinancePage() {
-  const [filters, setFilters] = useState<FinanceFiltersState>(emptyFinanceFilters);
-  const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
-  const transactionDialog = useEntityDialog<TransactionRow>();
+  const { data: session, status } = useSession();
+  const isAdmin = session?.user.isAdmin === true;
 
+  if (status === "loading") {
+    return (
+      <PageContainer>
+        <LoadingState />
+      </PageContainer>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <PageContainer>
+        <EmptyState
+          icon={Lock}
+          title="Acesso restrito"
+          description="Finanças é visível apenas para administradores (pastor e tesouraria)."
+        />
+      </PageContainer>
+    );
+  }
+
+  return <FinanceDashboard />;
+}
+
+function FinanceDashboard() {
+  const [activeTab, setActiveTab] = useState<TabValue>("summary");
+  const [monthRef, setMonthRef] = useState<MonthRef>(currentMonthRef);
+  const [filters, setFilters] = useState<FinanceFiltersState>(emptyFinanceFilters);
+  const [page, setPage] = useState(1);
+  const transactionDialog = useEntityDialog<TransactionRow>();
   const utils = api.useUtils();
 
-  const { data: summary, isLoading: isLoadingSummary } = api.finance.getFinancialSummary.useQuery({
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-  });
+  const { data: categories = [] } = api.finance.listCategories.useQuery({ includeInactive: true });
 
-  const { data: transactionsData, isLoading: isLoadingTransactions } = api.finance.listTransactions.useQuery({
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    type: filters.type === "" ? undefined : filters.type,
-    categoryId: filters.categoryId,
-    page: 1,
-    limit: 50,
-  });
-
-  const { data: categories = [] } = api.finance.listCategories.useQuery({});
-
-  const refreshTransactions = () =>
-    Promise.all([
-      utils.finance.getFinancialSummary.invalidate(),
-      utils.finance.listTransactions.invalidate(),
-      utils.finance.getMonthlyReport.invalidate(),
-    ]);
+  const handleTransactionSaved = async () => {
+    transactionDialog.close();
+    await utils.finance.invalidate();
+  };
 
   const createTransactionMutation = api.finance.createTransaction.useMutation(
     mutationFeedback({
-      success: "Transação criada com sucesso",
-      error: "Erro ao criar transação",
-      onSuccess: async () => {
-        transactionDialog.close();
-        await refreshTransactions();
-      },
+      success: "Lançamento registrado com sucesso",
+      error: "Erro ao registrar lançamento",
+      onSuccess: handleTransactionSaved,
     })
   );
 
   const updateTransactionMutation = api.finance.updateTransaction.useMutation(
     mutationFeedback({
-      success: "Transação atualizada com sucesso",
-      error: "Erro ao atualizar transação",
-      onSuccess: async () => {
-        transactionDialog.close();
-        await refreshTransactions();
-      },
-    })
-  );
-
-  const closeMonthMutation = api.finance.closeMonth.useMutation(
-    mutationFeedback({
-      success: "Mês fechado com sucesso",
-      error: "Erro ao fechar mês",
-      onSuccess: async () => {
-        setIsClosureDialogOpen(false);
-        await Promise.all([utils.finance.listMonthlyClosures.invalidate(), utils.finance.getMonthlyReport.invalidate()]);
-      },
+      success: "Lançamento atualizado com sucesso",
+      error: "Erro ao atualizar lançamento",
+      onSuccess: handleTransactionSaved,
     })
   );
 
@@ -93,22 +99,10 @@ export default function FinancePage() {
     }
   };
 
-  const handleCloseMonth = (data: MonthlyClosureFormData) => {
-    closeMonthMutation.mutate(data);
+  const handleManageCategories = () => {
+    transactionDialog.close();
+    setActiveTab("categories");
   };
-
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  const search = filters.search.trim().toLocaleLowerCase("pt-BR");
-  const allTransactions = transactionsData?.transactions ?? [];
-  const visibleTransactions =
-    search === ""
-      ? allTransactions
-      : allTransactions.filter(({ transaction }) => transaction.description.toLocaleLowerCase("pt-BR").includes(search));
-
-  const balance = summary?.balance ?? 0;
 
   return (
     <PageContainer>
@@ -116,87 +110,56 @@ export default function FinancePage() {
         open={transactionDialog.open}
         onOpenChange={transactionDialog.onOpenChange}
         onSubmit={handleSubmitTransaction}
+        onManageCategories={handleManageCategories}
         transaction={transactionDialog.editing}
         isLoading={createTransactionMutation.isPending || updateTransactionMutation.isPending}
         categories={categories}
       />
 
-      <MonthlyClosureDialog
-        open={isClosureDialogOpen}
-        onOpenChange={setIsClosureDialogOpen}
-        onSubmit={handleCloseMonth}
-        isLoading={closeMonthMutation.isPending}
-        currentMonth={currentMonth}
-        currentYear={currentYear}
-      />
-
       <PageHeader
         title="Finanças"
-        description="Gerencie receitas, despesas e fechamentos mensais"
-        icon={DollarSign}
+        description="Entradas, saídas e fechamento do mês"
+        className="print:hidden"
         actions={
-          <>
-            <Button onClick={() => setIsClosureDialogOpen(true)} variant="outline" className="w-full sm:w-auto">
-              <Calendar />
-              Fechar mês
-            </Button>
-            <Button onClick={transactionDialog.openCreate} className="w-full sm:w-auto">
-              <Plus />
-              Nova transação
-            </Button>
-          </>
+          <Button onClick={transactionDialog.openCreate} className="w-full sm:w-auto">
+            <Plus />
+            Novo lançamento
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Total de receitas"
-          value={formatCurrency(summary?.totalIncome)}
-          description="Período selecionado"
-          icon={TrendingUp}
-          isLoading={isLoadingSummary}
-          valueClassName="text-success"
-          iconClassName="text-success"
-        />
-        <StatCard
-          title="Total de despesas"
-          value={formatCurrency(summary?.totalExpenses)}
-          description="Período selecionado"
-          icon={TrendingDown}
-          isLoading={isLoadingSummary}
-          valueClassName="text-destructive"
-          iconClassName="text-destructive"
-        />
-        <StatCard
-          title="Saldo"
-          value={formatCurrency(summary?.balance)}
-          description={isLoadingSummary ? "Período selecionado" : balance >= 0 ? "Positivo" : "Negativo"}
-          icon={DollarSign}
-          isLoading={isLoadingSummary}
-          valueClassName={balanceClassName(balance)}
-          iconClassName="text-info"
-        />
-      </div>
+      <Tabs value={activeTab} onValueChange={(value) => isTabValue(value) && setActiveTab(value)}>
+        <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto [scrollbar-width:none] print:hidden sm:w-auto sm:inline-flex [&::-webkit-scrollbar]:hidden">
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="min-h-9 shrink-0 snap-start px-4 sm:min-h-7">
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      <Card>
-        <CardContent className="p-4 sm:p-6">
-          <FinanceFilters filters={filters} onFiltersChange={setFilters} categories={categories} />
-        </CardContent>
-      </Card>
+        <TabsContent value="summary" className="mt-4">
+          <MonthSummary monthRef={monthRef} onMonthChange={setMonthRef} />
+        </TabsContent>
 
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle>Últimas transações</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-          <TransactionList
-            transactions={visibleTransactions}
+        <TabsContent value="transactions" className="mt-4">
+          <TransactionsPanel
+            filters={filters}
+            onFiltersChange={setFilters}
+            page={page}
+            onPageChange={setPage}
+            categories={categories}
             onEdit={transactionDialog.openEdit}
-            isLoading={isLoadingTransactions}
-            hasFilters={hasActiveFinanceFilters(filters)}
           />
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="closures" className="mt-4">
+          <ClosureList />
+        </TabsContent>
+
+        <TabsContent value="categories" className="mt-4">
+          <CategoryManager />
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }

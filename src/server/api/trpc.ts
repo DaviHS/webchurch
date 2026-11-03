@@ -2,7 +2,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { eq } from "drizzle-orm";
 import { auth } from "@/server/auth";
+import { db } from "@/server/db";
+import { users } from "@/server/db/schema";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
@@ -60,5 +63,17 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const userId = Number(ctx.session.user.id);
+  const [user] = Number.isInteger(userId)
+    ? await db.select({ isAdmin: users.isAdmin, status: users.status }).from(users).where(eq(users.id, userId)).limit(1)
+    : [];
+
+  if (!user?.isAdmin || user.status !== "active") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Acesso restrito a administradores." });
+  }
+  return next();
+});
 
 export const createCallerFactory = t.createCallerFactory;

@@ -6,6 +6,7 @@ declare module "next-auth" {
     userId?: number;
     memberId?: number | null;
     hasDefaultPassword?: boolean;
+    isAdmin?: boolean;
   }
 
   interface Session {
@@ -14,6 +15,7 @@ declare module "next-auth" {
       userId?: number;
       memberId?: number | null;
       hasDefaultPassword?: boolean;
+      isAdmin: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -23,5 +25,6 @@ declare module "@auth/core/jwt" {
     userId?: number;
     memberId?: number | null;
     hasDefaultPassword?: boolean;
+    isAdmin?: boolean;
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { MoreHorizontal, Plus } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import {
@@ -10,6 +11,7 @@ import {
   MOBILE_PRIMARY_URLS,
   NAV_SECTIONS,
   QUICK_ACTIONS,
+  canSee,
   findActiveLink,
   type NavLink,
 } from "@/config/navigation"
@@ -44,11 +46,12 @@ export function MobileNavigation() {
   const active = findActiveLink(pathname)
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const [isFabOpen, setIsFabOpen] = useState(false)
+  const isAdmin = useSession().data?.user.isAdmin ?? false
 
   const secondaryActive = active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url)
 
   return (
-    <div className="md:hidden">
+    <div className="md:hidden print:hidden">
       {isFabOpen && (
         <div
           aria-hidden
@@ -134,7 +137,7 @@ export function MobileNavigation() {
           </SheetHeader>
           <div className="space-y-4 px-4">
             {NAV_SECTIONS.map((section) => {
-              const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url))
+              const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, isAdmin))
               if (links.length === 0) return null
               return (
                 <div key={section.title} className="space-y-2">

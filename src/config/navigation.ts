@@ -16,6 +16,7 @@ export interface NavLink {
   url: string;
   icon: LucideIcon;
   badge?: "pendingUsers";
+  adminOnly?: boolean;
 }
 
 export interface NavSection {
@@ -43,7 +44,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Membros", url: "/app/admin/members", icon: Users },
       { title: "Aprovações", url: "/app/admin/members/pending", icon: UserCheck, badge: "pendingUsers" },
       { title: "Ministérios e Funções", url: "/app/admin/ministries", icon: Workflow },
-      { title: "Finanças", url: "/app/admin/finance", icon: DollarSign },
+      { title: "Finanças", url: "/app/admin/finance", icon: DollarSign, adminOnly: true },
     ],
   },
 ];
@@ -57,6 +58,8 @@ export const QUICK_ACTIONS: { title: string; url: string; icon: LucideIcon }[] =
 ];
 
 export const ALL_LINKS: NavLink[] = [HOME_LINK, ...NAV_SECTIONS.flatMap((section) => section.items)];
+
+export const canSee = (link: NavLink, isAdmin: boolean) => !link.adminOnly || isAdmin;
 
 export interface Breadcrumb {
   label: string;
