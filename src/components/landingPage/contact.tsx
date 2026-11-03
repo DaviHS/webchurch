@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { mapsUrl } from "@/lib/contants"
-import { Instagram, MapPin, Mail } from "lucide-react"
+import { MapPin, Mail } from "lucide-react"
+import { Instagram } from "@/components/icons/brand"
 
 export default function Contact() {
   return (
@@ -111,16 +112,3 @@ export default function Contact() {
     </section>
   )
 }
-
-/*
-
-<div className="flex items-start">
-                  <Phone className="h-5 w-5 text-primary mr-3 mt-1" />
-                  <div>
-                    <p className="font-medium">Telefone</p>
-                    <p className="text-gray-600">(00) 1234-5678</p>
-                  </div>
-                </div>
-
-
-*/

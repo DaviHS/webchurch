@@ -1,74 +1,45 @@
 "use client";
 
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { type PropsWithChildren } from "react";
-import { SiteHeader } from "@/components/sidebar/site-header";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { useSession } from "next-auth/react";
+import { Suspense, useEffect, type PropsWithChildren } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LoadingState } from "@/components/ui/loading-state";
-
-interface ExtendedSession {
-  user: {
-    id: string;
-    userId?: number;
-    email?: string | null;
-    name?: string | null;
-    memberId?: number | null;
-    hasDefaultPassword?: boolean;
-  };
-}
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { AppHeader } from "@/components/sidebar/app-header";
+import { MobileNavigation } from "@/components/sidebar/mobile-nav";
 
 export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const mustChangePassword = session?.user.hasDefaultPassword === true;
 
   useEffect(() => {
     if (status === "loading") return;
-    
-    if (!session) {
-      router.push("/sign-in");
-      return;
-    }
+    if (!session) router.push("/sign-in");
+    else if (mustChangePassword) router.push("/change-password");
+  }, [session, status, mustChangePassword, router]);
 
-    const extendedSession = session as ExtendedSession;
-    
-    if (extendedSession.user?.hasDefaultPassword) {
-      router.push("/change-password");
-      return;
-    }
-  }, [session, status, router]);
-
-  if (status === "loading") {
-    return <LoadingState />;
+  if (status === "loading" || mustChangePassword) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <LoadingState />
+      </div>
+    );
   }
 
-  if (!session) {
-    return null;
-  }
-
-  const extendedSession = session as ExtendedSession;
-  
-  if (extendedSession.user?.hasDefaultPassword) {
-    return <LoadingState />;
-  }
+  if (!session) return null;
 
   return (
-    <div className="[--header-height:calc(theme(spacing.14))]">
-      <SidebarProvider className="flex flex-col h-full">
-        <SiteHeader />
-        <div className="flex flex-1 h-full">
-          <AppSidebar />
-          <div className="flex-1 h-full overflow-auto font-sans">
-            <div className="w-full h-full overflow-x-hidden overflow-y-auto">
-              <div className="mx-auto w-full">
-                {children}
-              </div>
-            </div>
-          </div>
-        </div>
-      </SidebarProvider>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="flex min-h-svh min-w-0 flex-col bg-background">
+        <AppHeader />
+        <main className="w-full flex-1 p-4 pb-28 md:p-6 md:pb-6">
+          <Suspense fallback={<LoadingState />}>{children}</Suspense>
+        </main>
+        <MobileNavigation />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

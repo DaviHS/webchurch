@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Instagram } from "lucide-react"
+import { Instagram } from "@/components/icons/brand"
 import Image from "next/image"
 import { mapsUrl } from "@/lib/contants"
 
@@ -10,7 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="relative w-24 h-24 flex-shrink-0">
+              <div className="relative w-24 h-24 shrink-0">
                 <Image
                   src="/logo.png"
                   alt="Logo da Igreja Central"
@@ -84,9 +84,7 @@ export default function Footer() {
                 <span className="font-medium">Quarta-feira:</span> 19:30
               </li>
               <li className="text-white/80">
-                <li className="text-white/80">
-                  <span className="font-medium">Demais cultos com dias e horários variados.</span> Entre em contato para mais informações.
-                </li>
+                <span className="font-medium">Demais cultos com dias e horários variados.</span> Entre em contato para mais informações.
               </li>
             </ul>
           </div>

@@ -13,7 +13,7 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-primary shadow-md">
-      <div className="mx-auto w-full max-w-screen-xl px-4 flex h-16 items-center justify-between">
+      <div className="mx-auto w-full max-w-(--breakpoint-xl) px-4 flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="relative w-20 h-20">
             <Image
@@ -74,7 +74,6 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Menu mobile */}
       {isMenuOpen && (
         <div className="absolute top-16 left-0 right-0 bg-primary shadow-lg md:hidden pb-4">
           <nav className="flex flex-col gap-2 px-4">

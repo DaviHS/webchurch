@@ -56,7 +56,7 @@ export function DatePicker({
             setDate(selectedDate);
             setOpen(false);
           }}
-          initialFocus
+          autoFocus
           locale={ptBR}
           className="pointer-events-auto"
         />

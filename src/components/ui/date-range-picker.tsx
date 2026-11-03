@@ -4,6 +4,7 @@ import * as React from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarRange } from "lucide-react";
+import type { DateRange } from "@daypicker/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { DateRangePickerProps } from "@/types";
+import { type DateRangePickerProps } from "@/types";
 
 
 export function DateRangePicker({
@@ -25,7 +26,7 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
 
-  const handleSelect = (range: any) => {
+  const handleSelect = (range: DateRange | undefined) => {
     onChange({
       from: range?.from,
       to: range?.to,
@@ -59,7 +60,7 @@ export function DateRangePicker({
             className
           )}
         >
-          <CalendarRange className="mr-2 h-4 w-4 flex-shrink-0" />
+          <CalendarRange className="mr-2 h-4 w-4 shrink-0" />
           <span className="truncate">{formatDateRange()}</span>
         </Button>
       </PopoverTrigger>
@@ -71,7 +72,7 @@ export function DateRangePicker({
             to: value.to,
           }}
           onSelect={handleSelect}
-          initialFocus
+          autoFocus
           locale={ptBR}
           numberOfMonths={1}
           className="pointer-events-auto"

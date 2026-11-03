@@ -4,11 +4,9 @@ import { Hero, About, Services, History, Gallery, Contact, Footer, Navbar } from
 
 export default function HomePage() {
   return (
-    <div className="relative">
-      {/* Navbar sempre no topo */}
+    <div className="light relative bg-background text-foreground">
       <Navbar />
 
-      {/* Conteúdo principal com padding-top para não sobrepor o Navbar */}
       <main className="pt-16">
         <Hero />
         <About />

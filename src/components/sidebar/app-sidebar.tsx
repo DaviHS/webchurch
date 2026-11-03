@@ -1,113 +1,45 @@
 "use client"
 
-import type * as React from "react"
-import { Home, Activity, BarChart3, ClipboardCheck, Shield, Music, Calendar } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { NavMain, type NavItem } from "./nav-main"
-import { NavUser } from "./nav-user"
+import Image from "next/image"
+import Link from "next/link"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useSession } from "next-auth/react"
-import Link from "next/link"
+import { NavMain } from "./nav-main"
+import { NavUser } from "./nav-user"
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: session } = useSession()
-
-  const user = {
-    name: session?.user?.name || "Usuário",
-    email: session?.user?.email || "email@seuemail.com",
-    treatment: "",
-  }
-
-  const navItems: NavItem[] = [
-    {
-      icon: Home,
-      title: "Início",
-      url: `/app`,
-    },
-    // Menu Administrativo - apenas para admins
-    {
-      icon: Shield,
-      title: "Administração",
-      url: "#",
-      //roles: ["super_admin", "admin"],
-      items: [
-        // {
-        //   title: "Dashboard Admin",
-        //   url: "/app/admin",
-        //   roles: ["super_admin", "admin"],
-        // },
-        {
-          title: "Membros",
-          url: "/app/admin/members",
-          resource: "members",
-        },
-        {
-          title: "Funções e Ministérios",
-          url: "/app/admin/ministries",
-          resource: "settings",
-        },
-      ],
-    },
-    {
-      icon: Music,
-      title: "Adoração",
-      url: "#",
-      //roles: ["super_admin", "admin"],
-      items: [
-        {
-          title: "Músicas",
-          url: "/app/praise/songs",
-          icon: Music,
-        },
-        {
-          title: "Eventos",
-          url: "/app/praise/events",
-          icon: Calendar,
-        },
-        {
-          title: "Relatórios",
-          url: "/app/praise/reports",
-          icon: Calendar,
-        },
-      ]
-    }
-  ]
-
+export function AppSidebar() {
   return (
-    <Sidebar className="top-[--header-height] !h-[calc(100svh-var(--header-height))]" {...props}>
-      <SidebarHeader>
+    <Sidebar variant="floating">
+      <SidebarHeader className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href={`/app`}>
-                <div className="flex h-14 items-center gap-3">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={`/1.png`} alt="Church logo" />
-                    <AvatarFallback>IC</AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Igreja Central</span>
-                  <span className="truncate text-xs">Vida Com Próposito</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <Link href="/app" className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent">
+              <span className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#003F2D] shadow-xs ring-1 ring-border/40">
+                <Image src="/icons/icon-192.png" alt="" width={36} height={36} className="object-cover" priority />
+              </span>
+              <span className="flex flex-col text-left leading-none">
+                <span className="text-base font-extrabold tracking-wider text-sidebar-foreground">IGREJA CENTRAL</span>
+                <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                  Vida com propósito
+                </span>
+              </span>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={navItems} />
+
+      <SidebarContent className="px-2">
+        <NavMain />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
+
+      <SidebarFooter className="border-t border-border/60 px-2 pt-2">
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
