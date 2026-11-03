@@ -1,5 +1,7 @@
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
+import { mutationFeedback } from "@/lib/mutation-feedback";
 import type { Song } from "@/types";
 import type { SongFormData } from "@/validators/song";
 
@@ -15,64 +17,69 @@ function showWarnings(warnings: readonly string[]) {
 
 export function useSongMutations(options?: UseSongMutationsOptions) {
   const utils = api.useUtils();
+  const confirm = useConfirm();
 
-  const refresh = () => Promise.all([utils.song.list.invalidate(), utils.song.youtubeStatus.invalidate()]);
+  const refresh = () => Promise.all([utils.song.list.invalidate(), utils.song.getYouTubeStatus.invalidate()]);
 
-  const createSong = api.song.create.useMutation({
-    onSuccess: async ({ warnings }) => {
-      toast.success("Música criada com sucesso!");
-      showWarnings(warnings);
-      options?.onSuccess?.();
-      await refresh();
-    },
-    onError: (error) => {
-      toast.error("Erro ao criar música: " + error.message);
-    },
-  });
+  const createSongMutation = api.song.create.useMutation(
+    mutationFeedback({
+      success: "Música criada com sucesso",
+      error: "Erro ao criar música",
+      onSuccess: async ({ warnings }) => {
+        showWarnings(warnings);
+        options?.onSuccess?.();
+        await refresh();
+      },
+    })
+  );
 
-  const updateSong = api.song.update.useMutation({
-    onSuccess: async ({ warnings }) => {
-      toast.success("Música atualizada com sucesso!");
-      showWarnings(warnings);
-      options?.onSuccess?.();
-      await refresh();
-    },
-    onError: (error) => {
-      toast.error("Erro ao atualizar música: " + error.message);
-    },
-  });
+  const updateSongMutation = api.song.update.useMutation(
+    mutationFeedback({
+      success: "Música atualizada com sucesso",
+      error: "Erro ao atualizar música",
+      onSuccess: async ({ warnings }) => {
+        showWarnings(warnings);
+        options?.onSuccess?.();
+        await refresh();
+      },
+    })
+  );
 
-  const deleteSong = api.song.delete.useMutation({
-    onSuccess: async ({ warnings }) => {
-      toast.success("Música excluída com sucesso!");
-      showWarnings(warnings);
-      await refresh();
-    },
-    onError: (error) => {
-      toast.error("Erro ao excluir música: " + error.message);
-    },
-  });
+  const deleteSongMutation = api.song.delete.useMutation(
+    mutationFeedback({
+      success: "Música excluída com sucesso",
+      error: "Erro ao excluir música",
+      onSuccess: async ({ warnings }) => {
+        showWarnings(warnings);
+        await refresh();
+      },
+    })
+  );
 
   const handleSubmit = (data: SongFormData, editingSong: Pick<Song, "id"> | null) => {
     if (editingSong) {
-      updateSong.mutate({ id: editingSong.id, data });
+      updateSongMutation.mutate({ id: editingSong.id, data });
     } else {
-      createSong.mutate(data);
+      createSongMutation.mutate(data);
     }
   };
 
-  const handleDelete = (song: Pick<Song, "id" | "title">) => {
-    if (confirm(`Tem certeza que deseja excluir a música "${song.title}"?`)) {
-      deleteSong.mutate(song.id);
-    }
+  const handleDelete = async (song: Pick<Song, "id" | "title">) => {
+    const confirmed = await confirm({
+      title: "Excluir música",
+      description: `Tem certeza que deseja excluir a música "${song.title}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (confirmed) deleteSongMutation.mutate(song.id);
   };
 
   return {
-    createSong,
-    updateSong,
-    deleteSong,
+    createSongMutation,
+    updateSongMutation,
+    deleteSongMutation,
     handleSubmit,
     handleDelete,
-    isPending: createSong.isPending || updateSong.isPending || deleteSong.isPending,
+    isPending: createSongMutation.isPending || updateSongMutation.isPending || deleteSongMutation.isPending,
   };
 }

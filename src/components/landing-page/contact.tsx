@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { mapsUrl } from "@/lib/contants"
+import { mapsUrl } from "@/lib/constants"
 import { MapPin, Mail } from "lucide-react"
 import { Instagram } from "@/components/icons/brand"
 

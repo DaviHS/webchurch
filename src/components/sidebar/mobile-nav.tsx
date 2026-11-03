@@ -104,7 +104,7 @@ export function MobileNavigation() {
               href={link.url}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium transition-colors",
+                "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
                 isActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -117,7 +117,7 @@ export function MobileNavigation() {
           type="button"
           onClick={() => setIsMoreOpen(true)}
           className={cn(
-            "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium transition-colors",
+            "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
             secondaryActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
           )}
         >

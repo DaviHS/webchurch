@@ -53,7 +53,7 @@ export const userRouter = createTRPCRouter({
       return newUser
     }),
 
-  getAll: protectedProcedure.query(async () => {
+  list: protectedProcedure.query(async () => {
     return await db
       .select({
         id: users.id,
@@ -129,7 +129,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser
     }),
 
-  delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  deactivate: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const [deletedUser] = await db
       .update(users)
       .set({

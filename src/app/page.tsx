@@ -1,6 +1,6 @@
 "use client";
 
-import { Hero, About, Services, History, Gallery, Contact, Footer, Navbar } from "@/components/landingPage";
+import { Hero, About, Services, History, Gallery, Contact, Footer, Navbar } from "@/components/landing-page";
 
 export default function HomePage() {
   return (

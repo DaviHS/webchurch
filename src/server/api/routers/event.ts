@@ -9,10 +9,9 @@ import {
   songs,
   members,
 } from "@/server/db/schema";
-import { eq, ne, desc, and, gte, lte, sql, ilike, inArray, or, count } from "drizzle-orm";
+import { eq, desc, and, gte, lte, ilike, inArray, or, count } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { eventSchema, eventUpdateSchema, eventTypes, type EventType } from "@/validators/event";
-import { subDays } from "date-fns";
 
 const eventSongInputSchema = z.object({
   eventId: z.number(),
@@ -28,8 +27,6 @@ const eventParticipantInputSchema = z.object({
   role: z.string().min(1, "Função é obrigatória"),
   instrument: z.string().optional(),
 });
-
-const notTemplate = ne(events.type, "template");
 
 export const eventRouter = createTRPCRouter({
   list: protectedProcedure
@@ -226,191 +223,6 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  getSongsReport: protectedProcedure
-    .input(z.object({
-      startDate: z.date().optional(),
-      endDate: z.date().optional(),
-      songIds: z.array(z.number()).optional(),
-    }))
-    .query(async ({ input }) => {
-      const { startDate, endDate, songIds } = input;
-
-      let startDateFilter: Date;
-      let endDateFilter: Date;
-
-      if (startDate && endDate) {
-        startDateFilter = startDate;
-        endDateFilter = endDate;
-      } else {
-        endDateFilter = new Date();
-        startDateFilter = subDays(endDateFilter, 30);
-      }
-
-      const whereConditions = [
-        gte(events.date, startDateFilter),
-        lte(events.date, endDateFilter),
-        notTemplate,
-      ];
-
-      if (songIds && songIds.length > 0) {
-        whereConditions.push(inArray(eventSongs.songId, songIds));
-      }
-
-      const executions = count(eventSongs.songId);
-
-      const query = db
-        .select({
-          songId: eventSongs.songId,
-          title: songs.title,
-          artist: songs.artist,
-          count: executions,
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .innerJoin(songs, eq(eventSongs.songId, songs.id))
-        .where(and(...whereConditions))
-        .groupBy(eventSongs.songId, songs.title, songs.artist)
-        .orderBy(desc(executions));
-
-      const result = await (!songIds || songIds.length === 0 ? query.limit(50) : query);
-      return result;
-    }),
-
-  getSongExecutions: protectedProcedure
-    .input(z.object({
-      songId: z.number(),
-      startDate: z.date().optional(),
-      endDate: z.date().optional(),
-    }))
-    .query(async ({ input }) => {
-      const { songId, startDate, endDate } = input;
-
-      let startDateFilter: Date;
-      let endDateFilter: Date;
-
-      if (startDate && endDate) {
-        startDateFilter = startDate;
-        endDateFilter = endDate;
-      } else if (endDate) {
-        endDateFilter = endDate;
-        startDateFilter = subDays(endDateFilter, 30);
-      } else {
-        endDateFilter = new Date();
-        startDateFilter = subDays(endDateFilter, 30);
-      }
-
-      const results = await db
-        .select({
-          id: eventSongs.id,
-          eventId: eventSongs.eventId,
-          eventTitle: events.title,
-          eventDate: events.date,
-          eventType: events.type,
-          order: eventSongs.order,
-          notes: eventSongs.notes,
-          songId: songs.id,
-          songTitle: songs.title,
-          songArtist: songs.artist,
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .innerJoin(songs, eq(eventSongs.songId, songs.id))
-        .where(
-          and(
-            eq(eventSongs.songId, songId),
-            gte(events.date, startDateFilter),
-            lte(events.date, endDateFilter),
-            notTemplate
-          )
-        )
-        .orderBy(desc(events.date));
-
-      return results;
-    }),
-
-  getLastExecutions: protectedProcedure
-    .input(z.object({
-      songId: z.number(),
-      limit: z.number().min(1).max(100).default(10),
-    }))
-    .query(async ({ input }) => {
-      const { songId, limit } = input;
-
-      const results = await db
-        .select({
-          id: eventSongs.id,
-          eventId: eventSongs.eventId,
-          eventTitle: events.title,
-          eventDate: events.date,
-          eventType: events.type,
-          order: eventSongs.order,
-          notes: eventSongs.notes,
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .where(
-          and(
-            eq(eventSongs.songId, songId),
-            notTemplate
-          )
-        )
-        .orderBy(desc(events.date))
-        .limit(limit);
-
-      return results;
-    }),
-
-  getSongStats: protectedProcedure
-    .input(z.object({ songId: z.number() }))
-    .query(async ({ input }) => {
-      const stats = await db
-        .select({
-          totalExecutions: count(),
-          firstExecution: sql<Date | null>`min(${events.date})`,
-          lastExecution: sql<Date | null>`max(${events.date})`,
-          averageOrder: sql<number | null>`avg(${eventSongs.order})`.mapWith(Number),
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .where(
-          and(
-            eq(eventSongs.songId, input.songId),
-            notTemplate
-          )
-        );
-
-      return stats[0];
-    }),
-
-  getSongsTrend: protectedProcedure
-    .input(z.object({
-      songId: z.number(),
-      days: z.number().min(1).default(30),
-    }))
-    .query(async ({ input }) => {
-      const { songId, days } = input;
-      const startDate = subDays(new Date(), days);
-
-      const result = await db
-        .select({
-          date: events.date,
-          count: count(eventSongs.songId),
-        })
-        .from(eventSongs)
-        .innerJoin(events, eq(eventSongs.eventId, events.id))
-        .where(
-          and(
-            eq(eventSongs.songId, songId),
-            gte(events.date, startDate),
-            notTemplate
-          )
-        )
-        .groupBy(events.date)
-        .orderBy(events.date);
-
-      return result;
-    }),
-
   exportRepertoire: protectedProcedure
     .input(z.number())
     .query(async ({ input: eventId }) => {
@@ -494,7 +306,7 @@ export const eventRouter = createTRPCRouter({
     return template;
   }),
 
-  useTemplate: protectedProcedure
+  createFromTemplate: protectedProcedure
     .input(z.number())
     .mutation(async ({ input: templateId }) => {
       const template = await db

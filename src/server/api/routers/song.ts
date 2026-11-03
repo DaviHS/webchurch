@@ -302,7 +302,7 @@ export const songRouter = createTRPCRouter({
     return { success: true, warnings };
   }),
 
-  youtubeStatus: protectedProcedure
+  getYouTubeStatus: protectedProcedure
     .input(z.object({ force: z.boolean().default(false) }).optional())
     .query(({ input }) => youtubeService.getStatus({ force: input?.force ?? false })),
 

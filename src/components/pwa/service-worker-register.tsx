@@ -95,7 +95,7 @@ export function ServiceWorkerRegister() {
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      if (window.location.pathname.startsWith("/presentation")) return;
+      if (!["/", "/app"].includes(window.location.pathname)) return;
       const dismissedAt = Number(readStorage(INSTALL_DISMISSED_KEY) ?? 0);
       if (Date.now() - dismissedAt < INSTALL_SNOOZE_MS) return;
 

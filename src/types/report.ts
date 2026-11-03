@@ -1,14 +1,14 @@
 import type { RouterOutputs } from "./api";
 
-export type ReportItem = RouterOutputs["event"]["getSongsReport"][number];
+export type ReportItem = RouterOutputs["report"]["getSongRanking"][number];
 
-export type SongExecution = RouterOutputs["event"]["getSongExecutions"][number];
+export type SongExecution = RouterOutputs["report"]["getSongExecutions"][number];
 
-export type SongStats = NonNullable<RouterOutputs["event"]["getSongStats"]>;
+export type SongStats = NonNullable<RouterOutputs["report"]["getSongStats"]>;
 
 export interface ReportStats {
-  totalMusicas: number;
-  totalExecucoes: number;
-  media: number;
-  maxExecucoes: number;
+  totalSongs: number;
+  totalExecutions: number;
+  average: number;
+  maxExecutions: number;
 }

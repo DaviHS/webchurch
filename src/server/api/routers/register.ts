@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 
 export const registerRouter = createTRPCRouter({
-  register: publicProcedure
+  create: publicProcedure
     .input(registerSchema)
     .mutation(async ({ input }) => {
       const { password, confirmPassword, ...memberData } = input;
@@ -68,7 +68,7 @@ export const registerRouter = createTRPCRouter({
       return {
         member: newMember,
         user: newUser,
-        message: "Registro realizado com sucesso! Aguarde a aprovação do seu cadastro."
+        message: "Cadastro realizado com sucesso. Aguarde a aprovação."
       };
     }),
 });

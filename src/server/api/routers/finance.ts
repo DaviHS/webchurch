@@ -293,7 +293,7 @@ export const financeRouter = createTRPCRouter({
       return closure;
     }),
 
-  getMonthlyClosures: protectedProcedure
+  listMonthlyClosures: protectedProcedure
     .input(z.object({
       year: z.number().optional(),
     }))
@@ -326,7 +326,7 @@ export const financeRouter = createTRPCRouter({
       return budget;
     }),
 
-  getBudgets: protectedProcedure
+  listBudgets: protectedProcedure
     .input(z.object({
       month: z.number().min(1).max(12),
       year: z.number(),

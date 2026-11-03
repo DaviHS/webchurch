@@ -28,7 +28,7 @@ export const HOME_LINK: NavLink = { title: "Início", url: "/app", icon: Home };
 
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Adoração",
+    title: "Louvor",
     icon: Music,
     items: [
       { title: "Músicas", url: "/app/praise/songs", icon: Music },
@@ -48,7 +48,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export const MOBILE_PRIMARY_URLS = ["/app", "/app/praise/songs", "/app/praise/events", "/app/admin/members"];
+export const MOBILE_PRIMARY_URLS = ["/app", "/app/praise/songs", "/app/praise/events", "/app/praise/reports"];
 
 export const QUICK_ACTIONS: { title: string; url: string; icon: LucideIcon }[] = [
   { title: "Nova música", url: "/app/praise/songs?novo=1", icon: Music },

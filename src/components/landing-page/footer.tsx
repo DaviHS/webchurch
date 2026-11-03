@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Instagram } from "@/components/icons/brand"
 import Image from "next/image"
-import { mapsUrl } from "@/lib/contants"
+import { mapsUrl } from "@/lib/constants"
 
 export default function Footer() {
   return (

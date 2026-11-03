@@ -3,6 +3,7 @@ import { SessionProvider } from "next-auth/react";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import { fontSans } from "@/config/fonts";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: Readonly<PropsWithChildren>) {
         <TRPCReactProvider>
           <SessionProvider>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-              {children}
+              <ConfirmProvider>{children}</ConfirmProvider>
               <Toaster />
               <ServiceWorkerRegister />
             </ThemeProvider>

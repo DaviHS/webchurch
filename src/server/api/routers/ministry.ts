@@ -8,7 +8,7 @@ import { ministrySchema, functionSchema, ministryFunctionSchema } from "@/valida
 const presentMemberStatuses = ["active", "visiting"] as const
 
 export const ministryRouter = createTRPCRouter({
-  getAll: protectedProcedure.query(async () => {
+  list: protectedProcedure.query(async () => {
     return await db
       .select({
         id: ministries.id,
@@ -45,7 +45,7 @@ export const ministryRouter = createTRPCRouter({
       return updatedMinistry
     }),
 
-  delete: protectedProcedure
+  deactivate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deletedMinistry] = await db
@@ -59,7 +59,7 @@ export const ministryRouter = createTRPCRouter({
       return deletedMinistry
     }),
 
-  getAllFunctions: protectedProcedure.query(async () => {
+  listFunctions: protectedProcedure.query(async () => {
     return await db
       .select({
         id: functions.id,
@@ -97,7 +97,7 @@ export const ministryRouter = createTRPCRouter({
       return updatedFunction
     }),
 
-  deleteFunction: protectedProcedure
+  deactivateFunction: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deletedFunction] = await db
@@ -164,7 +164,7 @@ export const ministryRouter = createTRPCRouter({
       return newRelation
     }),
 
-  getAllMinistryFunctions: protectedProcedure.query(async () => {
+  listMinistryFunctions: protectedProcedure.query(async () => {
     return await db
       .select({
         ministryId: ministryFunctions.ministryId,

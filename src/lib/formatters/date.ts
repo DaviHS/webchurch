@@ -1,42 +1,34 @@
-import { format, endOfDay, startOfDay, subDays, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export const formatTime = (time: string) => {
-  if (!time) return '';
-  return time.includes(':') ? time : `${time.substring(0, 2)}:${time.substring(2)}`;
+type DateInput = Date | string | null | undefined;
+
+export function toDate(value: DateInput): Date | null {
+  if (!value) return null;
+  const date = typeof value === "string" ? parseISO(value) : value;
+  return isValid(date) ? date : null;
+}
+
+export const formatTime = (time: string | null | undefined) => {
+  if (!time) return "";
+  return time.includes(":") ? time.slice(0, 5) : `${time.substring(0, 2)}:${time.substring(2, 4)}`;
 };
 
-export function formatTimeDate(date: Date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
-  const s = String(date.getSeconds()).padStart(2, "0");
-  return `${h}:${m}:${s}`;
+export function formatDate(value: DateInput): string {
+  const date = toDate(value);
+  return date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : "";
 }
 
-export function formatDate(date: Date | string | undefined): string {
-  if (!date) return '';
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+export function formatDateTime(value: DateInput): string {
+  const date = toDate(value);
+  return date ? format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "";
 }
 
-export function formatDateLong(date: Date | string | undefined): string {
-  if (!date) return '';
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return format(dateObj, "PPP", { locale: ptBR });
+export function formatDateRelative(value: DateInput): string {
+  const date = toDate(value);
+  return date ? formatDistanceToNow(date, { addSuffix: true, locale: ptBR }) : "";
 }
 
-export function formatDateRelative(date: Date | string | undefined): string {
-  if (!date) return '';
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return formatDistanceToNow(dateObj, { addSuffix: true, locale: ptBR });
-}
-
-export function formatDateRange(startDate: Date, endDate: Date): string {
+export function formatDateRange(startDate: DateInput, endDate: DateInput): string {
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-}
-
-export function getDaysAgo(days: number) {
-  const endDate = endOfDay(new Date());
-  const startDate = startOfDay(subDays(endDate, days));
-  return { startDate, endDate };
 }

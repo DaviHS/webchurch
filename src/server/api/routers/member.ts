@@ -53,7 +53,7 @@ export const memberRouter = createTRPCRouter({
     return newMember;
   }),
 
-  getAll: protectedProcedure
+  list: protectedProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -235,7 +235,7 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
-  delete: protectedProcedure
+  deactivate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deleted] = await db
