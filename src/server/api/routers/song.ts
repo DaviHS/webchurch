@@ -1,139 +1,207 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
+import { TRPCError } from "@trpc/server";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-import { songs } from "@/server/db/schema";
-import { songSchema } from "@/validators/song";
-import { eq, desc, like, and, or, sql } from "drizzle-orm";
+import { songs, eventSongs } from "@/server/db/schema";
+import { songSchema, songCategories, type SongCategory } from "@/validators/song";
+import { eq, ne, desc, and, or, sql, count, isNotNull, type SQL } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
-import { youtubeService } from "@/lib/youtube";
+import { youtubeService, YouTubeIntegrationError } from "@/lib/youtube";
+import { youtubeWatchUrl } from "@/lib/youtube-url";
 import { spotifyService } from "@/lib/spotify";
 
-const YOUTUBE_PLAYLIST_ID = process.env.YOUTUBE_PLAYLIST_ID || 'ID_PLAYLIST';
+const SPOTIFY_PLAYLIST_ID = process.env.SPOTIFY_PLAYLIST_ID;
+
+const emptyToNull = (value: string | null | undefined) =>
+  value === undefined ? undefined : value === null || value.trim() === "" ? null : value;
+
+const normalizeLink = (value: string | null | undefined): string | null => {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed;
+};
+
+const integrationWarning = (what: string, error: unknown) =>
+  `Música salva, mas ${what}: ${error instanceof Error ? error.message : "erro desconhecido"}`;
+
+interface YouTubeFields {
+  youtubeUrl: string | null;
+  youtubeVideoId: string | null;
+}
+
+async function resolveYouTube(
+  url: string | null | undefined,
+  title: string,
+  artist: string | null | undefined,
+  warnings: string[]
+): Promise<YouTubeFields> {
+  const link = normalizeLink(url);
+  if (link) {
+    const youtubeVideoId = youtubeService.extractVideoId(link);
+    if (!youtubeVideoId) warnings.push("O link informado não é um vídeo do YouTube reconhecido.");
+    return { youtubeUrl: link, youtubeVideoId };
+  }
+  if (!youtubeService.isConfigured()) return { youtubeUrl: null, youtubeVideoId: null };
+
+  try {
+    const videoId = await youtubeService.searchVideo(title, artist);
+    return videoId
+      ? { youtubeUrl: youtubeWatchUrl(videoId), youtubeVideoId: videoId }
+      : { youtubeUrl: null, youtubeVideoId: null };
+  } catch (error) {
+    warnings.push(integrationWarning("não foi possível buscar o vídeo no YouTube", error));
+    return { youtubeUrl: null, youtubeVideoId: null };
+  }
+}
+
+async function isVideoUsedElsewhere(videoId: string, exceptSongId?: number): Promise<boolean> {
+  const [row] = await db
+    .select({ count: count() })
+    .from(songs)
+    .where(and(eq(songs.youtubeVideoId, videoId), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
+  return (row?.count ?? 0) > 0;
+}
+
+async function syncPlaylistVideo(
+  oldId: string | null,
+  newId: string | null,
+  songId: number | undefined,
+  warnings: string[]
+): Promise<void> {
+  if (!youtubeService.playlistId || !youtubeService.isConfigured() || oldId === newId) return;
+  try {
+    if (oldId && !(await isVideoUsedElsewhere(oldId, songId))) await youtubeService.removeFromPlaylist(oldId);
+    if (newId) await youtubeService.addToPlaylist(newId);
+  } catch (error) {
+    if (error instanceof YouTubeIntegrationError && error.reason === "not_configured") return;
+    warnings.push(integrationWarning("a playlist do YouTube não foi atualizada", error));
+  }
+}
+
+async function durationFromVideo(videoId: string | null, warnings: string[]): Promise<number | undefined> {
+  if (!videoId || !youtubeService.isConfigured()) return undefined;
+  try {
+    return (await youtubeService.getVideoDurations([videoId])).get(videoId);
+  } catch (error) {
+    warnings.push(integrationWarning("não foi possível obter a duração do vídeo", error));
+    return undefined;
+  }
+}
+
+interface SpotifyFields {
+  spotifyUrl: string | null;
+  spotifyTrackId: string | null;
+}
+
+async function resolveSpotify(
+  url: string | null | undefined,
+  title: string,
+  artist: string | null | undefined
+): Promise<SpotifyFields> {
+  const link = normalizeLink(url);
+  if (link) {
+    const data = spotifyService.extractId(link);
+    return { spotifyUrl: link, spotifyTrackId: data?.type === "track" ? data.id : null };
+  }
+  const track = await spotifyService.searchTrack(title, artist);
+  return track
+    ? { spotifyUrl: track.external_urls.spotify, spotifyTrackId: track.id }
+    : { spotifyUrl: null, spotifyTrackId: null };
+}
+
+async function syncSpotifyTrack(oldId: string | null, newId: string | null): Promise<void> {
+  if (!SPOTIFY_PLAYLIST_ID || oldId === newId) return;
+  if (oldId) await spotifyService.removeFromPlaylist(oldId, SPOTIFY_PLAYLIST_ID);
+  if (newId) await spotifyService.addToPlaylist(newId, SPOTIFY_PLAYLIST_ID);
+}
 
 export const songRouter = createTRPCRouter({
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z.object({
         search: z.string().optional(),
-        category: z.string().optional(),
-        page: z.number().default(1),
-        limit: z.number().default(50),
+        category: z
+          .string()
+          .optional()
+          .transform((v) =>
+            songCategories.includes(v as SongCategory) ? (v as SongCategory) : undefined
+          ),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(50),
       })
     )
     .query(async ({ input }) => {
       const { search, category, page, limit } = input;
       const offset = (page - 1) * limit;
 
-      const whereConditions: any[] = [];
+      const whereConditions: SQL[] = [];
 
       if (search && search.trim() !== "") {
-        const sanitized = search.trim().toLowerCase();
-        const searchLower = `%${sanitized}%`;
-
-        whereConditions.push(
-          or(
-            sql`LOWER(${songs.title}) LIKE ${searchLower}`,
-            sql`LOWER(${songs.artist}) LIKE ${searchLower}`
-          )
+        const searchLower = `%${search.trim().toLowerCase()}%`;
+        const searchCondition = or(
+          sql`LOWER(${songs.title}) LIKE ${searchLower}`,
+          sql`LOWER(${songs.artist}) LIKE ${searchLower}`
         );
+        if (searchCondition) whereConditions.push(searchCondition);
       }
 
       if (category) {
-        whereConditions.push(eq(songs.category, category as any));
+        whereConditions.push(eq(songs.category, category));
       }
+
+      const where = whereConditions.length ? and(...whereConditions) : undefined;
 
       const [data, total] = await Promise.all([
         db.select()
           .from(songs)
-          .where(whereConditions.length ? and(...whereConditions) : undefined)
+          .where(where)
           .orderBy(desc(songs.createdAt))
           .limit(limit)
           .offset(offset),
-        db.select({ count: songs.id })
+        db.select({ count: count() })
           .from(songs)
-          .where(whereConditions.length ? and(...whereConditions) : undefined),
+          .where(where),
       ]);
+
+      const totalCount = total[0]?.count ?? 0;
 
       return {
         songs: data,
-        total: total[0]?.count || 0,
-        totalPages: Math.ceil((total[0]?.count || 0) / limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
         currentPage: page,
       };
     }),
 
-  getById: publicProcedure.input(z.number()).query(async ({ input }) => {
+  getById: protectedProcedure.input(z.number()).query(async ({ input }) => {
     const song = await db
       .select()
       .from(songs)
       .where(eq(songs.id, input))
       .then((res) => res[0]);
-    return song || null;
+    return song ?? null;
   }),
 
   create: protectedProcedure.input(songSchema).mutation(async ({ input }) => {
-    let youtubeVideoId: string | null = null;
-    let finalYoutubeUrl = input.youtubeUrl;
-    let spotifyTrackId: string | null = null;
-    let finalSpotifyUrl = input.spotifyUrl;
+    const warnings: string[] = [];
 
-    if (input.youtubeUrl) {
-      youtubeVideoId = youtubeService.extractVideoId(input.youtubeUrl);
-    } else {
-      const videoId = await youtubeService.searchVideo(input.title, input.artist);
-  
-      if (videoId) {
-        youtubeVideoId = videoId;
-        finalYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      }
-    }
+    const [youtube, spotify] = await Promise.all([
+      resolveYouTube(input.youtubeUrl, input.title, input.artist, warnings),
+      resolveSpotify(input.spotifyUrl, input.title, input.artist),
+    ]);
 
-    if (input.spotifyUrl) {
-      const spotifyData = spotifyService.extractId(input.spotifyUrl);
-      if (spotifyData?.type === 'track') {
-        spotifyTrackId = spotifyData.id;
-      }
-    } else {
-      const track = await spotifyService.searchTrack(input.title, input.artist);
-      if (track) {
-        spotifyTrackId = track.id;
-        finalSpotifyUrl = track.external_urls.spotify;
-      }
-    }
+    const [duration] = await Promise.all([
+      input.duration ? Promise.resolve(input.duration) : durationFromVideo(youtube.youtubeVideoId, warnings),
+      syncPlaylistVideo(null, youtube.youtubeVideoId, undefined, warnings),
+      syncSpotifyTrack(null, spotify.spotifyTrackId),
+    ]);
 
-    if (youtubeVideoId && YOUTUBE_PLAYLIST_ID) {
-      try {
-        const alreadyInPlaylist = await youtubeService.isVideoInPlaylist(
-          youtubeVideoId, 
-          YOUTUBE_PLAYLIST_ID
-        );
+    const [song] = await db
+      .insert(songs)
+      .values(cleanEmptyStrings({ ...input, ...youtube, ...spotify, duration }))
+      .returning();
 
-        if (!alreadyInPlaylist) {
-          await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
-        }
-      } catch (error) {
-        console.error('Erro ao gerenciar playlist:', error);
-      }
-    }
-
-    if (spotifyTrackId && process.env.SPOTIFY_PLAYLIST_ID) {
-      try {
-        await spotifyService.addToPlaylist(spotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
-      } catch (error) {
-        console.error('Erro ao gerenciar playlist do Spotify:', error);
-      }
-    }
-
-    const cleanedData = cleanEmptyStrings({
-      ...input,
-      youtubeUrl: finalYoutubeUrl,
-      youtubeVideoId,
-      spotifyUrl: finalSpotifyUrl,
-      spotifyTrackId,
-    });
-
-    const [newSong] = await db.insert(songs).values(cleanedData).returning();
-    return newSong;
+    return { song, warnings };
   }),
 
   update: protectedProcedure
@@ -144,6 +212,9 @@ export const songRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
+      const { data } = input;
+      const warnings: string[] = [];
+
       const currentSong = await db
         .select()
         .from(songs)
@@ -151,119 +222,116 @@ export const songRouter = createTRPCRouter({
         .then((res) => res[0]);
 
       if (!currentSong) {
-        throw new Error("Música não encontrada");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Música não encontrada" });
       }
 
-      let youtubeVideoId: string | null = null;
-      let finalYoutubeUrl = input.data.youtubeUrl;
-      let spotifyTrackId: string | null = null;
-      let finalSpotifyUrl = input.data.spotifyUrl;
+      const title = data.title ?? currentSong.title;
+      const artist = data.artist ?? currentSong.artist;
 
-      const oldYoutubeVideoId = currentSong.youtubeVideoId;
-      const oldSpotifyTrackId = currentSong.spotifyTrackId;
+      const updateData: Partial<typeof songs.$inferInsert> = {
+        title: data.title,
+        category: data.category,
+        artist: emptyToNull(data.artist),
+        lyrics: emptyToNull(data.lyrics),
+        key: emptyToNull(data.key),
+        duration: data.duration,
+      };
 
-      // Lógica do YouTube
-      if (input.data.youtubeUrl) {
-        youtubeVideoId = youtubeService.extractVideoId(input.data.youtubeUrl);
-      } else if (input.data.title) {
-        const videoId = await youtubeService.searchVideo(input.data.title, input.data.artist);
-        if (videoId) {
-          youtubeVideoId = videoId;
-          finalYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        }
+      const youtubeChanged =
+        data.youtubeUrl !== undefined &&
+        (normalizeLink(data.youtubeUrl) !== currentSong.youtubeUrl || !currentSong.youtubeVideoId);
+      const spotifyChanged =
+        data.spotifyUrl !== undefined &&
+        (normalizeLink(data.spotifyUrl) !== currentSong.spotifyUrl || !currentSong.spotifyTrackId);
+
+      const updateYouTube = async () => {
+        const youtube = await resolveYouTube(data.youtubeUrl, title, artist, warnings);
+        Object.assign(updateData, youtube);
+        await syncPlaylistVideo(currentSong.youtubeVideoId, youtube.youtubeVideoId, currentSong.id, warnings);
+      };
+
+      const updateSpotify = async () => {
+        const spotify = await resolveSpotify(data.spotifyUrl, title, artist);
+        Object.assign(updateData, spotify);
+        await syncSpotifyTrack(currentSong.spotifyTrackId, spotify.spotifyTrackId);
+      };
+
+      await Promise.all([
+        youtubeChanged ? updateYouTube() : Promise.resolve(),
+        spotifyChanged ? updateSpotify() : Promise.resolve(),
+      ]);
+
+      const effectiveDuration = data.duration ?? currentSong.duration;
+      if (!effectiveDuration) {
+        const videoId = "youtubeVideoId" in updateData ? (updateData.youtubeVideoId ?? null) : currentSong.youtubeVideoId;
+        const fromVideo = await durationFromVideo(videoId, warnings);
+        if (fromVideo) updateData.duration = fromVideo;
       }
 
-      // Lógica do Spotify
-      if (input.data.spotifyUrl) {
-        const spotifyData = spotifyService.extractId(input.data.spotifyUrl);
-        if (spotifyData?.type === 'track') {
-          spotifyTrackId = spotifyData.id;
-        }
-      } else if (input.data.title) {
-        const track = await spotifyService.searchTrack(input.data.title, input.data.artist);
-        if (track) {
-          spotifyTrackId = track.id;
-          finalSpotifyUrl = track.external_urls.spotify;
-        }
-      }
-
-      // Gerenciar playlists do YouTube
-      if (YOUTUBE_PLAYLIST_ID) {
-        try {
-          if (oldYoutubeVideoId && oldYoutubeVideoId !== youtubeVideoId) {
-            const isOldVideoInPlaylist = await youtubeService.isVideoInPlaylist(
-              oldYoutubeVideoId, 
-              YOUTUBE_PLAYLIST_ID
-            );
-            
-            if (isOldVideoInPlaylist) {
-              await youtubeService.removeFromPlaylist(oldYoutubeVideoId, YOUTUBE_PLAYLIST_ID);
-            }
-          }
-
-          if (youtubeVideoId) {
-            const alreadyInPlaylist = await youtubeService.isVideoInPlaylist(
-              youtubeVideoId, 
-              YOUTUBE_PLAYLIST_ID
-            );
-
-            if (!alreadyInPlaylist) {
-              await youtubeService.addToPlaylist(youtubeVideoId, YOUTUBE_PLAYLIST_ID);
-            }
-          }
-        } catch (error) {
-          console.error('Erro ao gerenciar playlist:', error);
-        }
-      }
-
-      // Gerenciar playlists do Spotify
-      if (process.env.SPOTIFY_PLAYLIST_ID) {
-        try {
-          if (oldSpotifyTrackId && oldSpotifyTrackId !== spotifyTrackId) {
-            const isOldTrackInPlaylist = await spotifyService.isTrackInPlaylist(
-              oldSpotifyTrackId, 
-              process.env.SPOTIFY_PLAYLIST_ID
-            );
-            
-            if (isOldTrackInPlaylist) {
-              await spotifyService.removeFromPlaylist(oldSpotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
-            }
-          }
-
-          if (spotifyTrackId) {
-            const alreadyInPlaylist = await spotifyService.isTrackInPlaylist(
-              spotifyTrackId, 
-              process.env.SPOTIFY_PLAYLIST_ID
-            );
-
-            if (!alreadyInPlaylist) {
-              await spotifyService.addToPlaylist(spotifyTrackId, process.env.SPOTIFY_PLAYLIST_ID);
-            }
-          }
-        } catch (error) {
-          console.error('Erro ao gerenciar playlist do Spotify:', error);
-        }
-      }
-
-      const cleanedData = cleanEmptyStrings({
-        ...input.data,
-        youtubeUrl: finalYoutubeUrl,
-        youtubeVideoId,
-        spotifyUrl: finalSpotifyUrl,
-        spotifyTrackId,
-      });
-
-      const [updatedSong] = await db
+      const [song] = await db
         .update(songs)
-        .set({ ...cleanedData, updatedAt: new Date() })
+        .set({ ...updateData, updatedAt: new Date() })
         .where(eq(songs.id, input.id))
         .returning();
 
-      return updatedSong;
+      return { song, warnings };
     }),
 
   delete: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
-    await db.delete(songs).where(eq(songs.id, input));
-    return { success: true };
+    const [usage] = await db
+      .select({ count: count() })
+      .from(eventSongs)
+      .where(eq(eventSongs.songId, input));
+
+    if (usage && usage.count > 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `Esta música está em ${usage.count} evento(s) e não pode ser excluída.`,
+      });
+    }
+
+    const [deleted] = await db
+      .delete(songs)
+      .where(eq(songs.id, input))
+      .returning({ youtubeVideoId: songs.youtubeVideoId });
+
+    const warnings: string[] = [];
+    if (deleted?.youtubeVideoId) {
+      await syncPlaylistVideo(deleted.youtubeVideoId, null, input, warnings);
+    }
+    return { success: true, warnings };
+  }),
+
+  youtubeStatus: protectedProcedure
+    .input(z.object({ force: z.boolean().default(false) }).optional())
+    .query(({ input }) => youtubeService.getStatus({ force: input?.force ?? false })),
+
+  syncYouTubePlaylist: protectedProcedure.mutation(async () => {
+    const rows = await db
+      .select({ id: songs.id, videoId: songs.youtubeVideoId, duration: songs.duration })
+      .from(songs)
+      .where(isNotNull(songs.youtubeVideoId));
+
+    const withVideo = rows.flatMap((row) => (row.videoId ? [{ ...row, videoId: row.videoId }] : []));
+
+    try {
+      const playlist = await youtubeService.syncPlaylist(withVideo.map((row) => row.videoId));
+
+      const missingDuration = withVideo.filter((row) => !row.duration);
+      const durations = await youtubeService.getVideoDurations(missingDuration.map((row) => row.videoId));
+      const updates = missingDuration.flatMap((row) => {
+        const seconds = durations.get(row.videoId);
+        return seconds ? [db.update(songs).set({ duration: seconds, updatedAt: new Date() }).where(eq(songs.id, row.id))] : [];
+      });
+      const [first, ...rest] = updates;
+      if (first) await db.batch([first, ...rest]);
+
+      return { ...playlist, durationsFilled: updates.length };
+    } catch (error) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: error instanceof Error ? error.message : "Falha ao sincronizar a playlist do YouTube",
+      });
+    }
   }),
 });

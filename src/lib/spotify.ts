@@ -1,203 +1,187 @@
+import { z } from "zod";
+
+const SPOTIFY_API = "https://api.spotify.com/v1";
+
+type SpotifyIdType = "track" | "artist" | "playlist" | "album";
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: { id: string; name: string }[];
+  duration_ms: number;
+  preview_url: string | null;
+  external_urls: { spotify: string };
+  album: { name: string; images: { url: string }[] };
+}
+
+const tokenResponseSchema = z.object({
+  access_token: z.string(),
+  expires_in: z.number(),
+});
+
+const errorResponseSchema = z
+  .object({
+    error: z.union([z.string(), z.object({ message: z.string().optional() })]).optional(),
+    error_description: z.string().optional(),
+  })
+  .catch({});
+
+interface SearchResponse {
+  tracks?: { items?: SpotifyTrack[] };
+}
+
+interface PlaylistTracksPage {
+  items: { track: { id: string | null } | null }[];
+  next: string | null;
+}
+
+const ID_PATTERNS: { type: SpotifyIdType; pattern: RegExp }[] = (
+  ["track", "artist", "playlist", "album"] as const
+).flatMap((type) => [
+  { type, pattern: new RegExp(`spotify\\.com/(?:intl-[a-z]+/)?${type}/([a-zA-Z0-9]{22})`) },
+  { type, pattern: new RegExp(`spotify:${type}:([a-zA-Z0-9]{22})`) },
+]);
+
 class SpotifyService {
   private accessToken: string | null = null;
-  private tokenExpiry: number | null = null;
+  private tokenExpiry = 0;
 
-  // Obter access token
   private async getAccessToken(): Promise<string> {
-    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+    if (this.accessToken && Date.now() < this.tokenExpiry) {
       return this.accessToken;
     }
 
-    try {
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(
-            `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
-          ).toString('base64')
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: process.env.SPOTIFY_REFRESH_TOKEN!
-        })
-      });
+    const credentials = Buffer.from(
+      `${process.env.SPOTIFY_CLIENT_ID ?? ""}:${process.env.SPOTIFY_CLIENT_SECRET ?? ""}`
+    ).toString("base64");
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(`Spotify API Error: ${data.error} - ${data.error_description}`);
-      }
+    const response = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${credentials}`,
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: process.env.SPOTIFY_REFRESH_TOKEN ?? "",
+      }),
+    });
 
-      this.accessToken = data.access_token;
-      this.tokenExpiry = Date.now() + (data.expires_in * 1000);
-      
-      return this.accessToken!;
-    } catch (error) {
-      console.error('❌ Erro ao obter access token do Spotify:', error);
-      throw error;
+    const body: unknown = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const error = errorResponseSchema.parse(body);
+      const message = typeof error.error === "string" ? error.error : error.error?.message;
+      throw new Error(`Spotify API Error: ${message ?? response.status} - ${error.error_description ?? ""}`);
     }
+
+    const token = tokenResponseSchema.parse(body);
+    this.accessToken = token.access_token;
+    this.tokenExpiry = Date.now() + (token.expires_in - 60) * 1000;
+    return token.access_token;
   }
 
-  // Fazer requisições autenticadas
-  private async makeRequest(endpoint: string, options: RequestInit = {}) {
+  private async request<T>(pathOrUrl: string, options: RequestInit = {}): Promise<T> {
     const token = await this.getAccessToken();
-    
-    const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+    const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${SPOTIFY_API}${pathOrUrl}`;
+
+    const response = await fetch(url, {
       ...options,
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(`Spotify API Error: ${response.status} - ${error.error?.message || response.statusText}`);
+      const error = errorResponseSchema.parse(await response.json().catch(() => ({})));
+      const message = typeof error.error === "string" ? error.error : error.error?.message;
+      throw new Error(`Spotify API Error: ${response.status} - ${message ?? response.statusText}`);
     }
 
-    return response.json();
+    return (await response.json()) as T;
   }
 
-  // Extrair ID do track/artist/playlist da URL
-  extractId(url: string): { type: 'track' | 'artist' | 'playlist' | 'album'; id: string } | null {
-    const patterns = [
-      // Track
-      /spotify\.com\/track\/([a-zA-Z0-9]{22})/,
-      /spotify:track:([a-zA-Z0-9]{22})/,
-      // Artist
-      /spotify\.com\/artist\/([a-zA-Z0-9]{22})/,
-      /spotify:artist:([a-zA-Z0-9]{22})/,
-      // Playlist
-      /spotify\.com\/playlist\/([a-zA-Z0-9]{22})/,
-      /spotify:playlist:([a-zA-Z0-9]{22})/,
-      // Album
-      /spotify\.com\/album\/([a-zA-Z0-9]{22})/,
-      /spotify:album:([a-zA-Z0-9]{22})/,
-    ];
+  private resolvePlaylist(playlistId?: string): string {
+    const id = playlistId ?? process.env.SPOTIFY_PLAYLIST_ID;
+    if (!id) throw new Error("SPOTIFY_PLAYLIST_ID não configurado");
+    return id;
+  }
 
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match?.[1]) {
-        let type: 'track' | 'artist' | 'playlist' | 'album' = 'track';
-        
-        if (pattern.source.includes('artist')) type = 'artist';
-        else if (pattern.source.includes('playlist')) type = 'playlist';
-        else if (pattern.source.includes('album')) type = 'album';
-        
-        return { type, id: match[1] };
-      }
+  extractId(url: string): { type: SpotifyIdType; id: string } | null {
+    for (const { type, pattern } of ID_PATTERNS) {
+      const id = pattern.exec(url)?.[1];
+      if (id) return { type, id };
     }
-    
     return null;
   }
 
-  // Buscar música
-  async searchTrack(title: string, artist?: string): Promise<{
-    id: string;
-    name: string;
-    artists: string[];
-    duration_ms: number;
-    preview_url: string | null;
-    external_urls: { spotify: string };
-    album: { name: string; images: Array<{ url: string }> };
-  } | null> {
+  async searchTrack(title: string, artist?: string | null): Promise<SpotifyTrack | null> {
     try {
       const query = artist ? `${title} artist:${artist}` : title;
-      const data = await this.makeRequest(`/search?q=${encodeURIComponent(query)}&type=track&limit=1`);
-
-      if (data.tracks?.items?.[0]) {
-        return data.tracks.items[0];
-      }
-      return null;
+      const data = await this.request<SearchResponse>(
+        `/search?q=${encodeURIComponent(query)}&type=track&limit=1`
+      );
+      return data.tracks?.items?.[0] ?? null;
     } catch (error) {
-      console.error('Erro na busca do Spotify:', error);
+      console.error("Erro na busca do Spotify:", error);
       return null;
     }
   }
 
-  // Verificar se música está na playlist
   async isTrackInPlaylist(trackId: string, playlistId?: string): Promise<boolean> {
     try {
-      const targetPlaylistId = playlistId || process.env.SPOTIFY_PLAYLIST_ID;
-      const data = await this.makeRequest(`/playlists/${targetPlaylistId}/tracks?limit=100`);
-      
-      return data.items.some((item: any) => item.track?.id === trackId);
+      let next: string | null = `/playlists/${this.resolvePlaylist(playlistId)}/tracks?fields=items(track(id)),next&limit=100`;
+      while (next) {
+        const page: PlaylistTracksPage = await this.request<PlaylistTracksPage>(next);
+        if (page.items.some((item) => item.track?.id === trackId)) return true;
+        next = page.next;
+      }
+      return false;
     } catch (error) {
-      console.error('Erro ao verificar playlist do Spotify:', error);
+      console.error("Erro ao verificar playlist do Spotify:", error);
       return false;
     }
   }
 
-  // Adicionar música à playlist
   async addToPlaylist(trackId: string, playlistId?: string): Promise<boolean> {
     try {
-      const targetPlaylistId = playlistId || process.env.SPOTIFY_PLAYLIST_ID;
-      const alreadyInPlaylist = await this.isTrackInPlaylist(trackId, targetPlaylistId);
-      
-      if (alreadyInPlaylist) {
-        console.log(`ℹ️ Música ${trackId} já está na playlist, ignorando...`);
-        return true;
-      }
+      const target = this.resolvePlaylist(playlistId);
+      if (await this.isTrackInPlaylist(trackId, target)) return true;
 
-      await this.makeRequest(`/playlists/${targetPlaylistId}/tracks`, {
-        method: 'POST',
-        body: JSON.stringify({
-          uris: [`spotify:track:${trackId}`]
-        })
+      await this.request(`/playlists/${target}/tracks`, {
+        method: "POST",
+        body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
       });
-
-      console.log(`✅ Música ${trackId} adicionada à playlist do Spotify`);
       return true;
     } catch (error) {
-      console.error('❌ Erro ao adicionar à playlist do Spotify:', error);
+      console.error("Erro ao adicionar à playlist do Spotify:", error);
       return false;
     }
   }
 
-  // Remover música da playlist
   async removeFromPlaylist(trackId: string, playlistId?: string): Promise<boolean> {
     try {
-      const targetPlaylistId = playlistId || process.env.SPOTIFY_PLAYLIST_ID;
-      const alreadyInPlaylist = await this.isTrackInPlaylist(trackId, targetPlaylistId);
-      
-      if (!alreadyInPlaylist) {
-        console.log(`ℹ️ Música ${trackId} não está na playlist, ignorando remoção...`);
-        return true;
-      }
+      const target = this.resolvePlaylist(playlistId);
+      if (!(await this.isTrackInPlaylist(trackId, target))) return true;
 
-      await this.makeRequest(`/playlists/${targetPlaylistId}/tracks`, {
-        method: 'DELETE',
-        body: JSON.stringify({
-          tracks: [{ uri: `spotify:track:${trackId}` }]
-        })
+      await this.request(`/playlists/${target}/tracks`, {
+        method: "DELETE",
+        body: JSON.stringify({ tracks: [{ uri: `spotify:track:${trackId}` }] }),
       });
-
-      console.log(`🗑️ Música ${trackId} removida da playlist do Spotify`);
       return true;
     } catch (error) {
-      console.error('❌ Erro ao remover música da playlist do Spotify:', error);
+      console.error("Erro ao remover música da playlist do Spotify:", error);
       return false;
     }
   }
 
-  // Obter informações de uma música
-  async getTrack(trackId: string) {
+  async getTrack(trackId: string): Promise<SpotifyTrack | null> {
     try {
-      return await this.makeRequest(`/tracks/${trackId}`);
+      return await this.request<SpotifyTrack>(`/tracks/${trackId}`);
     } catch (error) {
-      console.error('Erro ao obter dados do track:', error);
-      return null;
-    }
-  }
-
-  // Obter informações do artista
-  async getArtist(artistId: string) {
-    try {
-      return await this.makeRequest(`/artists/${artistId}`);
-    } catch (error) {
-      console.error('Erro ao obter dados do artista:', error);
+      console.error("Erro ao obter dados da faixa no Spotify:", error);
       return null;
     }
   }
