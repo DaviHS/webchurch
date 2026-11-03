@@ -1,264 +1,398 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.light, .light *)));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --font-sans:
+    Urbanist, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
 
 @layer base {
-  :root {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: hsl(var(--border));
+  }
+}
+
+@layer base {
+  :root,
+  .light {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142 100% 12.5%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 37 63% 70%;
-    --secondary-foreground: 142 100% 12.5%;
+    --primary: 162 100% 12.4%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 34 64% 70%;
+    --secondary-foreground: 162 100% 12.4%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 76% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 92% 42%;
+    --warning-foreground: 0 0% 100%;
+    --info: 205 85% 42%;
+    --info-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 142 100% 12.5%;
+    --ring: 162 100% 12.4%;
     --radius: 0.5rem;
-    
+
+    --chart-1: 162 100% 22%;
+    --chart-2: 34 64% 55%;
+    --chart-3: 205 70% 45%;
+    --chart-4: 280 55% 55%;
+    --chart-5: 0 70% 55%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary: 162 100% 12.4%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 162 100% 12.4%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142 70% 50%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 37 63% 70%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142.1 70.6% 45.3%;
+    color-scheme: dark;
+    --background: 165 20% 6%;
+    --foreground: 150 10% 95%;
+    --card: 165 18% 9%;
+    --card-foreground: 150 10% 95%;
+    --popover: 165 18% 9%;
+    --popover-foreground: 150 10% 95%;
+    --primary: 158 55% 48%;
+    --primary-foreground: 165 60% 6%;
+    --secondary: 34 64% 70%;
+    --secondary-foreground: 165 60% 8%;
+    --muted: 165 12% 15%;
+    --muted-foreground: 160 8% 65%;
+    --accent: 165 12% 17%;
+    --accent-foreground: 150 10% 95%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 60% 50%;
+    --success-foreground: 165 60% 6%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 30 80% 8%;
+    --info: 205 85% 62%;
+    --info-foreground: 210 80% 8%;
+    --border: 165 12% 18%;
+    --input: 165 12% 20%;
+    --ring: 158 55% 48%;
 
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 158 55% 48%;
+    --chart-2: 34 64% 65%;
+    --chart-3: 205 80% 60%;
+    --chart-4: 280 60% 65%;
+    --chart-5: 0 72% 62%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 165 20% 8%;
+    --sidebar-foreground: 150 10% 90%;
+    --sidebar-primary: 158 55% 48%;
+    --sidebar-primary-foreground: 165 60% 6%;
+    --sidebar-accent: 165 12% 15%;
+    --sidebar-accent-foreground: 150 10% 95%;
+    --sidebar-border: 165 12% 16%;
+    --sidebar-ring: 158 55% 48%;
   }
 }
 
-/* Estilos para formatação de letras de música */
-.lyrics-container {
-  font-family: 'Georgia', serif;
-  line-height: 1.8;
-  font-size: 1.1rem;
-  background: linear-gradient(180deg, hsl(var(--muted)) 0%, hsl(var(--muted)) 100%);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-}
-
-.chord {
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  color: hsl(var(--primary));
-  font-weight: 700;
-  vertical-align: super;
-  margin: 0 0.1rem;
-  padding: 0.1rem 0.2rem;
-  background: hsl(var(--primary)/0.1);
-  border-radius: 0.2rem;
-  position: relative;
-  top: -0.5em;
-}
-
-.lyrics-line {
-  margin-bottom: 0.75rem;
-  min-height: 1.5rem;
-  position: relative;
-}
-
-/* Melhorar a legibilidade do texto */
-.lyrics-container span:not(.chord) {
-  color: hsl(var(--foreground));
-  font-weight: 450;
-}
-
-/* Efeito hover para os acordes */
-.chord:hover {
-  background: hsl(var(--primary)/0.2);
-  transform: translateY(-1px);
-  transition: all 0.2s ease;
-}
-
-/* Estilos para modo escuro */
-.dark .lyrics-container {
-  background: linear-gradient(180deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.8) 100%);
-}
-
-.dark .chord {
-  color: hsl(var(--primary)/0.9);
-  background: hsl(var(--primary)/0.15);
-}
-
-.dark .chord:hover {
-  background: hsl(var(--primary)/0.25);
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
+@layer utilities {
   .lyrics-container {
-    padding: 1rem;
-    font-size: 1rem;
-    line-height: 1.6;
+    font-family: 'Georgia', serif;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted)) 100%
+    );
+    border-radius: var(--radius);
+    padding: 1.5rem;
   }
-  
+
   .chord {
-    font-size: 0.7rem;
-    top: -0.4em;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: hsl(var(--primary));
+    font-weight: 700;
+    vertical-align: super;
+    margin: 0 0.1rem;
+    padding: 0.1rem 0.2rem;
+    background: hsl(var(--primary) / 0.1);
+    border-radius: 0.2rem;
+    position: relative;
+    top: -0.5em;
   }
-  
+
   .lyrics-line {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    min-height: 1.5rem;
+    position: relative;
   }
-}
 
-/* Animações suaves */
-.lyrics-line {
-  animation: fadeInUp 0.3s ease-out;
-}
+  .lyrics-container span:not(.chord) {
+    color: hsl(var(--foreground));
+    font-weight: 450;
+  }
 
-/* Estilos para o Music Player */
-.music-player {
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.9) 100%);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
+  .chord:hover {
+    background: hsl(var(--primary) / 0.2);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+  }
 
-.music-player .slider {
-  cursor: pointer;
-}
+  .dark .lyrics-container {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.8) 100%
+    );
+  }
 
-.music-player .slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+  .dark .chord {
+    color: hsl(var(--primary) / 0.9);
+    background: hsl(var(--primary) / 0.15);
+  }
 
-.music-player .slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
+  .dark .chord:hover {
+    background: hsl(var(--primary) / 0.25);
+  }
 
-/* Animações para o player */
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
+  @media (max-width: 768px) {
+    .lyrics-container {
+      padding: 1rem;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
 
-.music-player .play-button:active {
-  animation: pulse 0.3s ease;
-}
+    .chord {
+      font-size: 0.7rem;
+      top: -0.4em;
+    }
 
-/* Responsividade do player */
-@media (max-width: 640px) {
+    .lyrics-line {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .lyrics-line {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
   .music-player {
-    padding: 1rem;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.9) 100%
+    );
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
-  
-  .music-player .controls {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+
+  .music-player .slider {
+    cursor: pointer;
   }
-  
-  .music-player .volume-controls {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    margin-top: 0.5rem;
+
+  .music-player .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
-}
 
-/* Estados de hover e focus */
-.music-player button:hover {
-  transform: translateY(-1px);
-  transition: transform 0.2s ease;
-}
-
-.music-player button:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  .music-player .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
-}
 
-/* Scroll suave para seções */
-.html {
-  scroll-behavior: smooth;
-}
+  .music-player .play-button:active {
+    animation: pulse 0.3s ease;
+  }
 
-/* Melhorar a experiência do dropdown de músicas */
-.dropdown-search-results {
-  max-height: 300px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--muted)) hsl(var(--background));
-}
+  @media (max-width: 640px) {
+    .music-player {
+      padding: 1rem;
+    }
 
-.dropdown-search-results::-webkit-scrollbar {
-  width: 6px;
-}
+    .music-player .controls {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
 
-.dropdown-search-results::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
+    .music-player .volume-controls {
+      order: 3;
+      width: 100%;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+  }
 
-.dropdown-search-results::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 3px;
-}
+  .music-player button:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease;
+  }
 
-.dropdown-search-results::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  .music-player button:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .html {
+    scroll-behavior: smooth;
+  }
+
+  .dropdown-search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+  }
+
+  .dropdown-search-results::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .dropdown-search-results::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  .dropdown-search-results::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .dropdown-search-results::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
 }
 
 @layer base {
