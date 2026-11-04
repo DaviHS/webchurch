@@ -18,9 +18,14 @@ export const presentationRouter = createTRPCRouter({
       z.union([
         z.object({ eventId: z.number().int().positive() }),
         z.object({ songId: z.number().int().positive() }),
+        z.object({ bible: z.literal(true) }),
       ])
     )
     .query(async ({ input }) => {
+      if ("bible" in input) {
+        return { key: "bible", title: "Bíblia", subtitle: "Passagens bíblicas", date: null, songs: [] };
+      }
+
       if ("songId" in input) {
         const [song] = await db
           .select(deckSongColumns)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   MessageSquareWarning,
   MonitorCog,
   Projector,
+  Smartphone,
   Square,
   Timer,
   TimerOff,
@@ -27,7 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { buildDeck, samePosition, type DeckSongSource, type Position } from "../deck";
+import { buildDeck, passageToDeckSong, samePosition, type DeckSong, type DeckSongSource, type Position } from "../deck";
 import { loadCachedDeck, saveCachedDeck } from "../deck-cache";
 import { formatElapsed } from "../hooks";
 import { ProjectorView } from "../projector-view";
@@ -41,13 +42,22 @@ import {
 } from "../screens";
 import { StageView } from "../stage-view";
 import { usePresentationController, type PresentationController } from "../use-presentation-controller";
+import { useRemoteHost, type RemoteHost } from "../use-remote-host";
+import { RemoteDialog } from "./remote-dialog";
 import { ScreenSetupDialog } from "./screen-setup-dialog";
 import { SlideGrid } from "./slide-grid";
 import { Setlist } from "./setlist";
 
-export type DeckRequest = { eventId: number } | { songId: number };
+export type DeckRequest = { eventId: number } | { songId: number } | { bible: true };
 
-const deckKey = (request: DeckRequest) => ("eventId" in request ? `event-${request.eventId}` : `song-${request.songId}`);
+export interface InitialPassage {
+  version: string;
+  reference: string;
+  versesPerSlide?: number | null;
+}
+
+const deckKey = (request: DeckRequest) =>
+  "eventId" in request ? `event-${request.eventId}` : "songId" in request ? `song-${request.songId}` : "bible";
 
 const OUTPUT_ICONS: Record<OutputRole, typeof Projector> = { projector: Projector, stage: Tv };
 
@@ -84,10 +94,11 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-function OutputControls({ controller }: { controller: PresentationController }) {
+function OutputControls({ controller, remote }: { controller: PresentationController; remote: RemoteHost }) {
   const screens = useDetectedScreens();
   const assignments = useScreenAssignments();
   const [setupOpen, setSetupOpen] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(false);
 
   const open = (role: OutputRole) => {
     const screen = resolveScreen(assignments[role], screens);
@@ -125,7 +136,13 @@ function OutputControls({ controller }: { controller: PresentationController }) 
         <MonitorCog className="mr-1 h-4 w-4" />
         Telas
       </Button>
+      <Button type="button" size="sm" variant={remote.code ? "outline" : "ghost"} onClick={() => setRemoteOpen(true)}>
+        <span className={cn("h-2 w-2 rounded-full", remote.code ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+        <Smartphone className="mr-1 h-4 w-4" />
+        Celular
+      </Button>
       <ScreenSetupDialog open={setupOpen} onOpenChange={setSetupOpen} />
+      <RemoteDialog open={remoteOpen} onOpenChange={setRemoteOpen} host={remote} now={controller.now} />
     </div>
   );
 }
@@ -180,7 +197,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
               key={target}
               type="button"
               variant={mode === target ? "default" : "outline"}
-              className="h-auto flex-col gap-1 py-2"
+              className="h-auto min-w-0 flex-col gap-1 px-1 py-2 text-center leading-tight whitespace-normal sm:h-auto"
               aria-pressed={mode === target}
               onClick={() => controller.toggleMode(target)}
             >
@@ -267,8 +284,9 @@ function SidePanel({ controller }: { controller: PresentationController }) {
   );
 }
 
-export function ControlConsole({ request }: { request: DeckRequest }) {
+export function ControlConsole({ request, initialPassage }: { request: DeckRequest; initialPassage?: InitialPassage }) {
   const key = deckKey(request);
+  const utils = api.useUtils();
   const [cached] = useState(() => loadCachedDeck(key));
 
   const query = api.presentation.getDeck.useQuery(request, {
@@ -285,6 +303,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
   const source = query.data ?? cached;
   const baseDeck = useMemo(() => (source ? buildDeck(source) : null), [source]);
   const controller = usePresentationController(baseDeck);
+  const remote = useRemoteHost(controller);
   const { deck, live, next } = controller;
 
   const [pin, setPin] = useState<{ song: number; liveAtPin: Position | null } | null>(null);
@@ -294,6 +313,23 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
   useEffect(() => {
     void detectScreensIfPermitted();
   }, []);
+
+  const loadInitialPassage = useEffectEvent(async (target: InitialPassage) => {
+    try {
+      const passage = await utils.bible.getPassage.fetch({ version: target.version, reference: target.reference });
+      controller.addPassage(
+        passageToDeckSong(passage, `bible:${passage.title}:${target.version}:${Date.now()}`, target.versesPerSlide ?? null),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
+    }
+  });
+  const initialPassageLoaded = useRef(false);
+  useEffect(() => {
+    if (!initialPassage || !baseDeck || initialPassageLoaded.current) return;
+    initialPassageLoaded.current = true;
+    void loadInitialPassage(initialPassage);
+  }, [initialPassage, baseDeck]);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (
@@ -334,7 +370,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
     return () => window.removeEventListener("keydown", listener);
   }, []);
 
-  const backHref = "eventId" in request ? "/app/praise/events" : "/app/praise/songs";
+  const backHref = "eventId" in request ? "/app/praise/events" : "songId" in request ? "/app/praise/songs" : "/app/bible";
 
   if (!deck) {
     return (
@@ -379,6 +415,12 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
     setTab("slides");
   };
 
+  const handleAddPassage = (song: DeckSong) => {
+    controller.addPassage(song);
+    setPin({ song: deck.songs.length, liveAtPin: live });
+    setTab("slides");
+  };
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center gap-2 border-b px-2 py-2 sm:gap-3 sm:px-4 md:flex-wrap">
@@ -399,7 +441,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
             )}
           </p>
         </div>
-        <OutputControls controller={controller} />
+        <OutputControls controller={controller} remote={remote} />
         <div className="hidden items-center gap-1 lg:flex">
           <Button type="button" size="icon" variant="outline" onClick={controller.goPrevious} aria-label="Estrofe anterior">
             <ChevronLeft className="h-4 w-4" />
@@ -432,12 +474,13 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
               selectedSong={selectedSong}
               onSelect={handleSelectSong}
               onAddSong={handleAddSong}
+              onAddPassage={handleAddPassage}
               onRemoveSong={controller.removeSong}
             />
           </TabsContent>
           <TabsContent value="slides" forceMount className={PANEL_CLASS}>
             <ScrollArea className="h-full pr-3">
-              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} />
+              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} onVersesPerSlide={controller.setVersesPerSlide} />
             </ScrollArea>
           </TabsContent>
           <TabsContent value="outputs" forceMount className={PANEL_CLASS}>
@@ -457,7 +500,7 @@ export function ControlConsole({ request }: { request: DeckRequest }) {
               type="button"
               size="sm"
               variant={controller.mode === target ? "default" : "outline"}
-              className="gap-1.5 px-2 text-xs"
+              className="h-auto min-w-0 flex-col gap-0.5 px-1 py-1.5 text-center text-xs leading-tight whitespace-normal sm:h-auto"
               aria-pressed={controller.mode === target}
               onClick={() => controller.toggleMode(target)}
             >

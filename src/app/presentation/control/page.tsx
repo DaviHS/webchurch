@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -22,7 +22,16 @@ function ControlPageContent() {
   const params = useSearchParams();
   const eventId = parseId(params.get("event"));
   const songId = parseId(params.get("song"));
-  const request: DeckRequest | null = eventId ? { eventId } : songId ? { songId } : null;
+  const bible = params.get("bible") === "1";
+  const reference = params.get("ref");
+  const version = params.get("v");
+  const request: DeckRequest | null = eventId ? { eventId } : songId ? { songId } : bible ? { bible: true } : null;
+  const perSlideParam = params.get("n");
+  const initialPassage = useMemo(() => {
+    if (!bible || !reference || !version) return undefined;
+    const perSlide = perSlideParam && /^[1-9]$/.test(perSlideParam) ? Number(perSlideParam) : null;
+    return { reference, version, versesPerSlide: perSlide };
+  }, [bible, reference, version, perSlideParam]);
 
   if (!request) {
     return (
@@ -35,7 +44,7 @@ function ControlPageContent() {
     );
   }
 
-  return <ControlConsole request={request} />;
+  return <ControlConsole request={request} initialPassage={initialPassage} />;
 }
 
 export default function PresentationControlPage() {

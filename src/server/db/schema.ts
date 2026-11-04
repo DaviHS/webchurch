@@ -1,4 +1,4 @@
-import { pgTableCreator, pgEnum, uniqueIndex } from "drizzle-orm/pg-core"
+import { pgTableCreator, pgEnum, uniqueIndex, primaryKey } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
 export const createTable = pgTableCreator((name) => `${name}`)
@@ -329,3 +329,59 @@ export type EventParticipant = typeof eventParticipants.$inferSelect
 export type NewEventParticipant = typeof eventParticipants.$inferInsert
 export type MonthlyClosure = typeof monthlyClosures.$inferSelect;
 export type NewMonthlyClosure = typeof monthlyClosures.$inferInsert;
+
+export const bibleVersions = createTable("bible_versions", (d) => ({
+  id: d.serial("id").primaryKey(),
+  code: d.varchar("code", { length: 10 }).notNull().unique(),
+  name: d.varchar("name", { length: 100 }).notNull(),
+  language: d.varchar("language", { length: 5 }).notNull(),
+  publisher: d.varchar("publisher", { length: 100 }),
+  licenseNote: d.text("license_note"),
+  isActive: d.boolean("is_active").notNull().default(true),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+}))
+
+export const bibleBooks = createTable("bible_books", (d) => ({
+  id: d.integer("id").primaryKey(),
+  testament: d.varchar("testament", { length: 2 }).notNull(),
+  namePt: d.varchar("name_pt", { length: 50 }).notNull(),
+  abbrevPt: d.varchar("abbrev_pt", { length: 10 }).notNull(),
+  nameEn: d.varchar("name_en", { length: 50 }).notNull(),
+  chapters: d.integer("chapters").notNull(),
+}))
+
+export const bibleVerses = createTable(
+  "bible_verses",
+  (d) => ({
+    versionId: d.integer("version_id").notNull().references(() => bibleVersions.id, { onDelete: "cascade" }),
+    bookId: d.integer("book_id").notNull().references(() => bibleBooks.id),
+    chapter: d.integer("chapter").notNull(),
+    verse: d.integer("verse").notNull(),
+    text: d.text("text").notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.versionId, t.bookId, t.chapter, t.verse] })],
+)
+
+export type BibleVersion = typeof bibleVersions.$inferSelect
+export type BibleBook = typeof bibleBooks.$inferSelect
+export type BibleVerse = typeof bibleVerses.$inferSelect
+
+
+export const presentationSessions = createTable("presentation_sessions", (d) => ({
+  id: d.serial("id").primaryKey(),
+  code: d.varchar("code", { length: 4 }).notNull().unique(),
+  userId: d.integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: d.varchar("title", { length: 200 }).notNull().default(""),
+  state: d.jsonb("state"),
+  outline: d.jsonb("outline"),
+  outlineRev: d.integer("outline_rev").notNull().default(0),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+  expiresAt: d.timestamp("expires_at").notNull(),
+}))
+
+export const presentationCommands = createTable("presentation_commands", (d) => ({
+  id: d.serial("id").primaryKey(),
+  sessionId: d.integer("session_id").notNull().references(() => presentationSessions.id, { onDelete: "cascade" }),
+  command: d.jsonb("command").notNull(),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+}))

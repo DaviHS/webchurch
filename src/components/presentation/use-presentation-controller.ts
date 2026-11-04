@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useReducer, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useReducer, useRef, useState } from "react";
 import { useBroadcastChannel } from "@/hooks/use-broadcast-channel";
 import {
   isValidPosition,
   nextPosition,
+  passageToDeckSong,
   previousPosition,
   slideAt,
   slideLabel,
@@ -43,7 +44,8 @@ type Action =
   | { type: "startTimer"; at: number }
   | { type: "stopTimer" }
   | { type: "addSong"; song: DeckSong }
-  | { type: "removeSong"; uid: string };
+  | { type: "removeSong"; uid: string }
+  | { type: "replaceSong"; song: DeckSong; live: Position | null };
 
 const initialState: ControllerState = {
   live: null,
@@ -69,6 +71,12 @@ function reducer(state: ControllerState, action: Action): ControllerState {
       return { ...state, adHocSongs: [...state.adHocSongs, action.song] };
     case "removeSong":
       return { ...state, adHocSongs: state.adHocSongs.filter((song) => song.uid !== action.uid) };
+    case "replaceSong":
+      return {
+        ...state,
+        adHocSongs: state.adHocSongs.map((song) => (song.uid === action.song.uid ? action.song : song)),
+        live: action.live ?? state.live,
+      };
   }
 }
 
@@ -86,6 +94,16 @@ export function usePresentationController(baseDeck: Deck | null) {
 
   const live = deck && isValidPosition(deck, state.live) ? state.live : null;
   const next = deck ? nextPosition(deck, live) : null;
+
+  const liveRef = useRef<Position | null>(null);
+  useEffect(() => {
+    liveRef.current = live;
+  }, [live]);
+
+  const goTo = (position: Position) => {
+    liveRef.current = position;
+    dispatch({ type: "goTo", position });
+  };
 
   const broadcastState: PresentationState = useMemo(() => {
     const liveSong = live && deck ? deck.songs[live.song] : undefined;
@@ -109,11 +127,11 @@ export function usePresentationController(baseDeck: Deck | null) {
   const handleCommand = (command: PresentationCommand) => {
     if (!deck) return;
     if (command === "next") {
-      const target = nextPosition(deck, live);
-      if (target) dispatch({ type: "goTo", position: target });
+      const target = nextPosition(deck, liveRef.current);
+      if (target) goTo(target);
     } else if (command === "previous") {
-      const target = previousPosition(deck, live);
-      if (target) dispatch({ type: "goTo", position: target });
+      const target = previousPosition(deck, liveRef.current);
+      if (target) goTo(target);
     } else {
       dispatch({ type: "toggleMode", mode: command });
     }
@@ -169,7 +187,7 @@ export function usePresentationController(baseDeck: Deck | null) {
     timerStartedAt: state.timerStartedAt,
     connections,
     now,
-    goTo: (position: Position) => dispatch({ type: "goTo", position }),
+    goTo,
     goNext: () => handleCommand("next"),
     goPrevious: () => handleCommand("previous"),
     toggleMode: (mode: Exclude<ProjectorMode, "live">) => dispatch({ type: "toggleMode", mode }),
@@ -178,6 +196,23 @@ export function usePresentationController(baseDeck: Deck | null) {
     stopTimer: () => dispatch({ type: "stopTimer" }),
     addSong: (source: DeckSongSource) =>
       dispatch({ type: "addSong", song: toDeckSong(source, `adhoc:${source.id}:${Date.now()}`, true) }),
+    addPassage: (song: DeckSong) => dispatch({ type: "addSong", song }),
+    setVersesPerSlide: (uid: string, perSlide: number | null) => {
+      const current = state.adHocSongs.find((song) => song.uid === uid);
+      if (!current?.source) return;
+      const updated = passageToDeckSong(current.source, uid, perSlide);
+      const songIndex = deck ? deck.songs.findIndex((song) => song.uid === uid) : -1;
+      let nextLive: Position | null = null;
+      if (live?.song === songIndex) {
+        const firstVerse = current.slideFirstVerse?.[live.slide] ?? 0;
+        let slide = 0;
+        (updated.slideFirstVerse ?? []).forEach((verse, index) => {
+          if (verse <= firstVerse) slide = index;
+        });
+        nextLive = { song: songIndex, slide };
+      }
+      dispatch({ type: "replaceSong", song: updated, live: nextLive });
+    },
     removeSong: (uid: string) => dispatch({ type: "removeSong", uid }),
     closeOutputs: () => post({ type: "CLOSE" }),
   };

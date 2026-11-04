@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BookOpen,
   Calendar,
   DollarSign,
   Home,
@@ -34,6 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Músicas", url: "/app/praise/songs", icon: Music },
       { title: "Eventos", url: "/app/praise/events", icon: Calendar },
+      { title: "Bíblia", url: "/app/bible", icon: BookOpen },
       { title: "Relatórios", url: "/app/praise/reports", icon: BarChart3 },
     ],
   },

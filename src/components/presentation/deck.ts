@@ -12,6 +12,11 @@ export interface DeckSong {
   artist: string | null;
   slides: string[];
   adHoc: boolean;
+  kind: "song" | "bible";
+  slideLabels: string[] | null;
+  source: PassageSource | null;
+  versesPerSlide: number | null;
+  slideFirstVerse: number[] | null;
 }
 
 export interface Deck {
@@ -62,6 +67,90 @@ export function toDeckSong(source: DeckSongSource, uid: string, adHoc = false): 
     artist: source.artist === "" ? null : source.artist,
     slides: lyricsToSlides(source.lyrics),
     adHoc,
+    kind: "song",
+    slideLabels: null,
+    source: null,
+    versesPerSlide: null,
+    slideFirstVerse: null,
+  };
+}
+
+export interface PassageSource {
+  title: string;
+  bookChapter: string;
+  version: { code: string; name: string };
+  verses: { verse: number; text: string }[];
+}
+
+const MAX_CHARS_PER_BIBLE_SLIDE = 260;
+const MAX_VERSES_PER_BIBLE_SLIDE = 3;
+const BIBLE_LINE_WIDTH = 40;
+const SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+
+const superscript = (value: number) =>
+  String(value)
+    .split("")
+    .map((digit) => SUPERSCRIPT_DIGITS[Number(digit)])
+    .join("");
+
+function wrapText(text: string, width: number): string {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of text.split(/[ \t\r\n]+/).filter(Boolean)) {
+    if (current !== "" && current.length + 1 + word.length > width) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current === "" ? word : `${current} ${word}`;
+    }
+  }
+  if (current !== "") lines.push(current);
+  return lines.join("\n");
+}
+
+export const VERSES_PER_SLIDE_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
+
+export function passageToDeckSong(passage: PassageSource, uid: string, versesPerSlide: number | null = null): DeckSong {
+  const showNumbers = passage.verses.length > 1;
+  const groups: PassageSource["verses"][] = [];
+  let chars = 0;
+  for (const verse of passage.verses) {
+    const last = groups[groups.length - 1];
+    const fits =
+      last !== undefined &&
+      (versesPerSlide !== null
+        ? last.length < versesPerSlide
+        : last.length < MAX_VERSES_PER_BIBLE_SLIDE && chars + verse.text.length <= MAX_CHARS_PER_BIBLE_SLIDE);
+    if (last && fits) {
+      last.push(verse);
+      chars += verse.text.length;
+    } else {
+      groups.push([verse]);
+      chars = verse.text.length;
+    }
+  }
+
+  return {
+    uid,
+    id: 0,
+    title: `${passage.title} · ${passage.version.code}`,
+    artist: passage.version.name,
+    slides: groups.map((group) =>
+      wrapText(
+        group.map((v) => (showNumbers ? `${superscript(v.verse)} ${v.text}` : v.text)).join(" "),
+        BIBLE_LINE_WIDTH,
+      ),
+    ),
+    adHoc: true,
+    kind: "bible",
+    source: passage,
+    versesPerSlide,
+    slideFirstVerse: groups.map((group) => group[0]?.verse ?? 0),
+    slideLabels: groups.map((group) => {
+      const first = group[0]?.verse ?? 0;
+      const last = group[group.length - 1]?.verse ?? first;
+      return `${passage.bookChapter}:${first === last ? first : `${first}-${last}`}`;
+    }),
   };
 }
 
@@ -121,6 +210,8 @@ export function samePosition(a: Position | null, b: Position | null): boolean {
 }
 
 export function slideLabel(deck: Deck, position: Position): string {
-  const count = deck.songs[position.song]?.slides.length ?? 0;
-  return `Estrofe ${position.slide + 1}/${count}`;
+  const song = deck.songs[position.song];
+  const custom = song?.slideLabels?.[position.slide];
+  if (custom) return custom;
+  return `Estrofe ${position.slide + 1}/${song?.slides.length ?? 0}`;
 }

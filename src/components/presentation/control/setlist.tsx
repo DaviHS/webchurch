@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Music, Plus, X } from "lucide-react";
+import { BookOpen, Loader2, Music, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBibleVersion } from "@/hooks/use-bible-version";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import type { Deck, DeckSongSource, Position } from "../deck";
+import { passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
+import { VersesPerSlideSelect } from "./slide-grid";
 
 interface SetlistProps {
   deck: Deck;
@@ -16,7 +21,66 @@ interface SetlistProps {
   selectedSong: number;
   onSelect: (song: number) => void;
   onAddSong: (song: DeckSongSource) => void;
+  onAddPassage: (song: DeckSong) => void;
   onRemoveSong: (uid: string) => void;
+}
+
+function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
+  const utils = api.useUtils();
+  const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
+  const [version, setVersion] = useBibleVersion(versions);
+  const [reference, setReference] = useState("");
+  const [perSlide, setPerSlide] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const value = reference.trim();
+    if (!value || !version || loading) return;
+    setLoading(true);
+    try {
+      const passage = await utils.bible.getPassage.fetch({ version, reference: value });
+      onAdd(passageToDeckSong(passage, `bible:${passage.title}:${version}:${Date.now()}`, perSlide));
+      setReference("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form className="space-y-3 border-t pt-3" onSubmit={(event) => void submit(event)}>
+      <Input
+        value={reference}
+        onChange={(event) => setReference(event.target.value)}
+        placeholder="Passagem: Jo 3:16-18"
+        enterKeyHint="go"
+        autoCapitalize="none"
+        autoCorrect="off"
+        aria-label="Passagem bíblica para adicionar"
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <Select value={version ?? undefined} onValueChange={setVersion}>
+          <SelectTrigger className="w-full" aria-label="Versão da Bíblia">
+            <SelectValue placeholder="Versão" />
+          </SelectTrigger>
+          <SelectContent>
+            {versions?.map((v) => (
+              <SelectItem key={v.code} value={v.code}>
+                {v.code}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <VersesPerSlideSelect compact value={perSlide} onChange={setPerSlide} className="w-full" />
+      </div>
+      <Button type="submit" className="w-full" disabled={!reference.trim() || !version || loading}>
+        {loading ? <Loader2 className="animate-spin" /> : <BookOpen />}
+        Adicionar passagem
+      </Button>
+    </form>
+  );
 }
 
 function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
@@ -64,11 +128,11 @@ function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
   );
 }
 
-export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onRemoveSong }: SetlistProps) {
+export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onAddPassage, onRemoveSong }: SetlistProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repertório</h2>
-      <ScrollArea className="min-h-0 flex-1 pr-2">
+      <ScrollArea className="min-h-0 flex-1 pr-2 [&>[data-radix-scroll-area-viewport]>div]:block!">
         <ol className="space-y-1">
           {deck.songs.length === 0 && (
             <li className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
@@ -95,12 +159,15 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onRemov
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{song.title}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {song.slides.length === 0 ? "Sem letra cadastrada" : `${song.slides.length} estrofes`}
+                      {song.slides.length === 0
+                        ? "Sem letra cadastrada"
+                        : `${song.slides.length} ${song.kind === "bible" ? "slides" : "estrofes"}`}
                       {song.artist ? ` · ${song.artist}` : ""}
                     </span>
                   </span>
                   {isLive && <span className="rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
-                  {song.slides.length === 0 && <Music className="h-4 w-4 text-amber-500" />}
+                  {song.kind === "bible" && <BookOpen className="h-4 w-4 text-muted-foreground" />}
+                  {song.kind === "song" && song.slides.length === 0 && <Music className="h-4 w-4 text-amber-500" />}
                 </button>
                 {song.adHoc && (
                   <Button
@@ -120,6 +187,7 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onRemov
         </ol>
       </ScrollArea>
       <AddSongSearch onAdd={onAddSong} />
+      <AddPassage onAdd={onAddPassage} />
     </div>
   );
 }

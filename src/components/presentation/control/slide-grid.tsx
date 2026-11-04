@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { samePosition, type Deck, type Position } from "../deck";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type Position } from "../deck";
 
 interface SlideGridProps {
   deck: Deck;
@@ -10,9 +11,38 @@ interface SlideGridProps {
   live: Position | null;
   next: Position | null;
   onGoTo: (position: Position) => void;
+  onVersesPerSlide: (uid: string, perSlide: number | null) => void;
 }
 
-export function SlideGrid({ deck, songIndex, live, next, onGoTo }: SlideGridProps) {
+export function VersesPerSlideSelect({
+  value,
+  onChange,
+  className,
+  compact = false,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+  className?: string;
+  compact?: boolean;
+}) {
+  return (
+    <Select value={value === null ? "auto" : String(value)} onValueChange={(v) => onChange(v === "auto" ? null : Number(v))}>
+      <SelectTrigger className={className} aria-label="Versículos por slide">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="auto">{compact ? "Auto" : "Automático"}</SelectItem>
+        {VERSES_PER_SLIDE_OPTIONS.map((n) => (
+          <SelectItem key={n} value={String(n)}>
+            {compact ? `${n} por slide` : `${n} ${n === 1 ? "versículo" : "versículos"} por slide`}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlide }: SlideGridProps) {
   const song = deck.songs[songIndex];
   const liveRef = useRef<HTMLButtonElement>(null);
 
@@ -35,9 +65,18 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo }: SlideGridProp
 
   return (
     <div className="space-y-3">
-      <div>
-        <h2 className="text-lg font-bold leading-tight">{song.title}</h2>
-        {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold leading-tight">{song.title}</h2>
+          {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
+        </div>
+        {song.kind === "bible" && (
+          <VersesPerSlideSelect
+            className="w-full sm:w-60"
+            value={song.versesPerSlide}
+            onChange={(value) => onVersesPerSlide(song.uid, value)}
+          />
+        )}
       </div>
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr))]">
         {song.slides.map((text, slide) => {
@@ -61,10 +100,13 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo }: SlideGridProp
             >
               <span className="absolute left-2 top-1.5 text-xs font-bold text-muted-foreground">
                 {slide + 1}
+                {song.slideLabels?.[slide] && <span className="ml-1 font-normal">· {song.slideLabels[slide]}</span>}
                 {isLive && <span className="ml-2 rounded bg-red-500 px-1 text-white">AO VIVO</span>}
                 {isNext && <span className="ml-2 rounded bg-sky-600 px-1 text-white">PRÓXIMA</span>}
               </span>
-              <span className="whitespace-pre-line">{text}</span>
+              <span className={song.kind === "bible" ? undefined : "whitespace-pre-line"}>
+                {song.kind === "bible" ? text.replace(/\n/g, " ") : text}
+              </span>
             </button>
           );
         })}
