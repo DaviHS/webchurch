@@ -40,6 +40,7 @@ export function useRemoteHost(controller: PresentationController) {
       deck
         ? deck.songs.slice(0, 100).map((song, songIndex) => ({
             title: clip(song.title, 200),
+            kind: song.kind,
             slides: song.slides.slice(0, 400).map((text, slide) => ({
               text: clip(text, 2000),
               label: clip(slideLabel(deck, { song: songIndex, slide }), 100),
@@ -153,7 +154,7 @@ export function useRemoteHost(controller: PresentationController) {
   const start = async () => {
     if (!deck) return;
     await createSession
-      .mutateAsync({ title: clip(deck.title, 200) })
+      .mutateAsync({ title: clip(deck.title, 200), deckKey: clip(deck.key, 100) })
       .then((result) => {
         lastIdRef.current = result.lastCommandId;
         sentOutlineRef.current = null;

@@ -28,6 +28,7 @@ export const remoteOutlineSchema = z
   .array(
     z.object({
       title: z.string().max(200),
+      kind: z.enum(["song", "bible"]).default("song"),
       slides: z.array(remoteSlideSchema).max(400),
     }),
   )

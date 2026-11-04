@@ -371,13 +371,14 @@ export const presentationSessions = createTable("presentation_sessions", (d) => 
   id: d.serial("id").primaryKey(),
   code: d.varchar("code", { length: 4 }).notNull().unique(),
   userId: d.integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  deckKey: d.varchar("deck_key", { length: 100 }).notNull().default(""),
   title: d.varchar("title", { length: 200 }).notNull().default(""),
   state: d.jsonb("state"),
   outline: d.jsonb("outline"),
   outlineRev: d.integer("outline_rev").notNull().default(0),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
   expiresAt: d.timestamp("expires_at").notNull(),
-}))
+}), (t) => [uniqueIndex("presentation_sessions_user_deck_unique").on(t.userId, t.deckKey)])
 
 export const presentationCommands = createTable("presentation_commands", (d) => ({
   id: d.serial("id").primaryKey(),

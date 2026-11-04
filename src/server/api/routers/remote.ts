@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { presentationCommands, presentationSessions } from "@/server/db/schema";
@@ -48,7 +48,9 @@ async function lastCommandId(sessionId: number): Promise<number> {
 const newCode = () => String(randomInt(10 ** REMOTE_CODE_LENGTH)).padStart(REMOTE_CODE_LENGTH, "0");
 
 export const remoteRouter = createTRPCRouter({
-  create: protectedProcedure.input(z.object({ title: z.string().max(200) })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure
+    .input(z.object({ title: z.string().max(200), deckKey: z.string().min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
     const userId = Number(ctx.session.user.id);
 
     await db.delete(presentationSessions).where(sql`${presentationSessions.expiresAt} <= now()`);
@@ -57,7 +59,13 @@ export const remoteRouter = createTRPCRouter({
     const [existing] = await db
       .select({ id: presentationSessions.id, code: presentationSessions.code })
       .from(presentationSessions)
-      .where(and(eq(presentationSessions.userId, userId), sessionIsAlive))
+      .where(
+        and(
+          eq(presentationSessions.userId, userId),
+          eq(presentationSessions.deckKey, input.deckKey),
+          sessionIsAlive,
+        ),
+      )
       .limit(1);
 
     if (existing) {
@@ -71,13 +79,28 @@ export const remoteRouter = createTRPCRouter({
     for (let attempt = 0; attempt < 10; attempt++) {
       const [created] = await db
         .insert(presentationSessions)
-        .values({ code: newCode(), userId, title: input.title, expiresAt: expiresInEightHours })
+        .values({
+          code: newCode(),
+          userId,
+          deckKey: input.deckKey,
+          title: input.title,
+          expiresAt: expiresInEightHours,
+        })
         .onConflictDoNothing({ target: presentationSessions.code })
         .returning({ code: presentationSessions.code });
       if (created) return { code: created.code, lastCommandId: 0 };
     }
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível gerar o código. Tente de novo." });
   }),
+
+  listSessions: protectedProcedure.query(() =>
+    db
+      .select({ code: presentationSessions.code, title: presentationSessions.title })
+      .from(presentationSessions)
+      .where(and(sessionIsAlive, sql`${presentationSessions.updatedAt} > now() - interval '2 minutes'`))
+      .orderBy(desc(presentationSessions.updatedAt))
+      .limit(10),
+  ),
 
   publish: protectedProcedure
     .input(z.object({ code: remoteCodeSchema, state: remoteStateSchema, outline: remoteOutlineSchema.optional() }))

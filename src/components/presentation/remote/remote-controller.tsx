@@ -1,24 +1,43 @@
 "use client";
 
-import { useRef, useState, type RefObject } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, CloudOff, Image as ImageIcon, Loader2, Square, Type } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Loader2,
+  Music,
+  Square,
+  Type,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { ProjectorMode } from "../protocol";
 import {
-  REMOTE_CODE_LENGTH,
   REMOTE_POLL_MS,
   REMOTE_STALE_SECONDS,
   remoteCodeSchema,
   type RemoteCommand,
+  type RemoteOutline,
 } from "../remote-protocol";
+import { RemotePicker } from "./remote-picker";
 
 const STORAGE_KEY = "remote-code";
 const TAP_GUARD_MS = 250;
+const NO_OUTLINE: RemoteOutline = [];
+
+type Tab = "control" | "repertoire" | "slides";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "control", label: "Controle" },
+  { value: "repertoire", label: "Repertório" },
+  { value: "slides", label: "Slides" },
+];
+
+const isTab = (value: string): value is Tab => TABS.some((tab) => tab.value === value);
 
 const MODE_BUTTONS: { command: "black" | "logo" | "clear"; mode: ProjectorMode; label: string; icon: typeof Square }[] = [
   { command: "black", mode: "black", label: "Tela preta", icon: Square },
@@ -58,49 +77,21 @@ function storeCode(code: string | null) {
   }
 }
 
-function CodeForm({ error, onSubmit }: { error?: string; onSubmit: (code: string) => void }) {
-  const [value, setValue] = useState("");
-  const valid = remoteCodeSchema.safeParse(value).success;
-
-  return (
-    <form
-      className="flex h-dvh flex-col items-center justify-center gap-4 p-6 text-center"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (valid) onSubmit(value);
-      }}
-    >
-      <h1 className="text-xl font-bold">Controle remoto</h1>
-      <p className="max-w-xs text-sm text-muted-foreground">
-        Digite o código de {REMOTE_CODE_LENGTH} números que aparece no computador da projeção.
-      </p>
-      <Input
-        value={value}
-        onChange={(event) => setValue(event.target.value.replace(/\D/g, "").slice(0, REMOTE_CODE_LENGTH))}
-        inputMode="numeric"
-        autoComplete="off"
-        autoFocus
-        placeholder="0000"
-        aria-label="Código do controle remoto"
-        className="h-16 max-w-48 text-center text-3xl font-bold tracking-[0.3em] tabular-nums"
-      />
-      {error && <p className="max-w-xs text-sm text-destructive">{error}</p>}
-      <Button type="submit" size="lg" className="w-full max-w-48" disabled={!valid}>
-        Conectar
-      </Button>
-    </form>
-  );
-}
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function RemoteController({ initialCode }: { initialCode: string | null }) {
   const [code, setCodeState] = useState<string | null>(() =>
     initialCode && remoteCodeSchema.safeParse(initialCode).success ? initialCode : readStoredCode(),
   );
+  const [tab, setTab] = useState<Tab>("control");
+  const [pin, setPin] = useState<{ song: number; liveSong: number | null } | null>(null);
   const lastTap = useRef(0);
 
   const setCode = (next: string | null) => {
     storeCode(next);
     setCodeState(next);
+    setPin(null);
+    setTab("control");
   };
 
   const stateQuery = api.remote.getState.useQuery(
@@ -114,26 +105,32 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
   );
   const send = api.remote.sendCommand.useMutation();
 
-  if (code === null) return <CodeForm onSubmit={setCode} />;
+  const state = stateQuery.data?.state ?? null;
+  const outline = outlineQuery.data ?? NO_OUTLINE;
+  const liveSong = state?.position?.song ?? null;
+  const liveSlide = state?.position?.slide ?? null;
+  const lastSong = Math.max(outline.length - 1, 0);
+  const selectedSong = clamp(pin?.liveSong === liveSong ? pin.song : (liveSong ?? pin?.song ?? 0), 0, lastSong);
 
-  const errorCode = (stateQuery.error?.data as { code?: string } | null | undefined)?.code;
+  useEffect(() => {
+    if (tab !== "repertoire" || liveSong === null) return;
+    document.getElementById(`remote-song-${liveSong}`)?.scrollIntoView({ block: "nearest" });
+  }, [tab, liveSong]);
+
+  useEffect(() => {
+    if (tab !== "slides" || liveSong === null || liveSlide === null || liveSong !== selectedSong) return;
+    document.getElementById(`remote-slide-${liveSong}-${liveSlide}`)?.scrollIntoView({ block: "nearest" });
+  }, [tab, liveSong, liveSlide, selectedSong]);
+
+  if (code === null) return <RemotePicker onSelect={setCode} />;
+
+  const errorCode = stateQuery.error?.data?.code;
 
   if (!stateQuery.data && stateQuery.error) {
-    if (errorCode === "UNAUTHORIZED") {
-      return (
-        <div className="flex h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-          <CloudOff className="size-10 text-muted-foreground" />
-          <p className="max-w-xs">Entre com a sua conta para controlar a projeção.</p>
-          <Button asChild>
-            <Link href="/sign-in">Entrar</Link>
-          </Button>
-        </div>
-      );
-    }
     return (
-      <CodeForm
+      <RemotePicker
         error={errorCode === "NOT_FOUND" ? stateQuery.error.message : "Não foi possível conectar. Tente de novo."}
-        onSubmit={setCode}
+        onSelect={setCode}
       />
     );
   }
@@ -146,17 +143,22 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
     );
   }
 
-  const { state, ageSeconds } = stateQuery.data;
-  const computerOnline = ageSeconds < REMOTE_STALE_SECONDS;
-  const offline = stateQuery.isError || !computerOnline;
+  const { ageSeconds } = stateQuery.data;
+  const offline = stateQuery.isError || ageSeconds >= REMOTE_STALE_SECONDS;
+  const mode = state?.mode ?? "logo";
+  const song = outline[selectedSong];
 
   const press = (command: RemoteCommand) => {
     if (!tapAllowed(lastTap)) return;
     send.mutate({ code, command });
   };
 
-  const outline = outlineQuery.data ?? [];
-  const mode = state?.mode ?? "logo";
+  const selectSong = (index: number) => {
+    setPin({ song: index, liveSong });
+    setTab("slides");
+  };
+
+  const moveSong = (delta: number) => setPin({ song: clamp(selectedSong + delta, 0, lastSong), liveSong });
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
@@ -173,23 +175,33 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
         </Button>
       </header>
 
-      <Tabs defaultValue="control" className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-2">
-          <TabsTrigger value="control" className="h-9">
-            Controle
-          </TabsTrigger>
-          <TabsTrigger value="slides" className="h-9">
-            Slides
-          </TabsTrigger>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (isTab(value)) setTab(value);
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-3">
+          {TABS.map(({ value, label }) => (
+            <TabsTrigger key={value} value={value} className="h-9">
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="control" className="mt-0 min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
           <section className="space-y-1 rounded-lg border-2 border-red-500/70 bg-red-500/5 p-3">
             <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-              <span className={cn("rounded px-1.5 py-0.5 text-white", mode === "live" ? "bg-red-500" : "bg-zinc-600")}>
+              <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-white", mode === "live" ? "bg-red-500" : "bg-zinc-600")}>
                 {MODE_LABELS[mode].toUpperCase()}
               </span>
-              {state?.songTitle && <span className="truncate">{state.songTitle}</span>}
+              {liveSong !== null && outline.length > 0 && (
+                <span className="shrink-0">
+                  Música {liveSong + 1}/{outline.length}
+                </span>
+              )}
+              {state?.songTitle && <span className="truncate">· {state.songTitle}</span>}
             </p>
             {state?.live ? (
               <>
@@ -202,28 +214,99 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
           </section>
 
           <section className="space-y-1 rounded-lg border p-3">
-            <p className="text-xs font-bold text-sky-600">
-              PRÓXIMA{state?.next ? ` · ${state.next.label}` : ""}
-            </p>
+            <p className="text-xs font-bold text-sky-600">PRÓXIMA{state?.next ? ` · ${state.next.label}` : ""}</p>
             <p className="line-clamp-4 whitespace-pre-line text-sm text-muted-foreground">
               {state?.next?.text ?? "Fim do repertório."}
             </p>
           </section>
         </TabsContent>
 
-        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
-          {outline.length === 0 && <p className="text-sm text-muted-foreground">Carregando slides…</p>}
-          {outline.map((song, songIndex) => (
-            <section key={`${songIndex}:${song.title}`} className="space-y-2">
-              <h2 className="text-sm font-bold">{song.title}</h2>
+        <TabsContent value="repertoire" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
+          {outline.length === 0 && <p className="text-sm text-muted-foreground">Carregando repertório…</p>}
+          <ol className="space-y-1.5">
+            {outline.map((item, index) => {
+              const isLive = liveSong === index;
+              return (
+                <li key={`${index}:${item.title}`}>
+                  <button
+                    id={`remote-song-${index}`}
+                    type="button"
+                    onClick={() => selectSong(index)}
+                    className={cn(
+                      "flex min-h-14 w-full items-center gap-3 rounded-lg border-2 p-3 text-left",
+                      isLive
+                        ? "border-red-500 bg-red-500/10"
+                        : index === selectedSong
+                          ? "border-primary bg-primary/10"
+                          : "border-border active:bg-accent",
+                    )}
+                  >
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{item.title}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {item.slides.length === 0
+                          ? "Sem letra"
+                          : `${item.slides.length} ${item.kind === "bible" ? "slides" : "estrofes"}`}
+                      </span>
+                    </span>
+                    {isLive && <span className="shrink-0 rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
+                    {item.kind === "bible" ? (
+                      <BookOpen className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <Music className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </TabsContent>
+
+        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          {!song && <p className="text-sm text-muted-foreground">Carregando slides…</p>}
+          {song && (
+            <>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  disabled={selectedSong <= 0}
+                  onClick={() => moveSong(-1)}
+                  aria-label="Música anterior"
+                >
+                  <ChevronLeft />
+                </Button>
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Música {selectedSong + 1} de {outline.length}
+                  </p>
+                  <h2 className="truncate font-bold leading-tight">{song.title}</h2>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  disabled={selectedSong >= lastSong}
+                  onClick={() => moveSong(1)}
+                  aria-label="Próxima música"
+                >
+                  <ChevronRight />
+                </Button>
+              </div>
+              {song.slides.length === 0 && <p className="text-sm text-muted-foreground">Esta música não tem letra cadastrada.</p>}
               <div className="grid grid-cols-2 gap-2">
                 {song.slides.map((slide, slideIndex) => {
-                  const isLive = state?.position?.song === songIndex && state.position.slide === slideIndex;
+                  const isLive = liveSong === selectedSong && liveSlide === slideIndex;
                   return (
                     <button
                       key={slideIndex}
+                      id={`remote-slide-${selectedSong}-${slideIndex}`}
                       type="button"
-                      onClick={() => press({ type: "goto", song: songIndex, slide: slideIndex })}
+                      onClick={() => press({ type: "goto", song: selectedSong, slide: slideIndex })}
                       className={cn(
                         "flex min-h-20 flex-col gap-1 rounded-lg border-2 p-2 text-left text-xs leading-snug",
                         isLive ? "border-red-500 bg-red-500/10" : "border-border active:bg-accent",
@@ -235,8 +318,8 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                   );
                 })}
               </div>
-            </section>
-          ))}
+            </>
+          )}
         </TabsContent>
       </Tabs>
 
