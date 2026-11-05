@@ -20,6 +20,10 @@ export function PaginationBar({
   itemLabel = "itens",
   hasNextPage,
 }: PaginationBarProps) {
+  const changePage = (next: number) => {
+    onPageChange(next)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
   const canGoNext = totalPages !== undefined ? page < totalPages : Boolean(hasNextPage)
   if (page <= 1 && !canGoNext) return null
 
@@ -31,14 +35,14 @@ export function PaginationBar({
         </p>
       )}
       <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => changePage(page - 1)} disabled={page <= 1}>
           <ChevronLeft />
           Anterior
         </Button>
         <span className="shrink-0 px-2 text-sm tabular-nums text-muted-foreground">
           {totalPages !== undefined ? `${page} de ${totalPages}` : `Página ${page}`}
         </span>
-        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onPageChange(page + 1)} disabled={!canGoNext}>
+        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => changePage(page + 1)} disabled={!canGoNext}>
           Próxima
           <ChevronRight />
         </Button>
