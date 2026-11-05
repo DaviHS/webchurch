@@ -33,7 +33,7 @@ export function SignInFields({ email, password, onEmailChange, onPasswordChange 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor="password">Senha</Label>
-          <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+          <Link href="/forgot-password" tabIndex={-1} className="text-sm text-primary hover:underline">
             Esqueci minha senha
           </Link>
         </div>
