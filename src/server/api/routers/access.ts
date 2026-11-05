@@ -4,12 +4,10 @@ import { eq } from "drizzle-orm";
 import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { loadAccess } from "@/server/access";
 import { db } from "@/server/db";
-import { ministries, ministryPermissions } from "@/server/db/schema";
+import { functionPermissions, functions } from "@/server/db/schema";
 import { isPermission, type Permission } from "@/lib/permissions";
 
 const manageUsers = can("users.manage");
-
-const permissionList = z.array(z.string().refine(isPermission, "Permissão inválida"));
 
 export const accessRouter = createTRPCRouter({
   me: protectedProcedure.query(async ({ ctx }) => {
@@ -17,44 +15,30 @@ export const accessRouter = createTRPCRouter({
     return { isAdmin: access.isAdmin, permissions: [...access.permissions] };
   }),
 
-  getMinistryPermissions: manageUsers.input(z.object({ ministryId: z.number() })).query(async ({ input }) => {
-    const rows = await db
-      .select({ functionId: ministryPermissions.functionId, permission: ministryPermissions.permission })
-      .from(ministryPermissions)
-      .where(eq(ministryPermissions.ministryId, input.ministryId));
-
-    const base: Permission[] = [];
+  listFunctionPermissions: manageUsers.query(async () => {
+    const rows = await db.select().from(functionPermissions);
     const byFunction: Record<number, Permission[]> = {};
     for (const row of rows) {
-      if (!isPermission(row.permission)) continue;
-      if (row.functionId === null) base.push(row.permission);
-      else (byFunction[row.functionId] ??= []).push(row.permission);
+      if (isPermission(row.permission)) (byFunction[row.functionId] ??= []).push(row.permission);
     }
-    return { base, byFunction };
+    return byFunction;
   }),
 
-  setMinistryPermissions: manageUsers
+  setFunctionPermissions: manageUsers
     .input(
       z.object({
-        ministryId: z.number(),
-        base: permissionList,
-        byFunction: z.array(z.object({ functionId: z.number(), permissions: permissionList })),
+        functionId: z.number(),
+        permissions: z.array(z.string().refine(isPermission, "Permissão inválida")),
       }),
     )
     .mutation(async ({ input }) => {
-      const [ministry] = await db.select({ id: ministries.id }).from(ministries).where(eq(ministries.id, input.ministryId)).limit(1);
-      if (!ministry) throw new TRPCError({ code: "NOT_FOUND", message: "Ministério não encontrado" });
+      const [found] = await db.select({ id: functions.id }).from(functions).where(eq(functions.id, input.functionId)).limit(1);
+      if (!found) throw new TRPCError({ code: "NOT_FOUND", message: "Função não encontrada" });
 
-      const rows = [
-        ...[...new Set(input.base)].map((permission) => ({ ministryId: input.ministryId, functionId: null, permission })),
-        ...input.byFunction.flatMap(({ functionId, permissions }) =>
-          [...new Set(permissions)].map((permission) => ({ ministryId: input.ministryId, functionId, permission })),
-        ),
-      ];
-
+      const rows = [...new Set(input.permissions)].map((permission) => ({ functionId: input.functionId, permission }));
       await db.batch([
-        db.delete(ministryPermissions).where(eq(ministryPermissions.ministryId, input.ministryId)),
-        ...(rows.length > 0 ? [db.insert(ministryPermissions).values(rows)] : []),
+        db.delete(functionPermissions).where(eq(functionPermissions.functionId, input.functionId)),
+        ...(rows.length > 0 ? [db.insert(functionPermissions).values(rows)] : []),
       ]);
       return { success: true };
     }),

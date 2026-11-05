@@ -10,8 +10,9 @@ import { MinistryDialog, type Ministry } from "./_components/ministry-dialog";
 import { FunctionDialog, type MinistryFunction } from "./_components/function-dialog";
 import { MinistryFunctionsDialog } from "./_components/ministry-functions-dialog";
 import { MinistryMembersDialog } from "./_components/ministry-members-dialog";
-import { MinistryPermissionsDialog } from "./_components/ministry-permissions-dialog";
+import { FunctionPermissionsDialog } from "./_components/function-permissions-dialog";
 import { usePermissions } from "@/hooks/use-permissions";
+import { permissionLabel } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,8 +26,12 @@ export default function MinistriesPage() {
   const [activeTab, setActiveTab] = useState("ministries");
   const [isMinistryFunctionsDialogOpen, setIsMinistryFunctionsDialogOpen] = useState(false);
   const [isMinistryMembersDialogOpen, setIsMinistryMembersDialogOpen] = useState(false);
-  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const [permissionsFunction, setPermissionsFunction] = useState<MinistryFunction | null>(null);
   const { can } = usePermissions();
+  const canManageAccess = can("users.manage");
+  const { data: functionPermissions = {} } = api.access.listFunctionPermissions.useQuery(undefined, {
+    enabled: canManageAccess,
+  });
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const ministryDialog = useEntityDialog<Ministry>();
   const functionDialog = useEntityDialog<MinistryFunction>();
@@ -56,11 +61,6 @@ export default function MinistriesPage() {
   const handleManageFunctions = (ministry: Ministry) => {
     setSelectedMinistry(ministry);
     setIsMinistryFunctionsDialogOpen(true);
-  };
-
-  const handleManagePermissions = (ministry: Ministry) => {
-    setSelectedMinistry(ministry);
-    setIsPermissionsDialogOpen(true);
   };
 
   const handleViewMembers = (ministry: Ministry) => {
@@ -153,9 +153,6 @@ export default function MinistriesPage() {
                         className="-mr-2 -mt-2"
                         actions={[
                           { label: "Editar ministério", icon: Pencil, onSelect: () => ministryDialog.openEdit(ministry) },
-                          ...(can("users.manage")
-                            ? [{ label: "Permissões de acesso", icon: KeyRound, onSelect: () => handleManagePermissions(ministry) }]
-                            : []),
                           {
                             label: "Desativar ministério",
                             icon: Ban,
@@ -232,6 +229,12 @@ export default function MinistriesPage() {
                             onSelect: () => functionDialog.openEdit(ministryFunction),
                           },
                           {
+                            label: "Permissões de acesso",
+                            icon: KeyRound,
+                            hidden: !canManageAccess,
+                            onSelect: () => setPermissionsFunction(ministryFunction),
+                          },
+                          {
                             label: "Desativar função",
                             icon: Ban,
                             destructive: true,
@@ -250,6 +253,22 @@ export default function MinistriesPage() {
                       <span className="text-muted-foreground">Ordem de exibição:</span>
                       <Badge variant="outline">{ministryFunction.displayOrder}</Badge>
                     </div>
+                    {canManageAccess && (
+                      <div className="mt-3 space-y-1.5 border-t pt-3">
+                        <p className="text-xs font-medium text-muted-foreground">Permissões de acesso</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(functionPermissions[ministryFunction.id] ?? []).length === 0 ? (
+                            <span className="text-xs text-muted-foreground">Só consulta</span>
+                          ) : (
+                            (functionPermissions[ministryFunction.id] ?? []).map((permission) => (
+                              <Badge key={permission} variant="secondary" className="text-xs">
+                                {permissionLabel(permission)}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -282,10 +301,13 @@ export default function MinistriesPage() {
         onOpenChange={setIsMinistryMembersDialogOpen}
       />
 
-      <MinistryPermissionsDialog
-        ministry={selectedMinistry}
-        open={isPermissionsDialogOpen}
-        onOpenChange={setIsPermissionsDialogOpen}
+      <FunctionPermissionsDialog
+        fn={permissionsFunction}
+        current={permissionsFunction ? (functionPermissions[permissionsFunction.id] ?? []) : []}
+        open={permissionsFunction !== null}
+        onOpenChange={(open) => {
+          if (!open) setPermissionsFunction(null);
+        }}
       />
     </PageContainer>
   );

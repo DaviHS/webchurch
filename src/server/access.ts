@@ -1,6 +1,6 @@
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
-import { memberMinistries, ministryPermissions, users } from "@/server/db/schema";
+import { functionPermissions, functions, memberMinistries, users } from "@/server/db/schema";
 import { isPermission, PERMISSIONS, type Permission } from "@/lib/permissions";
 
 export interface Access {
@@ -21,15 +21,10 @@ export async function loadAccess(userId: number): Promise<Access> {
   if (user.memberId === null) return NO_ACCESS;
 
   const rows = await db
-    .selectDistinct({ permission: ministryPermissions.permission })
+    .selectDistinct({ permission: functionPermissions.permission })
     .from(memberMinistries)
-    .innerJoin(
-      ministryPermissions,
-      and(
-        eq(ministryPermissions.ministryId, memberMinistries.ministryId),
-        or(isNull(ministryPermissions.functionId), eq(ministryPermissions.functionId, memberMinistries.functionId)),
-      ),
-    )
+    .innerJoin(functions, and(eq(functions.id, memberMinistries.functionId), eq(functions.isActive, true)))
+    .innerJoin(functionPermissions, eq(functionPermissions.functionId, functions.id))
     .where(and(eq(memberMinistries.memberId, user.memberId), eq(memberMinistries.isActive, true), isNull(memberMinistries.leftAt)));
 
   const permissions = new Set<Permission>();

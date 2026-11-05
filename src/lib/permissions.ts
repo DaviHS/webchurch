@@ -22,6 +22,9 @@ export const PERMISSION_GROUPS = [
 
 export type Permission = (typeof PERMISSION_GROUPS)[number]["items"][number]["key"];
 
-export const PERMISSIONS: Permission[] = PERMISSION_GROUPS.flatMap((group) => group.items.map((item) => item.key));
+export const PERMISSIONS: Permission[] = PERMISSION_GROUPS.flatMap((group) => group.items.map((item): Permission => item.key));
 
 export const isPermission = (value: unknown): value is Permission => PERMISSIONS.some((permission) => permission === value);
+
+export const permissionLabel = (permission: Permission): string =>
+  PERMISSION_GROUPS.flatMap((group) => [...group.items]).find((item) => item.key === permission)?.label ?? permission;
