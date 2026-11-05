@@ -10,6 +10,7 @@ import {
   ALL_LINKS,
   MOBILE_PRIMARY_URLS,
   NAV_SECTIONS,
+  STANDALONE_LINKS,
   QUICK_ACTIONS,
   canSee,
   findActiveLink,
@@ -136,6 +137,16 @@ export function MobileNavigation() {
             <SheetDescription className="sr-only">Outras telas do sistema</SheetDescription>
           </SheetHeader>
           <div className="space-y-4 px-4">
+            <div className="grid grid-cols-2 gap-2.5">
+              {STANDALONE_LINKS.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url)).map((link) => (
+                <MoreLink
+                  key={link.url}
+                  link={link}
+                  isActive={active?.link === link}
+                  onNavigate={() => setIsMoreOpen(false)}
+                />
+              ))}
+            </div>
             {NAV_SECTIONS.map((section) => {
               const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, isAdmin))
               if (links.length === 0) return null

@@ -28,6 +28,10 @@ export interface NavSection {
 
 export const HOME_LINK: NavLink = { title: "Início", url: "/app", icon: Home };
 
+export const BIBLE_LINK: NavLink = { title: "Bíblia", url: "/app/bible", icon: BookOpen };
+
+export const STANDALONE_LINKS: NavLink[] = [BIBLE_LINK];
+
 export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Louvor",
@@ -35,7 +39,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Músicas", url: "/app/praise/songs", icon: Music },
       { title: "Eventos", url: "/app/praise/events", icon: Calendar },
-      { title: "Bíblia", url: "/app/bible", icon: BookOpen },
       { title: "Relatórios", url: "/app/praise/reports", icon: BarChart3 },
     ],
   },
@@ -59,7 +62,7 @@ export const QUICK_ACTIONS: { title: string; url: string; icon: LucideIcon }[] =
   { title: "Novo membro", url: "/app/admin/members?novo=1", icon: Users },
 ];
 
-export const ALL_LINKS: NavLink[] = [HOME_LINK, ...NAV_SECTIONS.flatMap((section) => section.items)];
+export const ALL_LINKS: NavLink[] = [HOME_LINK, ...STANDALONE_LINKS, ...NAV_SECTIONS.flatMap((section) => section.items)];
 
 export const canSee = (link: NavLink, isAdmin: boolean) => !link.adminOnly || isAdmin;
 
@@ -74,11 +77,13 @@ export function findActiveLink(pathname: string): { section: NavSection | null; 
   const path = normalize(pathname);
   let best: { section: NavSection | null; link: NavLink } | null = null;
 
+  const consider = (section: NavSection | null, link: NavLink) => {
+    const matches = path === link.url || path.startsWith(`${link.url}/`);
+    if (matches && (!best || link.url.length > best.link.url.length)) best = { section, link };
+  };
+  for (const link of STANDALONE_LINKS) consider(null, link);
   for (const section of NAV_SECTIONS) {
-    for (const link of section.items) {
-      const matches = path === link.url || path.startsWith(`${link.url}/`);
-      if (matches && (!best || link.url.length > best.link.url.length)) best = { section, link };
-    }
+    for (const link of section.items) consider(section, link);
   }
   if (!best && path === HOME_LINK.url) best = { section: null, link: HOME_LINK };
   return best;

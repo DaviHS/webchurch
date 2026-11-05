@@ -15,7 +15,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { HOME_LINK, NAV_SECTIONS, canSee, findActiveLink, type NavLink } from "@/config/navigation"
+import { HOME_LINK, NAV_SECTIONS, STANDALONE_LINKS, canSee, findActiveLink, type NavLink } from "@/config/navigation"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
@@ -87,6 +87,20 @@ export function NavMain() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
+
+        {STANDALONE_LINKS.map((link) => {
+          const isActive = active?.link === link
+          return (
+            <SidebarMenuItem key={link.url}>
+              <SidebarMenuButton asChild tooltip={link.title} isActive={isActive} className={topLevelButton}>
+                <Link href={link.url} aria-current={isActive ? "page" : undefined} onClick={closeOnNavigate}>
+                  <link.icon />
+                  <span>{link.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )
+        })}
 
         {NAV_SECTIONS.map((section) => {
           const sectionActive = active?.section === section
