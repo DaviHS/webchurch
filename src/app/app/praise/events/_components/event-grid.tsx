@@ -21,7 +21,6 @@ export function EventGrid({ events, onEdit, onDelete, onViewDetails, isLoading }
           <Card key={i} className="h-full animate-pulse">
             <CardContent className="space-y-2 p-4">
               <div className="h-4 w-3/4 rounded bg-muted" />
-              <div className="h-4 w-16 rounded bg-muted" />
               <div className="h-3 w-1/2 rounded bg-muted" />
             </CardContent>
           </Card>

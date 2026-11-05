@@ -35,10 +35,10 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardP
       className="flex h-full cursor-pointer flex-col transition-shadow hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:bg-muted/50"
     >
       <CardHeader className="gap-1 p-3 pl-4">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 space-y-1 pt-1">
-            <CardTitle className="line-clamp-2 break-words text-base leading-tight">{event.title}</CardTitle>
-            <Badge variant={eventTypeBadge(event.type)} className="text-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <CardTitle title={event.title} className="min-w-0 truncate text-base leading-tight">{event.title}</CardTitle>
+            <Badge variant={eventTypeBadge(event.type)} className="shrink-0 px-1.5 py-0 text-[11px]">
               {eventTypeLabel(event.type)}
             </Badge>
           </div>
