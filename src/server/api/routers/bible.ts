@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
@@ -46,11 +46,22 @@ export const bibleRouter = createTRPCRouter({
     .query(({ input }) => loadPassage(input.version, input.reference)),
 
   search: protectedProcedure
-    .input(z.object({ version: versionCode, query: z.string().trim().min(2).max(100), limit: z.number().int().min(1).max(50).default(30) }))
+    .input(
+      z.object({
+        version: versionCode,
+        query: z.string().trim().min(2).max(100),
+        scope: z.enum(["all", "ot", "nt"]).default("all"),
+        limit: z.number().int().min(1).max(200).default(30),
+      }),
+    )
     .query(async ({ input }) => {
       const version = await findVersion(input.version);
       const config = sql.raw(version.language === "pt" ? "'portuguese'" : "'english'");
-      return db
+      // unaccent nos dois lados: "pao" encontra "pão".
+      const match = sql`to_tsvector(${config}, unaccent(${bibleVerses.text})) @@ websearch_to_tsquery(${config}, unaccent(${input.query}))`;
+      const scope =
+        input.scope === "ot" ? lte(bibleVerses.bookId, 39) : input.scope === "nt" ? gte(bibleVerses.bookId, 40) : undefined;
+      const rows = await db
         .select({
           bookId: bibleVerses.bookId,
           chapter: bibleVerses.chapter,
@@ -58,13 +69,9 @@ export const bibleRouter = createTRPCRouter({
           text: bibleVerses.text,
         })
         .from(bibleVerses)
-        .where(
-          and(
-            eq(bibleVerses.versionId, version.id),
-            sql`to_tsvector(${config}, ${bibleVerses.text}) @@ websearch_to_tsquery(${config}, ${input.query})`,
-          ),
-        )
+        .where(and(eq(bibleVerses.versionId, version.id), scope, match))
         .orderBy(asc(bibleVerses.bookId), asc(bibleVerses.chapter), asc(bibleVerses.verse))
-        .limit(input.limit);
+        .limit(input.limit + 1);
+      return { hits: rows.slice(0, input.limit), hasMore: rows.length > input.limit };
     }),
 });

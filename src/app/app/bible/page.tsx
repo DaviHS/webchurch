@@ -190,6 +190,39 @@ function ChapterColumn({
   );
 }
 
+const SEARCH_STEP = 30;
+const SEARCH_MAX = 200;
+const SEARCH_SCOPES = [
+  { value: "all", label: "Toda a Bíblia" },
+  { value: "ot", label: "Antigo Testamento" },
+  { value: "nt", label: "Novo Testamento" },
+] as const;
+type SearchScope = (typeof SEARCH_SCOPES)[number]["value"];
+
+const fold = (text: string) => text.replace(/[À-ſ]/g, (char) => char.normalize("NFD").replace(/\p{M}/gu, ""));
+
+/** Destaca no texto os termos digitados, ignorando acentos e maiúsculas. */
+function Highlighted({ text, query }: { text: string; query: string }) {
+  const terms = [...new Set(fold(query.toLowerCase()).match(/[\p{L}\p{N}]{2,}/gu) ?? [])];
+  if (terms.length === 0) return <>{text}</>;
+  const folded = fold(text.toLowerCase());
+  const pattern = new RegExp(terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  for (const match of folded.matchAll(pattern)) {
+    if (match.index === undefined || folded.length !== text.length) break;
+    parts.push(text.slice(last, match.index));
+    parts.push(
+      <mark key={match.index} className="rounded bg-yellow-200 px-0.5 text-foreground dark:bg-yellow-500/40">
+        {text.slice(match.index, match.index + match[0].length)}
+      </mark>,
+    );
+    last = match.index + match[0].length;
+  }
+  parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
 function SearchResults({
   version,
   query,
@@ -199,16 +232,44 @@ function SearchResults({
   query: string;
   onPick: (location: Location, verse: number) => void;
 }) {
-  const { data, isFetching, error } = api.bible.search.useQuery({ version, query }, { staleTime: 60_000 });
+  const [scope, setScope] = useState<SearchScope>("all");
+  const [limit, setLimit] = useState(SEARCH_STEP);
+  const { data, isFetching, error } = api.bible.search.useQuery(
+    { version, query, scope, limit },
+    { staleTime: 60_000, placeholderData: (previous) => previous },
+  );
+  const hits = data?.hits ?? [];
   return (
     <div className="space-y-2 rounded-lg border p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Resultados em {version} {isFetching && <Loader2 className="ml-1 inline size-3 animate-spin" />}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Resultados em {version}
+          {data && ` · ${hits.length}${data.hasMore ? "+" : ""}`}
+          {isFetching && <Loader2 className="ml-1 inline size-3 animate-spin" />}
+        </p>
+        <Select
+          value={scope}
+          onValueChange={(value) => {
+            setScope(SEARCH_SCOPES.find((option) => option.value === value)?.value ?? "all");
+            setLimit(SEARCH_STEP);
+          }}
+        >
+          <SelectTrigger className="h-8 w-44 text-xs" aria-label="Onde buscar">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SEARCH_SCOPES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {error && <p className="text-sm text-destructive">{error.message}</p>}
-      {data?.length === 0 && <p className="text-sm text-muted-foreground">Nada encontrado.</p>}
-      <ul className="max-h-80 space-y-1 overflow-y-auto">
-        {data?.map((hit) => (
+      {data && hits.length === 0 && <p className="text-sm text-muted-foreground">Nada encontrado.</p>}
+      <ul className="max-h-96 space-y-1 overflow-y-auto">
+        {hits.map((hit) => (
           <li key={`${hit.bookId}:${hit.chapter}:${hit.verse}`}>
             <button
               type="button"
@@ -218,11 +279,21 @@ function SearchResults({
               <span className="font-semibold">
                 {formatChapterTitle(getBook(hit.bookId)!, hit.chapter)}:{hit.verse}
               </span>
-              <span className="ml-2 text-muted-foreground">{hit.text}</span>
+              <span className="ml-2 text-muted-foreground">
+                <Highlighted text={hit.text} query={query} />
+              </span>
             </button>
           </li>
         ))}
       </ul>
+      {data?.hasMore && limit < SEARCH_MAX && (
+        <Button type="button" variant="outline" size="sm" className="w-full" disabled={isFetching} onClick={() => setLimit(limit + SEARCH_STEP)}>
+          Mostrar mais
+        </Button>
+      )}
+      {data?.hasMore && limit >= SEARCH_MAX && (
+        <p className="text-xs text-muted-foreground">Muitos resultados. Refine a busca com mais palavras ou use aspas para uma frase exata.</p>
+      )}
     </div>
   );
 }
@@ -404,6 +475,7 @@ function BibleReader() {
               </Button>
             </div>
             <SearchResults
+              key={`${selectedVersions[0]}:${textQuery}`}
               version={selectedVersions[0]}
               query={textQuery}
               onPick={(target, verse) => {
