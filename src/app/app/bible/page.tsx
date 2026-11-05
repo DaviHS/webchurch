@@ -2,13 +2,22 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, ChevronLeft, ChevronRight, Copy, ListChecks, Loader2, Projector, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Columns2, Copy, ListChecks, Loader2, Plus, Projector, X } from "lucide-react";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useBibleVersion } from "@/hooks/use-bible-version";
 import {
   BIBLE_BOOKS,
   formatChapterTitle,
@@ -59,12 +68,63 @@ function toRuns(verses: number[]): [number, number][] {
   return runs;
 }
 
+interface VersionInfo {
+  code: string;
+  name: string;
+  language: string;
+}
+
+const LANGUAGE_LABELS: Record<string, string> = { pt: "Português", en: "Inglês" };
+
+function VersionSelect({
+  value,
+  versions,
+  taken,
+  onChange,
+  label,
+  className,
+}: {
+  value: string;
+  versions: VersionInfo[];
+  taken: string[];
+  onChange: (code: string) => void;
+  label: string;
+  className?: string;
+}) {
+  const languages = [...new Set(versions.map((v) => v.language))];
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={className} aria-label={label}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-80">
+        {languages.map((language) => (
+          <SelectGroup key={language}>
+            <SelectLabel>{LANGUAGE_LABELS[language] ?? language}</SelectLabel>
+            {versions
+              .filter((v) => v.language === language)
+              .map((v) => (
+                <SelectItem key={v.code} value={v.code} disabled={v.code !== value && taken.includes(v.code)}>
+                  {v.code} · {v.name}
+                </SelectItem>
+              ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function ChapterColumn({
   version,
   location,
   selected,
   onToggle,
+  onCopy,
+  onProject,
 }: {
+  onCopy?: () => void;
+  onProject?: () => void;
   version: string;
   location: Location;
   selected: Set<number>;
@@ -77,10 +137,22 @@ function ChapterColumn({
 
   return (
     <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-lg border p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {data?.version.name ?? version}
-        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono normal-case">{version}</span>
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {data?.version.name ?? version}
+          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono normal-case">{version}</span>
+        </h2>
+        {onCopy && (
+          <Button type="button" variant="outline" size="sm" onClick={onCopy}>
+            <Copy className="mr-1" /> Copiar
+          </Button>
+        )}
+        {onProject && (
+          <Button type="button" size="sm" onClick={onProject}>
+            <Projector className="mr-1" /> Projetar
+          </Button>
+        )}
+      </div>
       {isPending && (
         <div className="flex justify-center py-10">
           <Loader2 className="size-6 animate-spin text-primary" />
@@ -166,11 +238,14 @@ function BibleReader() {
   const hasLocation = !!urlBook && Number.isInteger(chapterParam) && chapterParam >= 1 && chapterParam <= urlBook.chapters;
   const location: Location = hasLocation ? { bookId: urlBook.id, chapter: chapterParam } : { bookId: 1, chapter: 1 };
 
+  const [preferredVersion, setPreferredVersion] = useBibleVersion(versions);
+
   const selectedVersions = useMemo(() => {
     const codes = (params.get("v") ?? "").split(",").filter((code) => versions?.some((v) => v.code === code));
     const unique = [...new Set(codes)].slice(0, MAX_COLUMNS);
-    return unique.length > 0 ? unique : versions?.[0] ? [versions[0].code] : [];
-  }, [params, versions]);
+    return unique.length > 0 ? unique : preferredVersion ? [preferredVersion] : [];
+  }, [params, versions, preferredVersion]);
+  const comparing = selectedVersions.length > 1;
 
   const go = (next: Location, nextVersions: string[] = selectedVersions) => {
     const query = new URLSearchParams({ b: String(next.bookId), c: String(next.chapter) });
@@ -260,26 +335,28 @@ function BibleReader() {
     ? `${formatChapterTitle(book, location.chapter)}:${singleRun[0] === singleRun[1] ? singleRun[0] : `${singleRun[0]}-${singleRun[1]}`}`
     : null;
 
-  const toggleVersion = (code: string) => {
-    const has = selectedVersions.includes(code);
-    if (has && selectedVersions.length === 1) return;
-    if (!has && selectedVersions.length >= MAX_COLUMNS) {
-      toast.info(`Compare até ${MAX_COLUMNS} versões ao mesmo tempo.`);
-      return;
-    }
-    go(location, has ? selectedVersions.filter((c) => c !== code) : [...selectedVersions, code]);
+  const setVersionAt = (index: number, code: string) => {
+    if (index === 0) setPreferredVersion(code);
+    go(location, selectedVersions.map((current, i) => (i === index ? code : current)));
   };
 
-  const project = () => {
-    const version = selectedVersions[0];
+  const addVersion = () => {
+    const candidate = versions?.find((v) => !selectedVersions.includes(v.code));
+    if (candidate) go(location, [...selectedVersions, candidate.code]);
+  };
+
+  const removeVersion = (index: number) => go(location, selectedVersions.filter((_, i) => i !== index));
+
+  const toggleCompare = () => (comparing ? go(location, selectedVersions.slice(0, 1)) : addVersion());
+
+  const project = (version = selectedVersions[0]) => {
     if (!selectionLabel || !version) return;
     const query = new URLSearchParams({ bible: "1", ref: selectionLabel, v: version });
     if (perSlide !== null) query.set("n", String(perSlide));
     window.open(`/presentation/control?${query.toString()}`, "_blank");
   };
 
-  const copy = async () => {
-    const version = selectedVersions[0];
+  const copy = async (version = selectedVersions[0]) => {
     if (!selectionLabel || !version) return;
     try {
       const passage = await fetchSelectedText(version);
@@ -380,21 +457,41 @@ function BibleReader() {
             <ListChecks className="mr-1" /> Capítulo inteiro
           </Button>
 
-          <div className="flex flex-wrap items-center gap-1 sm:ml-auto" role="group" aria-label="Versões">
-            {versions?.map((v) => (
-              <Button
-                key={v.code}
-                type="button"
-                size="sm"
-                variant={selectedVersions.includes(v.code) ? "default" : "outline"}
-                aria-pressed={selectedVersions.includes(v.code)}
-                title={v.name}
-                onClick={() => toggleVersion(v.code)}
-              >
-                {v.code}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+          {versions && selectedVersions.map((code, index) => (
+            <div key={index} className="flex w-full items-center gap-1 sm:w-auto">
+              {comparing && (
+                <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{index + 1}</span>
+              )}
+              <VersionSelect
+                value={code}
+                versions={versions}
+                taken={selectedVersions}
+                onChange={(next) => setVersionAt(index, next)}
+                label={index === 0 ? "Versão" : `Versão ${index + 1} da comparação`}
+                className="w-full sm:w-72"
+              />
+              {index > 0 && (
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)} aria-label={`Remover ${code} da comparação`}>
+                  <X />
+                </Button>
+              )}
+            </div>
+          ))}
+          {versions && (
+            <div className="flex items-center gap-2 sm:ml-auto">
+              {comparing && selectedVersions.length < MAX_COLUMNS && (
+                <Button type="button" variant="outline" size="sm" onClick={addVersion}>
+                  <Plus className="mr-1" /> Versão
+                </Button>
+              )}
+              <Button type="button" variant={comparing ? "default" : "outline"} size="sm" aria-pressed={comparing} onClick={toggleCompare}>
+                <Columns2 className="mr-1" /> {comparing ? "Comparando" : "Comparar"}
               </Button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -405,7 +502,15 @@ function BibleReader() {
         style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, 22rem), 1fr))` }}
       >
         {selectedVersions.map((version) => (
-          <ChapterColumn key={version} version={version} location={location} selected={selected} onToggle={toggleVerse} />
+          <ChapterColumn
+            key={version}
+            version={version}
+            location={location}
+            selected={selected}
+            onToggle={toggleVerse}
+            onCopy={comparing && selectionLabel ? () => void copy(version) : undefined}
+            onProject={comparing && selectionLabel ? () => project(version) : undefined}
+          />
         ))}
       </div>
 
@@ -413,7 +518,10 @@ function BibleReader() {
         <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-3 shadow-lg">
           <p className="min-w-0 flex-1 text-sm">
             {selectionLabel ? (
-              <span className="font-semibold">{selectionLabel}</span>
+              <>
+                <span className="font-semibold">{selectionLabel}</span>
+                {comparing && <span className="ml-2 text-muted-foreground">em {selectedVersions[0]} (versão 1)</span>}
+              </>
             ) : (
               <span className="text-muted-foreground">Para projetar, selecione versículos em sequência.</span>
             )}
@@ -422,7 +530,7 @@ function BibleReader() {
           <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
             <Copy className="mr-1" /> Copiar
           </Button>
-          <Button type="button" size="sm" disabled={!selectionLabel} onClick={project}>
+          <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
             <Projector className="mr-1" /> Projetar
           </Button>
           <Button type="button" variant="ghost" size="icon-sm" onClick={() => setSelection({ key, verses: new Set() })} aria-label="Limpar seleção">

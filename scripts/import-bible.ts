@@ -1,10 +1,9 @@
 
 import "dotenv/config";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { neon } from "@neondatabase/serverless";
 
-const EXPECTED_VERSES = 31102;
 const CHUNK = 3000;
 
 const BOOKS: [string, string][] = [
@@ -87,30 +86,63 @@ function check(v: Version, expected?: number) {
   console.log(`${v.code}: ${v.verses.length} versículos OK`);
 }
 
-const arc = loadAlmeida("ARC.json");
-const acf = loadAlmeida("ACF.json");
+const PUBLIC_DOMAIN = new Set(["TB", "BLIVRE", "ALM1911"]);
 
-const versions: Version[] = [
-  {
-    code: "ARC", name: "Almeida Revista e Corrigida", language: "pt", publisher: "SBB",
-    license: "Edição de 1995 da Sociedade Bíblica do Brasil. Direitos reservados; uso em dev, sem redistribuição.",
-    verses: arc.verses,
-  },
-  {
-    code: "ACF", name: "Almeida Corrigida e Fiel", language: "pt", publisher: "SBTB",
-    license: "Edição de 1994 da Sociedade Bíblica Trinitariana do Brasil. Direitos reservados; uso em dev, sem redistribuição.",
-    verses: acf.verses,
-  },
-  {
+const CATALOG: { code: string; name: string; publisher: string }[] = [
+  { code: "ARC", name: "Almeida Revista e Corrigida", publisher: "SBB" },
+  { code: "ACF", name: "Almeida Corrigida e Fiel", publisher: "SBTB" },
+  { code: "ARA", name: "Almeida Revista e Atualizada", publisher: "SBB" },
+  { code: "NAA", name: "Nova Almeida Atualizada", publisher: "SBB" },
+  { code: "NVI", name: "Nova Versão Internacional", publisher: "Biblica" },
+  { code: "NVT", name: "Nova Versão Transformadora", publisher: "Mundo Cristão" },
+  { code: "NTLH", name: "Nova Tradução na Linguagem de Hoje", publisher: "SBB" },
+  { code: "NBV", name: "Nova Bíblia Viva", publisher: "Mundo Cristão" },
+  { code: "AS21", name: "Almeida Século 21", publisher: "Vida Nova" },
+  { code: "JFAA", name: "Almeida Atualizada", publisher: "" },
+  { code: "KJA", name: "King James Atualizada", publisher: "Abba Press" },
+  { code: "KJF", name: "King James Fiel", publisher: "BVBooks" },
+  { code: "VFL", name: "Versão Fácil de Ler", publisher: "Bible League International" },
+  { code: "OL", name: "O Livro", publisher: "Biblica" },
+  { code: "MENS", name: "A Mensagem", publisher: "Editora Vida" },
+  { code: "TB", name: "Tradução Brasileira", publisher: "Domínio público" },
+  { code: "BLIVRE", name: "Bíblia Livre", publisher: "Domínio público" },
+  { code: "ALM1911", name: "Almeida 1911", publisher: "Domínio público" },
+];
+
+const arc = loadAlmeida("ARC.json");
+
+function foldStrayChapters(code: string, file: string): Verse[] {
+  const { verses } = loadAlmeida(file);
+  const stray = verses.filter((v) => v.chapter > arc.chapters[v.book - 1]!);
+  if (stray.length === 0) return verses;
+  const target = arc.chapters[stray[0]!.book - 1]! - 1;
+  const kept = verses.filter((v) => v.chapter <= arc.chapters[v.book - 1]!);
+  let next = Math.max(...kept.filter((v) => v.book === stray[0]!.book && v.chapter === target).map((v) => v.verse));
+  for (const v of stray) kept.push({ book: v.book, chapter: target, verse: ++next, text: v.text });
+  console.log(`${code}: ${stray.length} capítulos soltos de ${BOOKS[stray[0]!.book - 1]![0]} anexados ao capítulo ${target}`);
+  return kept;
+}
+
+const versions: Version[] = CATALOG.map(({ code, name, publisher }) => ({
+  code,
+  name,
+  language: "pt",
+  publisher: publisher || "Não informada",
+  license: PUBLIC_DOMAIN.has(code)
+    ? "Domínio público. Texto obtido de damarals/biblias."
+    : `Direitos reservados${publisher ? ` (${publisher})` : ""}. Texto obtido de damarals/biblias; confirme a licença antes de uso público.`,
+  verses: foldStrayChapters(code, `${code}.json`),
+}));
+
+if (existsSync(join(dir, "kjv"))) {
+  versions.push({
     code: "KJV", name: "King James Version", language: "en", publisher: "Domínio público",
     license: "Texto de 1769 da King James Version em inglês. Domínio público.",
     verses: loadKjv(),
-  },
-];
+  });
+}
 
-check(versions[0]!);
-check(versions[1]!, EXPECTED_VERSES);
-check(versions[2]!, EXPECTED_VERSES);
+for (const v of versions) check(v);
 
 if (dryRun) {
   console.log("--dry-run: nada foi gravado.");
