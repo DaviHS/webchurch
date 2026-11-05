@@ -110,11 +110,6 @@ export function SignInForm() {
 
       <CardFooter className="flex flex-col space-y-2 text-center text-sm">
         <div>
-          <Link href="/forgot-password" className="text-primary hover:underline">
-            Esqueci minha senha
-          </Link>
-        </div>
-        <div>
           <span className="text-muted-foreground">Sem acesso ao e-mail? </span>
           <button
             type="button"

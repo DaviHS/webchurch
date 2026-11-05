@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/password-input"
@@ -30,7 +31,12 @@ export function SignInFields({ email, password, onEmailChange, onPasswordChange 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="password">Senha</Label>
+          <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+            Esqueci minha senha
+          </Link>
+        </div>
         <PasswordInput
           id="password"
           autoComplete="current-password"
