@@ -6,6 +6,7 @@ export const AUDIT_AREAS: Record<string, string> = {
   user: "Acessos",
   access: "Permissões",
   finance: "Finanças",
+  auth: "Login e senha",
 };
 
 const ACTIONS: Record<string, string> = {
@@ -48,6 +49,9 @@ const ACTIONS: Record<string, string> = {
   "user.reject": "Rejeitou cadastro",
 
   "access.setFunctionPermissions": "Alterou as permissões de uma função",
+
+  "auth.requestPasswordReset": "Pediu redefinição de senha por e-mail",
+  "auth.confirmPasswordReset": "Redefiniu a própria senha pelo link do e-mail",
 
   "finance.createCategory": "Criou categoria financeira",
   "finance.updateCategory": "Editou categoria financeira",
