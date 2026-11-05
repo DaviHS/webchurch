@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/trpc/react";
-import { Music, Plus } from "lucide-react";
+import { Merge, Music, Plus } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { PaginationBar } from "@/components/pagination-bar";
 import {
@@ -19,6 +19,7 @@ import { LyricsDialog } from "./_components/lyrics-dialog";
 import { YouTubePlayer } from "./_components/youtube-player";
 import { YouTubeStatus } from "./_components/youtube-status";
 import { LastExecutionsDialog } from "./_components/last-executions-dialog";
+import { DuplicateSongsDialog } from "./_components/duplicate-songs-dialog";
 import { SongCard } from "./_components/song-card";
 import { SongFilters } from "./_components/song-filters";
 import { SongGridSkeleton } from "./_components/song-grid-skeleton";
@@ -39,6 +40,8 @@ export default function SongsPage() {
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
+  const { data: duplicateGroups } = api.song.duplicateGroups.useQuery(undefined, { staleTime: 60_000 });
   const [historySong, setHistorySong] = useState<Song | null>(null);
 
   const songDialog = useEntityDialog<Song>({ fromUrl: true });
@@ -117,6 +120,8 @@ export default function SongsPage() {
         </>
       )}
 
+      <DuplicateSongsDialog open={duplicatesOpen} onOpenChange={setDuplicatesOpen} />
+
       {historySong && (
         <LastExecutionsDialog song={historySong} open={historyDialogOpen} onOpenChange={setHistoryDialogOpen} />
       )}
@@ -141,10 +146,18 @@ export default function SongsPage() {
         icon={Music}
         description="Repertório do ministério de louvor."
         actions={
-          <Button onClick={songDialog.openCreate} className="w-full sm:w-auto">
-            <Plus />
-            Nova música
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {duplicateGroups && duplicateGroups.length > 0 && (
+              <Button variant="outline" onClick={() => setDuplicatesOpen(true)} className="w-full sm:w-auto">
+                <Merge />
+                Duplicadas ({duplicateGroups.length})
+              </Button>
+            )}
+            <Button onClick={songDialog.openCreate} className="w-full sm:w-auto">
+              <Plus />
+              Nova música
+            </Button>
+          </div>
         }
       />
 

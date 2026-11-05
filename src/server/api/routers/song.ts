@@ -4,7 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { songs, eventSongs } from "@/server/db/schema";
 import { songSchema, songCategories, type SongCategory } from "@/validators/song";
-import { eq, ne, desc, and, or, sql, count, isNotNull, type SQL } from "drizzle-orm";
+import { eq, ne, asc, desc, and, or, sql, count, inArray, isNotNull, type SQL } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { songKey } from "@/lib/song-key";
 import { youtubeService, YouTubeIntegrationError } from "@/lib/youtube";
@@ -202,6 +202,70 @@ export const songRouter = createTRPCRouter({
   findDuplicate: protectedProcedure
     .input(z.object({ title: z.string(), artist: z.string().optional(), excludeId: z.number().optional() }))
     .query(({ input }) => (input.title.trim() ? findDuplicate(input.title, input.artist, input.excludeId) : null)),
+
+  duplicateGroups: protectedProcedure.query(async () => {
+    const rows = await db
+      .select({
+        id: songs.id,
+        title: songs.title,
+        artist: songs.artist,
+        hasLyrics: sql<boolean>`coalesce(length(trim(${songs.lyrics})) > 0, false)`,
+        hasVideo: sql<boolean>`${songs.youtubeVideoId} is not null`,
+        events: sql<number>`(select count(*)::int from event_songs es where es.song_id = songs.id)`,
+      })
+      .from(songs)
+      .orderBy(asc(songs.id));
+
+    const groups = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const key = songKey(row.title, row.artist);
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
+    return [...groups.values()].filter((group) => group.length > 1);
+  }),
+
+  merge: protectedProcedure
+    .input(z.object({ keepId: z.number(), removeIds: z.array(z.number()).min(1) }))
+    .mutation(async ({ input }) => {
+      const removeIds = input.removeIds.filter((id) => id !== input.keepId);
+      const rows = await db.select().from(songs).where(inArray(songs.id, [input.keepId, ...removeIds]));
+      const keep = rows.find((row) => row.id === input.keepId);
+      const removed = rows.filter((row) => row.id !== input.keepId);
+      if (!keep || removed.length !== removeIds.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Música não encontrada" });
+      }
+
+      const fill: Partial<typeof songs.$inferInsert> = {};
+      const firstWith = <K extends keyof typeof keep>(field: K) => removed.find((row) => Boolean(row[field]))?.[field];
+      if (!keep.lyrics?.trim()) fill.lyrics = firstWith("lyrics") ?? keep.lyrics;
+      if (!keep.chords?.trim()) fill.chords = firstWith("chords") ?? keep.chords;
+      if (!keep.duration) fill.duration = firstWith("duration") ?? keep.duration;
+      if (!keep.spotifyTrackId) {
+        fill.spotifyUrl = firstWith("spotifyUrl") ?? keep.spotifyUrl;
+        fill.spotifyTrackId = firstWith("spotifyTrackId") ?? keep.spotifyTrackId;
+      }
+      const donor = keep.youtubeVideoId ? undefined : removed.find((row) => row.youtubeVideoId);
+      if (donor) {
+        fill.youtubeUrl = donor.youtubeUrl;
+        fill.youtubeVideoId = donor.youtubeVideoId;
+      }
+
+      await db.update(eventSongs).set({ songId: keep.id }).where(inArray(eventSongs.songId, removeIds));
+      if (Object.keys(fill).length > 0) await db.update(songs).set(fill).where(eq(songs.id, keep.id));
+      await db.delete(songs).where(inArray(songs.id, removeIds));
+
+      const warnings: string[] = [];
+      const keptVideo = keep.youtubeVideoId ?? donor?.youtubeVideoId ?? null;
+      for (const row of removed) {
+        if (row.youtubeVideoId && row.youtubeVideoId !== keptVideo) {
+          await syncPlaylistVideo(row.youtubeVideoId, null, row.id, warnings);
+        }
+        if (row.spotifyTrackId && row.spotifyTrackId !== (fill.spotifyTrackId ?? keep.spotifyTrackId)) {
+          await syncSpotifyTrack(row.spotifyTrackId, null);
+        }
+      }
+      return { merged: removed.length, warnings };
+    }),
 
   create: protectedProcedure.input(songSchema.extend({ allowDuplicate: z.boolean().optional() })).mutation(async ({ input: { allowDuplicate, ...input } }) => {
     if (!allowDuplicate) await assertNoDuplicate(input.title, input.artist);
