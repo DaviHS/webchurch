@@ -10,6 +10,11 @@ import { SignInFields } from "./sign-in-fields"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
 
+function destinationAfterLogin(): string {
+  const target = new URLSearchParams(window.location.search).get("callbackUrl")
+  return target?.startsWith("/") && !target.startsWith("//") ? target : "/app"
+}
+
 export function SignInForm() {
   const router = useRouter()
   const [email, setEmail] = useState("")
@@ -54,7 +59,7 @@ export function SignInForm() {
       } else {
         toast.success("Login realizado com sucesso", { id: toastId })
         
-        router.push("/app")
+        router.push(destinationAfterLogin())
       }
     } catch {
       setError("Ocorreu um erro ao fazer login. Por favor, tente novamente.")

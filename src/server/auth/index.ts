@@ -12,5 +12,6 @@ const {
 } = NextAuth(authConfig);
 
 const auth = cache(uncachedAuth);
+const authProxy = uncachedAuth;
 
-export { auth, handlers, signIn, signOut, update };
+export { auth, authProxy, handlers, signIn, signOut, update };
