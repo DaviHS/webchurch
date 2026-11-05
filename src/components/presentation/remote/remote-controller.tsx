@@ -175,6 +175,12 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
         </Button>
       </header>
 
+      {send.isError && (
+        <p role="alert" className="shrink-0 bg-destructive px-3 py-1.5 text-xs font-medium text-white">
+          Comando não enviado: {send.error.message}
+        </p>
+      )}
+
       <Tabs
         value={tab}
         onValueChange={(value) => {
