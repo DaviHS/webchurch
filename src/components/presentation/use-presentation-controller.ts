@@ -13,6 +13,7 @@ import {
   type Deck,
   type DeckSong,
   type DeckSongSource,
+  type PassageSource,
   type Position,
 } from "./deck";
 import { useNow } from "./hooks";
@@ -177,6 +178,20 @@ export function usePresentationController(baseDeck: Deck | null) {
     OUTPUT_ROLES.map((role) => [role, now > 0 && now - lastSeen[role] < CONNECTION_TIMEOUT_MS])
   ) as OutputConnections;
 
+  const reslicePassage = (current: DeckSong, updated: DeckSong) => {
+    const songIndex = deck ? deck.songs.findIndex((song) => song.uid === current.uid) : -1;
+    let nextLive: Position | null = null;
+    if (live?.song === songIndex) {
+      const firstVerse = current.slideFirstVerse?.[live.slide] ?? 0;
+      let slide = 0;
+      (updated.slideFirstVerse ?? []).forEach((verse, index) => {
+        if (verse <= firstVerse) slide = index;
+      });
+      nextLive = { song: songIndex, slide };
+    }
+    dispatch({ type: "replaceSong", song: updated, live: nextLive });
+  };
+
   return {
     deck,
     live,
@@ -200,18 +215,12 @@ export function usePresentationController(baseDeck: Deck | null) {
     setVersesPerSlide: (uid: string, perSlide: number | null) => {
       const current = state.adHocSongs.find((song) => song.uid === uid);
       if (!current?.source) return;
-      const updated = passageToDeckSong(current.source, uid, perSlide);
-      const songIndex = deck ? deck.songs.findIndex((song) => song.uid === uid) : -1;
-      let nextLive: Position | null = null;
-      if (live?.song === songIndex) {
-        const firstVerse = current.slideFirstVerse?.[live.slide] ?? 0;
-        let slide = 0;
-        (updated.slideFirstVerse ?? []).forEach((verse, index) => {
-          if (verse <= firstVerse) slide = index;
-        });
-        nextLive = { song: songIndex, slide };
-      }
-      dispatch({ type: "replaceSong", song: updated, live: nextLive });
+      reslicePassage(current, passageToDeckSong(current.source, uid, perSlide));
+    },
+    setPassageVersion: (uid: string, passage: PassageSource) => {
+      const current = state.adHocSongs.find((song) => song.uid === uid);
+      if (!current?.source) return;
+      reslicePassage(current, passageToDeckSong(passage, uid, current.versesPerSlide));
     },
     removeSong: (uid: string) => dispatch({ type: "removeSong", uid }),
     closeOutputs: () => post({ type: "CLOSE" }),

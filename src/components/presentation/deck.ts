@@ -159,12 +159,22 @@ export function buildDeck(source: {
   title: string;
   subtitle: string | null;
   songs: DeckSongSource[];
+  passages?: { placement: "before" | "after"; passage: PassageSource }[];
 }): Deck {
+  const songs = source.songs.map((song, index) => toDeckSong(song, `${source.key}:${index}:${song.id}`));
+  const passages = (source.passages ?? []).map((item, index) => ({
+    placement: item.placement,
+    song: passageToDeckSong(item.passage, `${source.key}:passage:${index}`),
+  }));
   return {
     key: source.key,
     title: source.title,
     subtitle: source.subtitle,
-    songs: source.songs.map((song, index) => toDeckSong(song, `${source.key}:${index}:${song.id}`)),
+    songs: [
+      ...passages.filter((item) => item.placement === "before").map((item) => item.song),
+      ...songs,
+      ...passages.filter((item) => item.placement === "after").map((item) => item.song),
+    ],
   };
 }
 

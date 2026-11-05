@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type Position } from "../deck";
+import { samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type DeckSong, type PassageSource, type Position } from "../deck";
 
 interface SlideGridProps {
   deck: Deck;
@@ -12,6 +14,7 @@ interface SlideGridProps {
   next: Position | null;
   onGoTo: (position: Position) => void;
   onVersesPerSlide: (uid: string, perSlide: number | null) => void;
+  onPassage: (uid: string, passage: PassageSource) => void;
 }
 
 export function VersesPerSlideSelect({
@@ -42,7 +45,48 @@ export function VersesPerSlideSelect({
   );
 }
 
-export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlide }: SlideGridProps) {
+function PassageVersionSelect({
+  song,
+  onPassage,
+}: {
+  song: DeckSong;
+  onPassage: (uid: string, passage: PassageSource) => void;
+}) {
+  const utils = api.useUtils();
+  const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
+  const [loading, setLoading] = useState(false);
+  const current = song.source?.version.code;
+
+  const change = async (code: string) => {
+    if (!song.source || code === current) return;
+    setLoading(true);
+    try {
+      const passage = await utils.bible.getPassage.fetch({ version: code, reference: song.source.title });
+      onPassage(song.uid, passage);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível trocar a versão.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Select value={current} onValueChange={(code) => void change(code)} disabled={loading}>
+      <SelectTrigger className="w-full sm:w-28" aria-label="Versão da passagem">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-80">
+        {versions?.map((v) => (
+          <SelectItem key={v.code} value={v.code}>
+            {v.code} · {v.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlide, onPassage }: SlideGridProps) {
   const song = deck.songs[songIndex];
   const liveRef = useRef<HTMLButtonElement>(null);
 
@@ -71,11 +115,14 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
           {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
         </div>
         {song.kind === "bible" && (
-          <VersesPerSlideSelect
-            className="w-full sm:w-60"
-            value={song.versesPerSlide}
-            onChange={(value) => onVersesPerSlide(song.uid, value)}
-          />
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {song.source && <PassageVersionSelect song={song} onPassage={onPassage} />}
+            <VersesPerSlideSelect
+              className="w-full sm:w-60"
+              value={song.versesPerSlide}
+              onChange={(value) => onVersesPerSlide(song.uid, value)}
+            />
+          </div>
         )}
       </div>
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr))]">

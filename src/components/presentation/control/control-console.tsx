@@ -480,7 +480,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
           </TabsContent>
           <TabsContent value="slides" forceMount className={PANEL_CLASS}>
             <ScrollArea className="h-full pr-3">
-              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} onVersesPerSlide={controller.setVersesPerSlide} />
+              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} onVersesPerSlide={controller.setVersesPerSlide} onPassage={controller.setPassageVersion} />
             </ScrollArea>
           </TabsContent>
           <TabsContent value="outputs" forceMount className={PANEL_CLASS}>
