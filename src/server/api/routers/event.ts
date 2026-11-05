@@ -70,7 +70,7 @@ export const eventRouter = createTRPCRouter({
         db.select()
           .from(events)
           .where(where)
-          .orderBy(desc(events.date))
+          .orderBy(desc(events.date), desc(events.id))
           .limit(limit)
           .offset(offset),
         db.select({ count: count() })

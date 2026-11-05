@@ -41,7 +41,7 @@ export default function MembersPage() {
     page,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-  });
+  }, { placeholderData: (previous) => previous });
 
   const { data: pendingCount } = api.user.getPendingCount.useQuery();
 

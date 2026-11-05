@@ -100,7 +100,7 @@ export const memberRouter = createTRPCRouter({
         .from(members)
         .leftJoin(users, eq(members.id, users.memberId))
         .where(and(...conditions))
-        .orderBy(asc(members.firstName), asc(members.lastName))
+        .orderBy(asc(members.firstName), asc(members.lastName), asc(members.id))
         .limit(limit)
         .offset(offset);
 

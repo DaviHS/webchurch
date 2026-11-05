@@ -37,7 +37,7 @@ export default function EventsPage() {
     search: debouncedSearch || undefined,
     page,
     limit: 20,
-  });
+  }, { placeholderData: (previous) => previous });
 
   const { data: eventDetails, isLoading: isLoadingDetails } = api.event.getById.useQuery(
     selectedEvent ? selectedEvent.id : skipToken
