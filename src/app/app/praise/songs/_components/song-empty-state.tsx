@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Music, Plus, SearchX } from "lucide-react";
 
 interface SongEmptyStateProps {
-  onCreateClick: () => void;
+  onCreateClick?: () => void;
   filtered?: boolean;
 }
 
@@ -22,12 +22,14 @@ export function SongEmptyState({ onCreateClick, filtered = false }: SongEmptySta
     <EmptyState
       icon={Music}
       title="Nenhuma música cadastrada"
-      description="Cadastre a primeira música do repertório."
+      description={onCreateClick ? "Cadastre a primeira música do repertório." : "Ainda não há músicas cadastradas."}
       action={
-        <Button variant="outline" onClick={onCreateClick}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova música
-        </Button>
+        onCreateClick && (
+          <Button variant="outline" onClick={onCreateClick}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova música
+          </Button>
+        )
       }
     />
   );

@@ -16,7 +16,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { HOME_LINK, NAV_SECTIONS, STANDALONE_LINKS, canSee, findActiveLink, type NavLink } from "@/config/navigation"
-import { useSession } from "next-auth/react"
+import { usePermissions } from "@/hooks/use-permissions"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 
@@ -71,7 +71,7 @@ export function NavMain() {
   const active = findActiveLink(pathname)
   const homeActive = active?.link === HOME_LINK
   const closeOnNavigate = useCloseOnNavigate()
-  const isAdmin = useSession().data?.user.isAdmin ?? false
+  const { can } = usePermissions()
 
   return (
     <SidebarGroup className="p-0">
@@ -116,7 +116,7 @@ export function NavMain() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub className="me-0 pe-0">
-                    {section.items.filter((link) => canSee(link, isAdmin)).map((link) => (
+                    {section.items.filter((link) => canSee(link, can)).map((link) => (
                       <SubItem key={link.url} link={link} isActive={active?.link === link} />
                     ))}
                   </SidebarMenuSub>

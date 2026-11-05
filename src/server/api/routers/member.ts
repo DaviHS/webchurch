@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import {
   members,
@@ -34,8 +34,10 @@ const toMemberMinistryRows = (memberId: number, ministriesInput: MinistryInput[]
       functionId: m.functionId ?? null,
     }));
 
+const manageMembers = can("members.manage");
+
 export const memberRouter = createTRPCRouter({
-  create: adminProcedure.input(memberSchema).mutation(async ({ input }) => {
+  create: manageMembers.input(memberSchema).mutation(async ({ input }) => {
     const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
@@ -193,7 +195,7 @@ export const memberRouter = createTRPCRouter({
       };
     }),
 
-  update: adminProcedure
+  update: manageMembers
     .input(
       z.object({
         id: z.number(),
@@ -235,7 +237,7 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
-  deactivate: adminProcedure
+  deactivate: manageMembers
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deleted] = await db

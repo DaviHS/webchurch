@@ -2,10 +2,9 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { eq } from "drizzle-orm";
 import { auth } from "@/server/auth";
-import { db } from "@/server/db";
-import { users } from "@/server/db/schema";
+import { loadAccess } from "@/server/access";
+import type { Permission } from "@/lib/permissions";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
@@ -64,16 +63,14 @@ export const protectedProcedure = t.procedure
     });
   });
 
-export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const userId = Number(ctx.session.user.id);
-  const [user] = Number.isInteger(userId)
-    ? await db.select({ isAdmin: users.isAdmin, status: users.status }).from(users).where(eq(users.id, userId)).limit(1)
-    : [];
-
-  if (!user?.isAdmin || user.status !== "active") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Acesso restrito a administradores." });
-  }
-  return next();
-});
+export const can = (permission: Permission) =>
+  protectedProcedure.use(async ({ ctx, next }) => {
+    const userId = Number(ctx.session.user.id);
+    const access = Number.isInteger(userId) ? await loadAccess(userId) : null;
+    if (!access?.permissions.has(permission)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para esta ação." });
+    }
+    return next({ ctx: { ...ctx, access } });
+  });
 
 export const createCallerFactory = t.createCallerFactory;

@@ -267,7 +267,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     if (isAdmin) {
       const confirmed = await confirm({
         title: "Dar acesso de administrador?",
-        description: "O usuário poderá ver e alterar as finanças da igreja.",
+        description: "O usuário terá acesso total ao sistema, inclusive às finanças e ao gerenciamento de acessos.",
         confirmLabel: "Dar acesso",
       });
       if (!confirmed) return;
@@ -817,10 +817,10 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                         <div className="flex min-h-10 items-center justify-between gap-4">
                           <div className="min-w-0">
                             <Label htmlFor="userIsAdmin" className="font-medium">
-                              Administrador (acesso a Finanças)
+                              Administrador (acesso total)
                             </Label>
                             <p className="text-xs text-muted-foreground">
-                              Para o pastor e a tesouraria
+                              Ignora as permissões dos ministérios e vê tudo, inclusive finanças e acessos
                             </p>
                           </div>
                           <Switch

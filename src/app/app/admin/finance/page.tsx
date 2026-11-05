@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Lock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -33,10 +33,9 @@ type TabValue = (typeof TABS)[number]["value"];
 const isTabValue = (value: string): value is TabValue => TABS.some((tab) => tab.value === value);
 
 export default function FinancePage() {
-  const { data: session, status } = useSession();
-  const isAdmin = session?.user.isAdmin === true;
+  const { can, isLoading } = usePermissions();
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <PageContainer>
         <LoadingState />
@@ -44,13 +43,13 @@ export default function FinancePage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!can("finance.access")) {
     return (
       <PageContainer>
         <EmptyState
           icon={Lock}
           title="Acesso restrito"
-          description="Finanças é visível apenas para administradores (pastor e tesouraria)."
+          description="Você não tem permissão para acessar as finanças. Fale com um administrador."
         />
       </PageContainer>
     );

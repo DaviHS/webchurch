@@ -1,4 +1,4 @@
-import { adminProcedure, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
+import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { db } from "@/server/db"
@@ -7,6 +7,8 @@ import { compare, hash } from "bcrypt-ts"
 import { eq, asc, count } from "drizzle-orm"
 import { userCreateSchema, userUpdateSchema } from "@/validators/user"
 import { DEFAULT_PASSWORD } from "@/lib/default-password"
+
+const manageUsers = can("users.manage")
 
 const safeUserColumns = {
   id: users.id,
@@ -23,7 +25,7 @@ const safeUserColumns = {
 }
 
 export const userRouter = createTRPCRouter({
-  create: adminProcedure
+  create: manageUsers
     .input(userCreateSchema)
     .mutation(async ({ input }) => {
       const existing = await db
@@ -53,7 +55,7 @@ export const userRouter = createTRPCRouter({
       return newUser
     }),
 
-  list: adminProcedure.query(async () => {
+  list: manageUsers.query(async () => {
     return await db
       .select({
         id: users.id,
@@ -68,7 +70,7 @@ export const userRouter = createTRPCRouter({
       .leftJoin(members, eq(users.memberId, members.id))
   }),
 
-  getById: adminProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  getById: manageUsers.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const [user] = await db
       .select({
         id: users.id,
@@ -86,7 +88,7 @@ export const userRouter = createTRPCRouter({
     return user
   }),
 
-  getByMemberId: adminProcedure
+  getByMemberId: manageUsers
     .input(z.object({ memberId: z.number() }))
     .query(async ({ input }) => {
       const [user] = await db
@@ -98,7 +100,7 @@ export const userRouter = createTRPCRouter({
       return user ?? null;
     }),
 
-  update: adminProcedure
+  update: manageUsers
     .input(userUpdateSchema.extend({
       status: z.enum(["pending", "active", "inactive"]).optional(),
     }))
@@ -107,8 +109,10 @@ export const userRouter = createTRPCRouter({
       const now = new Date()
 
       if (rest.isAdmin !== undefined) {
-        const callerId = Number(ctx.session.user.id)
-        if (callerId === id && !rest.isAdmin) {
+        if (!ctx.access.isAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o perfil de administrador." })
+        }
+        if (Number(ctx.session.user.id) === id && !rest.isAdmin) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode remover o seu próprio acesso de administrador." })
         }
       }
@@ -136,7 +140,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser
     }),
 
-  deactivate: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  deactivate: manageUsers.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const [deletedUser] = await db
       .update(users)
       .set({
@@ -149,7 +153,7 @@ export const userRouter = createTRPCRouter({
     return deletedUser
   }),
 
-  approve: adminProcedure
+  approve: manageUsers
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
@@ -169,7 +173,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
-  reject: adminProcedure
+  reject: manageUsers
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
@@ -188,7 +192,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
-  getPending: adminProcedure.query(async () => {
+  getPending: manageUsers.query(async () => {
     return await db
       .select({
         id: users.id,
@@ -208,7 +212,7 @@ export const userRouter = createTRPCRouter({
       .orderBy(asc(users.createdAt));
   }),
 
-  getPendingCount: adminProcedure.query(async () => {
+  getPendingCount: manageUsers.query(async () => {
     const [result] = await db
       .select({ count: count() })
       .from(users)

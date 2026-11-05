@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, gte, lt, or, sql, sum, type SQL } from "drizzle-orm";
 import { addDays } from "date-fns";
-import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
+import { can, createTRPCRouter } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { financialCategories, financialTransactions, members, monthlyClosures, users } from "@/server/db/schema";
 import {
@@ -12,6 +12,8 @@ import {
   monthlyClosureSchema,
   monthRefSchema,
 } from "@/validators/finance";
+
+const financeProcedure = can("finance.access");
 
 const DEFAULT_CATEGORIES: { name: string; type: "income" | "expense" }[] = [
   { name: "Dízimos", type: "income" },
@@ -125,7 +127,7 @@ const isUniqueViolation = (error: unknown) =>
   typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "23505";
 
 export const financeRouter = createTRPCRouter({
-  listCategories: adminProcedure
+  listCategories: financeProcedure
     .input(z.object({ type: z.enum(["income", "expense"]).optional(), includeInactive: z.boolean().default(false) }))
     .query(({ input }) => {
       const conditions: SQL[] = [];
@@ -138,12 +140,12 @@ export const financeRouter = createTRPCRouter({
         .orderBy(asc(financialCategories.type), asc(financialCategories.name));
     }),
 
-  createCategory: adminProcedure.input(financialCategorySchema).mutation(async ({ input }) => {
+  createCategory: financeProcedure.input(financialCategorySchema).mutation(async ({ input }) => {
     const [category] = await db.insert(financialCategories).values(input).returning();
     return category;
   }),
 
-  updateCategory: adminProcedure.input(financialCategoryUpdateSchema).mutation(async ({ input }) => {
+  updateCategory: financeProcedure.input(financialCategoryUpdateSchema).mutation(async ({ input }) => {
     const { id, ...data } = input;
     const [category] = await db
       .update(financialCategories)
@@ -154,7 +156,7 @@ export const financeRouter = createTRPCRouter({
     return category;
   }),
 
-  setCategoryActive: adminProcedure
+  setCategoryActive: financeProcedure
     .input(z.object({ id: z.number().int().positive(), isActive: z.boolean() }))
     .mutation(async ({ input }) => {
       const [category] = await db
@@ -166,7 +168,7 @@ export const financeRouter = createTRPCRouter({
       return category;
     }),
 
-  createDefaultCategories: adminProcedure.mutation(async () => {
+  createDefaultCategories: financeProcedure.mutation(async () => {
     const [existing] = await db.select({ count: count() }).from(financialCategories);
     if ((existing?.count ?? 0) > 0) {
       throw new TRPCError({ code: "CONFLICT", message: "Já existem categorias cadastradas." });
@@ -174,7 +176,7 @@ export const financeRouter = createTRPCRouter({
     return db.insert(financialCategories).values(DEFAULT_CATEGORIES).returning();
   }),
 
-  listTransactions: adminProcedure
+  listTransactions: financeProcedure
     .input(
       z.object({
         startDate: z.date().optional(),
@@ -215,7 +217,7 @@ export const financeRouter = createTRPCRouter({
       return { transactions: rows, total: totalCount, totalPages: Math.ceil(totalCount / limit), currentPage: page };
     }),
 
-  createTransaction: adminProcedure.input(financialTransactionSchema).mutation(async ({ input }) => {
+  createTransaction: financeProcedure.input(financialTransactionSchema).mutation(async ({ input }) => {
     await Promise.all([assertMonthOpen(input.transactionDate), assertCategoryMatches(input.categoryId, input.type)]);
     const [transaction] = await db
       .insert(financialTransactions)
@@ -224,7 +226,7 @@ export const financeRouter = createTRPCRouter({
     return transaction;
   }),
 
-  updateTransaction: adminProcedure
+  updateTransaction: financeProcedure
     .input(financialTransactionSchema.extend({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
@@ -256,7 +258,7 @@ export const financeRouter = createTRPCRouter({
       return transaction;
     }),
 
-  deleteTransaction: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+  deleteTransaction: financeProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
     const [current] = await db
       .select({ transactionDate: financialTransactions.transactionDate })
       .from(financialTransactions)
@@ -268,7 +270,7 @@ export const financeRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  getFinancialSummary: adminProcedure
+  getFinancialSummary: financeProcedure
     .input(z.object({ startDate: z.date().optional(), endDate: z.date().optional() }))
     .query(async ({ input }) => {
       const conditions = dateFilters(input.startDate, input.endDate);
@@ -276,7 +278,7 @@ export const financeRouter = createTRPCRouter({
       return { totalIncome: income / 100, totalExpenses: expense / 100, balance: (income - expense) / 100 };
     }),
 
-  getMonthSummary: adminProcedure.input(monthRefSchema).query(async ({ input }) => {
+  getMonthSummary: financeProcedure.input(monthRefSchema).query(async ({ input }) => {
     const prev = previousMonth(input);
     const [current, previous, byCategory, transactions, closure, previousClosure, latest] = await Promise.all([
       totalsInCents(inMonth(input)),
@@ -339,7 +341,7 @@ export const financeRouter = createTRPCRouter({
     };
   }),
 
-  closeMonth: adminProcedure.input(monthlyClosureSchema).mutation(async ({ input, ctx }) => {
+  closeMonth: financeProcedure.input(monthlyClosureSchema).mutation(async ({ input, ctx }) => {
     const ref = { month: input.month, year: input.year };
     if (monthIndex(ref) > monthIndex(monthOf(new Date()))) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Não é possível fechar um mês que ainda não começou." });
@@ -390,7 +392,7 @@ export const financeRouter = createTRPCRouter({
     }
   }),
 
-  reopenMonth: adminProcedure.input(monthRefSchema).mutation(async ({ input }) => {
+  reopenMonth: financeProcedure.input(monthRefSchema).mutation(async ({ input }) => {
     const latest = await latestClosure();
     if (!latest || monthIndex(latest) !== monthIndex(input)) {
       throw new TRPCError({ code: "CONFLICT", message: "Só é possível reabrir o último mês fechado." });
@@ -399,7 +401,7 @@ export const financeRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  listMonthlyClosures: adminProcedure.query(() =>
+  listMonthlyClosures: financeProcedure.query(() =>
     db
       .select({
         closure: monthlyClosures,

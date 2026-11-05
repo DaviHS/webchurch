@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { can, createTRPCRouter, protectedProcedure } from "../trpc";
 import { db } from "@/server/db";
 import {
   events,
@@ -29,6 +29,8 @@ const eventParticipantInputSchema = z.object({
   role: z.string().min(1, "Função é obrigatória"),
   instrument: z.string().optional(),
 });
+
+const editEvents = can("events.edit");
 
 export const eventRouter = createTRPCRouter({
   list: protectedProcedure
@@ -143,7 +145,7 @@ export const eventRouter = createTRPCRouter({
     };
   }),
 
-  create: protectedProcedure.input(eventSchema).mutation(async ({ input }) => {
+  create: editEvents.input(eventSchema).mutation(async ({ input }) => {
     const processedData = {
       ...input,
       date: input.date instanceof Date ? input.date : new Date(input.date)
@@ -155,7 +157,7 @@ export const eventRouter = createTRPCRouter({
     return newEvent;
   }),
 
-  update: protectedProcedure
+  update: editEvents
     .input(
       z.object({
         id: z.number(),
@@ -196,7 +198,7 @@ export const eventRouter = createTRPCRouter({
       return updatedEvent;
     }),
 
-  delete: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+  delete: editEvents.input(z.number()).mutation(async ({ input }) => {
     await db.batch([
       db.delete(eventSongs).where(eq(eventSongs.eventId, input)),
       db.delete(eventParticipants).where(eq(eventParticipants.eventId, input)),
@@ -205,7 +207,7 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  addSong: protectedProcedure
+  addSong: editEvents
     .input(eventSongInputSchema)
     .mutation(async ({ input }) => {
       const cleanedData = cleanEmptyStrings(input);
@@ -213,7 +215,7 @@ export const eventRouter = createTRPCRouter({
       return eventSong;
     }),
 
-  addPassage: protectedProcedure
+  addPassage: editEvents
     .input(
       z.object({
         eventId: z.number().int().positive(),
@@ -241,17 +243,17 @@ export const eventRouter = createTRPCRouter({
       return created;
     }),
 
-  removePassage: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+  removePassage: editEvents.input(z.number()).mutation(async ({ input }) => {
     await db.delete(eventPassages).where(eq(eventPassages.id, input));
     return { success: true };
   }),
 
-  removeSong: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+  removeSong: editEvents.input(z.number()).mutation(async ({ input }) => {
     await db.delete(eventSongs).where(eq(eventSongs.id, input));
     return { success: true };
   }),
 
-  addParticipant: protectedProcedure
+  addParticipant: editEvents
     .input(eventParticipantInputSchema)
     .mutation(async ({ input }) => {
       const cleanedData = cleanEmptyStrings(input);
@@ -259,7 +261,7 @@ export const eventRouter = createTRPCRouter({
       return participant;
     }),
 
-  removeParticipant: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+  removeParticipant: editEvents.input(z.number()).mutation(async ({ input }) => {
     await db.delete(eventParticipants).where(eq(eventParticipants.id, input));
     return { success: true };
   }),
@@ -333,7 +335,7 @@ export const eventRouter = createTRPCRouter({
     }));
   }),
 
-  createTemplate: protectedProcedure.mutation(async () => {
+  createTemplate: editEvents.mutation(async () => {
     const [template] = await db
       .insert(events)
       .values({
@@ -347,7 +349,7 @@ export const eventRouter = createTRPCRouter({
     return template;
   }),
 
-  createFromTemplate: protectedProcedure
+  createFromTemplate: editEvents
     .input(z.number())
     .mutation(async ({ input: templateId }) => {
       const template = await db
@@ -412,7 +414,7 @@ export const eventRouter = createTRPCRouter({
       return newEvent;
     }),
 
-  updateSongOrder: protectedProcedure
+  updateSongOrder: editEvents
     .input(z.object({
       eventSongId: z.number(),
       newOrder: z.number(),

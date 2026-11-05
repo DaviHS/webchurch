@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBibleVersion } from "@/hooks/use-bible-version";
+import { usePermissions } from "@/hooks/use-permissions";
 import { mutationFeedback } from "@/lib/mutation-feedback";
 import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/types";
@@ -24,6 +25,8 @@ interface EventPassagesManagerProps {
 }
 
 export function EventPassagesManager({ eventId, passages, onUpdate }: EventPassagesManagerProps) {
+  const { can } = usePermissions();
+  const canEdit = can("events.edit");
   const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
   const [version, setVersion] = useBibleVersion(versions);
   const [reference, setReference] = useState("");
@@ -60,41 +63,43 @@ export function EventPassagesManager({ eventId, passages, onUpdate }: EventPassa
           Passagens bíblicas ({passages.length})
         </h3>
 
-        <form className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_auto]" onSubmit={submit}>
-          <Input
-            value={reference}
-            onChange={(event) => setReference(event.target.value)}
-            placeholder="Ex.: Salmo 23 ou Jo 3:16-18"
-            autoCapitalize="none"
-            autoCorrect="off"
-            aria-label="Passagem bíblica"
-          />
-          <Select value={version ?? undefined} onValueChange={setVersion}>
-            <SelectTrigger className="w-full" aria-label="Versão">
-              <SelectValue placeholder="Versão" />
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {versions?.map((v) => (
-                <SelectItem key={v.code} value={v.code}>
-                  {v.code}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={placement} onValueChange={(value) => setPlacement(value === "before" ? "before" : "after")}>
-            <SelectTrigger className="w-full" aria-label="Posição no repertório">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="before">{PLACEMENT_LABELS.before}</SelectItem>
-              <SelectItem value="after">{PLACEMENT_LABELS.after}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button type="submit" disabled={!canAdd}>
-            <Plus />
-            Adicionar
-          </Button>
-        </form>
+        {canEdit && (
+          <form className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_auto]" onSubmit={submit}>
+            <Input
+              value={reference}
+              onChange={(event) => setReference(event.target.value)}
+              placeholder="Ex.: Salmo 23 ou Jo 3:16-18"
+              autoCapitalize="none"
+              autoCorrect="off"
+              aria-label="Passagem bíblica"
+            />
+            <Select value={version ?? undefined} onValueChange={setVersion}>
+              <SelectTrigger className="w-full" aria-label="Versão">
+                <SelectValue placeholder="Versão" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {versions?.map((v) => (
+                  <SelectItem key={v.code} value={v.code}>
+                    {v.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={placement} onValueChange={(value) => setPlacement(value === "before" ? "before" : "after")}>
+              <SelectTrigger className="w-full" aria-label="Posição no repertório">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="before">{PLACEMENT_LABELS.before}</SelectItem>
+                <SelectItem value="after">{PLACEMENT_LABELS.after}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="submit" disabled={!canAdd}>
+              <Plus />
+              Adicionar
+            </Button>
+          </form>
+        )}
 
         {passages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -113,17 +118,19 @@ export function EventPassagesManager({ eventId, passages, onUpdate }: EventPassa
                     <span>{passage.placement === "before" ? PLACEMENT_LABELS.before : PLACEMENT_LABELS.after}</span>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => removeMutation.mutate(passage.id)}
-                  disabled={removeMutation.isPending}
-                  className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  title="Remover passagem"
-                  aria-label="Remover passagem"
-                >
-                  <Trash2 />
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeMutation.mutate(passage.id)}
+                    disabled={removeMutation.isPending}
+                    className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    title="Remover passagem"
+                    aria-label="Remover passagem"
+                  >
+                    <Trash2 />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

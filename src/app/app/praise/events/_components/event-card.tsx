@@ -5,6 +5,7 @@ import { Calendar, Edit, Info, MapPin, Projector, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { RowActionsMenu } from "@/components/row-actions-menu";
+import { usePermissions } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/formatters";
 import { eventTypeBadge, eventTypeLabel } from "@/lib/labels";
 import type { EventData } from "@/types";
@@ -17,6 +18,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardProps) {
+  const canEdit = usePermissions().can("events.edit");
   const handleKeyDown = (keyboardEvent: KeyboardEvent<HTMLDivElement>) => {
     if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
     if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
@@ -45,10 +47,10 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardP
           <RowActionsMenu
             label={`Ações do evento ${event.title}`}
             actions={[
-              { label: "Editar", icon: Edit, onSelect: () => onEdit(event) },
+              { label: "Editar", icon: Edit, onSelect: () => onEdit(event), hidden: !canEdit },
               { label: "Apresentar", icon: Projector, href: `/presentation/control?event=${event.id}` },
               { label: "Detalhes", icon: Info, onSelect: () => onViewDetails(event) },
-              { label: "Excluir", icon: Trash2, onSelect: () => onDelete(event), destructive: true },
+              { label: "Excluir", icon: Trash2, onSelect: () => onDelete(event), destructive: true, hidden: !canEdit },
             ]}
           />
         </div>

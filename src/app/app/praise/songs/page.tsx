@@ -27,12 +27,14 @@ import { SongEmptyState } from "./_components/song-empty-state";
 import { useSongMutations } from "@/hooks/use-song-mutations";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { useDebounce } from "@/hooks/use-debounce";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { Song } from "@/types";
 import type { SongFormData } from "@/validators/song";
 
 const PAGE_SIZE = 24;
 
 export default function SongsPage() {
+  const canEdit = usePermissions().can("songs.edit");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState("");
@@ -126,7 +128,7 @@ export default function SongsPage() {
         <LastExecutionsDialog song={historySong} open={historyDialogOpen} onOpenChange={setHistoryDialogOpen} />
       )}
 
-      <ResponsiveDialog open={songDialog.open} onOpenChange={songDialog.onOpenChange}>
+      <ResponsiveDialog open={songDialog.open && canEdit} onOpenChange={songDialog.onOpenChange}>
         <ResponsiveDialogContent size="lg">
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle>{songDialog.isEditing ? "Editar música" : "Nova música"}</ResponsiveDialogTitle>
@@ -147,16 +149,18 @@ export default function SongsPage() {
         description="Repertório do ministério de louvor."
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            {duplicateGroups && duplicateGroups.length > 0 && (
+            {canEdit && duplicateGroups && duplicateGroups.length > 0 && (
               <Button variant="outline" onClick={() => setDuplicatesOpen(true)} className="w-full sm:w-auto">
                 <Merge />
                 Duplicadas ({duplicateGroups.length})
               </Button>
             )}
-            <Button onClick={songDialog.openCreate} className="w-full sm:w-auto">
-              <Plus />
-              Nova música
-            </Button>
+            {canEdit && (
+              <Button onClick={songDialog.openCreate} className="w-full sm:w-auto">
+                <Plus />
+                Nova música
+              </Button>
+            )}
           </div>
         }
       />
@@ -204,7 +208,7 @@ export default function SongsPage() {
             </>
           ) : (
             <SongEmptyState
-              onCreateClick={songDialog.openCreate}
+              onCreateClick={canEdit ? songDialog.openCreate : undefined}
               filtered={debouncedSearch !== "" || category !== ""}
             />
           )}

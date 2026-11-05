@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { usePermissions } from "@/hooks/use-permissions"
 import { MoreHorizontal, Plus } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import {
@@ -47,7 +47,8 @@ export function MobileNavigation() {
   const active = findActiveLink(pathname)
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const [isFabOpen, setIsFabOpen] = useState(false)
-  const isAdmin = useSession().data?.user.isAdmin ?? false
+  const { can } = usePermissions()
+  const quickActions = QUICK_ACTIONS.filter((action) => can(action.permission))
 
   const secondaryActive = active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url)
 
@@ -60,41 +61,44 @@ export function MobileNavigation() {
           onClick={() => setIsFabOpen(false)}
         />
       )}
-      <div className="pointer-events-none fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2">
-        <div
-          id="quick-actions"
-          className={cn(
-            "flex flex-col items-end gap-2 transition-all duration-200 ease-out",
-            isFabOpen ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
-          )}
-        >
-          {QUICK_ACTIONS.map(({ title, url, icon: Icon }) => (
-            <Link
-              key={url}
-              href={url}
-              tabIndex={isFabOpen ? 0 : -1}
-              onClick={() => setIsFabOpen(false)}
-              className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold shadow-lg active:scale-95"
-            >
-              <Icon className="size-4 text-primary" />
-              {title}
-            </Link>
-          ))}
+      {quickActions.length > 0 && (
+        <div className="pointer-events-none fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2">
+          <div
+            id="quick-actions"
+            className={cn(
+              "flex flex-col items-end gap-2 transition-all duration-200 ease-out",
+              isFabOpen ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
+            )}
+          >
+            {quickActions.map(({ title, url, icon: Icon }) => (
+              <Link
+                key={url}
+                href={url}
+                tabIndex={isFabOpen ? 0 : -1}
+                onClick={() => setIsFabOpen(false)}
+                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold shadow-lg active:scale-95"
+              >
+                <Icon className="size-4 text-primary" />
+                {title}
+              </Link>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="Ações rápidas"
+            aria-expanded={isFabOpen}
+            aria-controls="quick-actions"
+            onClick={() => setIsFabOpen((open) => !open)}
+            className={cn(
+              "pointer-events-auto flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform duration-200 active:scale-90",
+              isFabOpen && "rotate-45"
+            )}
+          >
+            <Plus className="size-6" />
+          </button>
         </div>
-        <button
-          type="button"
-          aria-label="Ações rápidas"
-          aria-expanded={isFabOpen}
-          aria-controls="quick-actions"
-          onClick={() => setIsFabOpen((open) => !open)}
-          className={cn(
-            "pointer-events-auto flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform duration-200 active:scale-90",
-            isFabOpen && "rotate-45"
-          )}
-        >
-          <Plus className="size-6" />
-        </button>
-      </div>
+  
+      )}
 
       <nav
         aria-label="Navegação principal"
@@ -148,7 +152,7 @@ export function MobileNavigation() {
               ))}
             </div>
             {NAV_SECTIONS.map((section) => {
-              const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, isAdmin))
+              const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can))
               if (links.length === 0) return null
               return (
                 <div key={section.title} className="space-y-2">

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useConfirm } from "@/components/confirm-dialog";
 import { SearchInput } from "@/components/search-input";
 import { useDebounce } from "@/hooks/use-debounce";
+import { usePermissions } from "@/hooks/use-permissions";
 import { fullName } from "@/lib/formatters";
 import { songCategoryLabel } from "@/lib/labels";
 import { mutationFeedback } from "@/lib/mutation-feedback";
@@ -48,6 +49,8 @@ function SongSummary({ title, artist, category }: { title: string; artist: strin
 }
 
 export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManagerProps) {
+  const { can } = usePermissions();
+  const canEdit = can("events.edit");
   const confirm = useConfirm();
   const [selectedSong, setSelectedSong] = useState<SongOption | null>(null);
   const [leaderId, setLeaderId] = useState(NO_LEADER);
@@ -153,74 +156,76 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
 
   return (
     <div className="space-y-4">
-      <CollapsibleAddPanel title="Adicionar música">
-        <div className="space-y-2">
-          <Label>Música</Label>
-          {selectedSong ? (
-            <SelectedPick onClear={() => setSelectedSong(null)} clearLabel="Trocar música">
-              <SongSummary title={selectedSong.title} artist={selectedSong.artist} category={selectedSong.category} />
-            </SelectedPick>
-          ) : (
-            <>
-              <SearchInput
-                value={songSearch}
-                onChange={setSongSearch}
-                placeholder="Buscar música…"
-                isLoading={songSearch !== debouncedSongSearch}
-              />
-              <SearchPickList
-                label="Músicas disponíveis"
-                items={availableSongs}
-                isLoading={isLoadingSongs}
-                getKey={(song) => song.id}
-                onSelect={handleSelectSong}
-                emptyMessage={songSearch ? "Nenhuma música encontrada" : "Nenhuma música disponível"}
-                renderItem={(song) => <SongSummary title={song.title} artist={song.artist} category={song.category} />}
-              />
-            </>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {canEdit && (
+        <CollapsibleAddPanel title="Adicionar música">
           <div className="space-y-2">
-            <Label htmlFor="leader-select">Líder (opcional)</Label>
-            <Select value={leaderId} onValueChange={setLeaderId}>
-              <SelectTrigger id="leader-select">
-                <SelectValue placeholder="Sem líder" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_LEADER}>Sem líder</SelectItem>
-                {allMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id.toString()}>
-                    {fullName(member)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Música</Label>
+            {selectedSong ? (
+              <SelectedPick onClear={() => setSelectedSong(null)} clearLabel="Trocar música">
+                <SongSummary title={selectedSong.title} artist={selectedSong.artist} category={selectedSong.category} />
+              </SelectedPick>
+            ) : (
+              <>
+                <SearchInput
+                  value={songSearch}
+                  onChange={setSongSearch}
+                  placeholder="Buscar música…"
+                  isLoading={songSearch !== debouncedSongSearch}
+                />
+                <SearchPickList
+                  label="Músicas disponíveis"
+                  items={availableSongs}
+                  isLoading={isLoadingSongs}
+                  getKey={(song) => song.id}
+                  onSelect={handleSelectSong}
+                  emptyMessage={songSearch ? "Nenhuma música encontrada" : "Nenhuma música disponível"}
+                  renderItem={(song) => <SongSummary title={song.title} artist={song.artist} category={song.category} />}
+                />
+              </>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="song-notes">Observações</Label>
-            <Input
-              id="song-notes"
-              placeholder="Notas sobre a música…"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="leader-select">Líder (opcional)</Label>
+              <Select value={leaderId} onValueChange={setLeaderId}>
+                <SelectTrigger id="leader-select">
+                  <SelectValue placeholder="Sem líder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_LEADER}>Sem líder</SelectItem>
+                  {allMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id.toString()}>
+                      {fullName(member)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="flex justify-end">
-          <Button
-            onClick={handleAddSong}
-            disabled={!selectedSong || addSongMutation.isPending}
-            className="w-full sm:w-auto"
-          >
-            <Plus />
-            Adicionar
-          </Button>
-        </div>
-      </CollapsibleAddPanel>
+            <div className="space-y-2">
+              <Label htmlFor="song-notes">Observações</Label>
+              <Input
+                id="song-notes"
+                placeholder="Notas sobre a música…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleAddSong}
+              disabled={!selectedSong || addSongMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Plus />
+              Adicionar
+            </Button>
+          </div>
+        </CollapsibleAddPanel>
+      )}
 
       <Card>
         <CardContent className="p-4">
@@ -233,35 +238,37 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
             <EmptyState
               icon={Music}
               title="Nenhuma música adicionada"
-              description="Adicione músicas usando o formulário acima."
+              description={canEdit ? "Adicione músicas usando o formulário acima." : "O repertório ainda não foi montado."}
               className="py-8"
             />
           ) : (
             <ul className="space-y-2">
               {sortedSongs.map((song, index) => (
                 <li key={song.id} className="flex items-center gap-2 rounded-lg border p-2 sm:gap-3 sm:p-3">
-                  <div className="flex shrink-0 flex-col gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => handleMoveSong(index, "up")}
-                      title="Mover para cima"
-                      aria-label="Mover para cima"
-                      disabled={index === 0 || moveSongMutation.isPending}
-                    >
-                      <ArrowUp />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => handleMoveSong(index, "down")}
-                      title="Mover para baixo"
-                      aria-label="Mover para baixo"
-                      disabled={index === sortedSongs.length - 1 || moveSongMutation.isPending}
-                    >
-                      <ArrowDown />
-                    </Button>
-                  </div>
+                  {canEdit && (
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => handleMoveSong(index, "up")}
+                        title="Mover para cima"
+                        aria-label="Mover para cima"
+                        disabled={index === 0 || moveSongMutation.isPending}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => handleMoveSong(index, "down")}
+                        title="Mover para baixo"
+                        aria-label="Mover para baixo"
+                        disabled={index === sortedSongs.length - 1 || moveSongMutation.isPending}
+                      >
+                        <ArrowDown />
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                     {song.order}
@@ -286,17 +293,19 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                     {song.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{song.notes}</p>}
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleRemoveSong(song)}
-                    disabled={removeSongMutation.isPending}
-                    className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    title="Remover música"
-                    aria-label="Remover música"
-                  >
-                    <Trash2 />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleRemoveSong(song)}
+                      disabled={removeSongMutation.isPending}
+                      className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title="Remover música"
+                      aria-label="Remover música"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>

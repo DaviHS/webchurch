@@ -10,6 +10,7 @@ import { presentationRouter } from "./routers/presentation";
 import { reportRouter } from "./routers/report";
 import { bibleRouter } from "./routers/bible";
 import { remoteRouter } from "./routers/remote";
+import { accessRouter } from "@/server/api/routers/access";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   report: reportRouter,
   bible: bibleRouter,
   remote: remoteRouter,
+  access: accessRouter,
 });
 
 export type AppRouter = typeof appRouter;

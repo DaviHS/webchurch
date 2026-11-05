@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { songs, eventSongs } from "@/server/db/schema";
 import { songSchema, songCategories, type SongCategory } from "@/validators/song";
@@ -132,6 +132,8 @@ async function syncSpotifyTrack(oldId: string | null, newId: string | null): Pro
   if (newId) await spotifyService.addToPlaylist(newId, SPOTIFY_PLAYLIST_ID);
 }
 
+const editSongs = can("songs.edit");
+
 export const songRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
@@ -224,7 +226,7 @@ export const songRouter = createTRPCRouter({
     return [...groups.values()].filter((group) => group.length > 1);
   }),
 
-  merge: protectedProcedure
+  merge: editSongs
     .input(z.object({ keepId: z.number(), removeIds: z.array(z.number()).min(1) }))
     .mutation(async ({ input }) => {
       const removeIds = input.removeIds.filter((id) => id !== input.keepId);
@@ -267,7 +269,7 @@ export const songRouter = createTRPCRouter({
       return { merged: removed.length, warnings };
     }),
 
-  create: protectedProcedure.input(songSchema.extend({ allowDuplicate: z.boolean().optional() })).mutation(async ({ input: { allowDuplicate, ...input } }) => {
+  create: editSongs.input(songSchema.extend({ allowDuplicate: z.boolean().optional() })).mutation(async ({ input: { allowDuplicate, ...input } }) => {
     if (!allowDuplicate) await assertNoDuplicate(input.title, input.artist);
     const warnings: string[] = [];
 
@@ -290,7 +292,7 @@ export const songRouter = createTRPCRouter({
     return { song, warnings };
   }),
 
-  update: protectedProcedure
+  update: editSongs
     .input(
       z.object({
         id: z.number(),
@@ -367,7 +369,7 @@ export const songRouter = createTRPCRouter({
       return { song, warnings };
     }),
 
-  delete: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+  delete: editSongs.input(z.number()).mutation(async ({ input }) => {
     const [usage] = await db
       .select({ count: count() })
       .from(eventSongs)
@@ -396,7 +398,7 @@ export const songRouter = createTRPCRouter({
     .input(z.object({ force: z.boolean().default(false) }).optional())
     .query(({ input }) => youtubeService.getStatus({ force: input?.force ?? false })),
 
-  syncYouTubePlaylist: protectedProcedure.mutation(async () => {
+  syncYouTubePlaylist: editSongs.mutation(async () => {
     const rows = await db
       .select({ id: songs.id, videoId: songs.youtubeVideoId, duration: songs.duration })
       .from(songs)

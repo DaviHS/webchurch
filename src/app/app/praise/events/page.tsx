@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { PaginationBar } from "@/components/pagination-bar";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { mutationFeedback } from "@/lib/mutation-feedback";
@@ -21,6 +22,7 @@ import { EventFilters } from "./_components/event-filters";
 import { EventGrid } from "./_components/event-grid";
 
 export default function EventsPage() {
+  const canEdit = usePermissions().can("events.edit");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [type, setType] = useState("");
@@ -107,7 +109,7 @@ export default function EventsPage() {
   return (
     <PageContainer>
       <EventDialog
-        open={eventDialog.open}
+        open={eventDialog.open && canEdit}
         onOpenChange={eventDialog.onOpenChange}
         onSubmit={handleSubmit}
         initialData={eventDialog.editing}
@@ -130,10 +132,12 @@ export default function EventsPage() {
         icon={Calendar}
         description="Cultos, ensaios e demais eventos com o repertório de cada um."
         actions={
-          <Button onClick={eventDialog.openCreate} className="w-full sm:w-auto">
-            <Plus />
-            Novo evento
-          </Button>
+          canEdit ? (
+            <Button onClick={eventDialog.openCreate} className="w-full sm:w-auto">
+              <Plus />
+              Novo evento
+            </Button>
+          ) : undefined
         }
       />
 
@@ -160,12 +164,14 @@ export default function EventsPage() {
               <EmptyState
                 icon={Calendar}
                 title="Nenhum evento cadastrado"
-                description="Crie o primeiro evento para montar o repertório."
+                description={canEdit ? "Crie o primeiro evento para montar o repertório." : "Ainda não há eventos cadastrados."}
                 action={
-                  <Button variant="outline" onClick={eventDialog.openCreate}>
-                    <Plus />
-                    Novo evento
-                  </Button>
+                  canEdit ? (
+                    <Button variant="outline" onClick={eventDialog.openCreate}>
+                      <Plus />
+                      Novo evento
+                    </Button>
+                  ) : undefined
                 }
               />
             )

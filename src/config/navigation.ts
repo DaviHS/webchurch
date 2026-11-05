@@ -11,13 +11,14 @@ import {
   Workflow,
   type LucideIcon,
 } from "lucide-react";
+import type { Permission } from "@/lib/permissions";
 
 export interface NavLink {
   title: string;
   url: string;
   icon: LucideIcon;
   badge?: "pendingUsers";
-  adminOnly?: boolean;
+  permission?: Permission;
 }
 
 export interface NavSection {
@@ -46,25 +47,25 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Administração",
     icon: Shield,
     items: [
-      { title: "Membros", url: "/app/admin/members", icon: Users, adminOnly: true },
-      { title: "Aprovações", url: "/app/admin/members/pending", icon: UserCheck, badge: "pendingUsers", adminOnly: true },
-      { title: "Ministérios e Funções", url: "/app/admin/ministries", icon: Workflow, adminOnly: true },
-      { title: "Finanças", url: "/app/admin/finance", icon: DollarSign, adminOnly: true },
+      { title: "Membros", url: "/app/admin/members", icon: Users, permission: "members.manage" },
+      { title: "Aprovações", url: "/app/admin/members/pending", icon: UserCheck, badge: "pendingUsers", permission: "users.manage" },
+      { title: "Ministérios e Funções", url: "/app/admin/ministries", icon: Workflow, permission: "ministries.manage" },
+      { title: "Finanças", url: "/app/admin/finance", icon: DollarSign, permission: "finance.access" },
     ],
   },
 ];
 
 export const MOBILE_PRIMARY_URLS = ["/app", "/app/praise/songs", "/app/praise/events", "/app/praise/reports"];
 
-export const QUICK_ACTIONS: { title: string; url: string; icon: LucideIcon }[] = [
-  { title: "Nova música", url: "/app/praise/songs?novo=1", icon: Music },
-  { title: "Novo evento", url: "/app/praise/events?novo=1", icon: Calendar },
-  { title: "Novo membro", url: "/app/admin/members?novo=1", icon: Users },
+export const QUICK_ACTIONS: { title: string; url: string; icon: LucideIcon; permission: Permission }[] = [
+  { title: "Nova música", url: "/app/praise/songs?novo=1", icon: Music, permission: "songs.edit" },
+  { title: "Novo evento", url: "/app/praise/events?novo=1", icon: Calendar, permission: "events.edit" },
+  { title: "Novo membro", url: "/app/admin/members?novo=1", icon: Users, permission: "members.manage" },
 ];
 
 export const ALL_LINKS: NavLink[] = [HOME_LINK, ...STANDALONE_LINKS, ...NAV_SECTIONS.flatMap((section) => section.items)];
 
-export const canSee = (link: NavLink, isAdmin: boolean) => !link.adminOnly || isAdmin;
+export const canSee = (link: NavLink, can: (permission?: Permission) => boolean) => can(link.permission);
 
 export interface Breadcrumb {
   label: string;

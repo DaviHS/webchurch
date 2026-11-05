@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Users, Briefcase, Settings, Eye, Pencil, Ban, Workflow } from "lucide-react";
+import { Plus, Users, Briefcase, Settings, Eye, Pencil, Ban, Workflow, KeyRound } from "lucide-react";
 import { api } from "@/trpc/react";
 import { MinistryDialog, type Ministry } from "./_components/ministry-dialog";
 import { FunctionDialog, type MinistryFunction } from "./_components/function-dialog";
 import { MinistryFunctionsDialog } from "./_components/ministry-functions-dialog";
 import { MinistryMembersDialog } from "./_components/ministry-members-dialog";
+import { MinistryPermissionsDialog } from "./_components/ministry-permissions-dialog";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -23,6 +25,8 @@ export default function MinistriesPage() {
   const [activeTab, setActiveTab] = useState("ministries");
   const [isMinistryFunctionsDialogOpen, setIsMinistryFunctionsDialogOpen] = useState(false);
   const [isMinistryMembersDialogOpen, setIsMinistryMembersDialogOpen] = useState(false);
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const { can } = usePermissions();
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const ministryDialog = useEntityDialog<Ministry>();
   const functionDialog = useEntityDialog<MinistryFunction>();
@@ -52,6 +56,11 @@ export default function MinistriesPage() {
   const handleManageFunctions = (ministry: Ministry) => {
     setSelectedMinistry(ministry);
     setIsMinistryFunctionsDialogOpen(true);
+  };
+
+  const handleManagePermissions = (ministry: Ministry) => {
+    setSelectedMinistry(ministry);
+    setIsPermissionsDialogOpen(true);
   };
 
   const handleViewMembers = (ministry: Ministry) => {
@@ -144,6 +153,9 @@ export default function MinistriesPage() {
                         className="-mr-2 -mt-2"
                         actions={[
                           { label: "Editar ministério", icon: Pencil, onSelect: () => ministryDialog.openEdit(ministry) },
+                          ...(can("users.manage")
+                            ? [{ label: "Permissões de acesso", icon: KeyRound, onSelect: () => handleManagePermissions(ministry) }]
+                            : []),
                           {
                             label: "Desativar ministério",
                             icon: Ban,
@@ -268,6 +280,12 @@ export default function MinistriesPage() {
         ministry={selectedMinistry}
         open={isMinistryMembersDialogOpen}
         onOpenChange={setIsMinistryMembersDialogOpen}
+      />
+
+      <MinistryPermissionsDialog
+        ministry={selectedMinistry}
+        open={isPermissionsDialogOpen}
+        onOpenChange={setIsPermissionsDialogOpen}
       />
     </PageContainer>
   );

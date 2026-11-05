@@ -14,6 +14,7 @@ import { mutationFeedback } from "@/lib/mutation-feedback";
 import { api } from "@/trpc/react";
 import type { EventParticipant, RouterOutputs } from "@/types";
 import { CollapsibleAddPanel } from "./collapsible-add-panel";
+import { usePermissions } from "@/hooks/use-permissions";
 import { SearchPickList, SelectedPick } from "./search-pick-list";
 
 type MemberOption = RouterOutputs["member"]["list"][number]["members"];
@@ -33,6 +34,8 @@ interface EventParticipantsManagerProps {
 }
 
 export function EventParticipantsManager({ eventId, participants, onUpdate }: EventParticipantsManagerProps) {
+  const { can } = usePermissions();
+  const canEdit = can("events.edit");
   const confirm = useConfirm();
   const [selectedMember, setSelectedMember] = useState<MemberOption | null>(null);
   const [role, setRole] = useState("");
@@ -85,58 +88,60 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
 
   return (
     <div className="space-y-4">
-      <CollapsibleAddPanel title="Adicionar participante">
-        <div className="space-y-2">
-          <Label>Membro</Label>
-          {selectedMember ? (
-            <SelectedPick onClear={() => setSelectedMember(null)} clearLabel="Trocar membro">
-              <p className="truncate font-medium">{fullName(selectedMember)}</p>
-            </SelectedPick>
-          ) : (
-            <>
-              <SearchInput value={memberSearch} onChange={setMemberSearch} placeholder="Buscar membro…" />
-              <SearchPickList
-                label="Membros"
-                items={filteredMembers}
-                isLoading={isLoadingMembers}
-                getKey={(member) => member.id}
-                onSelect={setSelectedMember}
-                emptyMessage={memberSearch ? "Nenhum membro encontrado" : "Nenhum membro cadastrado"}
-                renderItem={(member) => <span className="block w-full truncate font-medium">{fullName(member)}</span>}
-              />
-            </>
-          )}
-        </div>
+      {canEdit && (
+        <CollapsibleAddPanel title="Adicionar participante">
+          <div className="space-y-2">
+            <Label>Membro</Label>
+            {selectedMember ? (
+              <SelectedPick onClear={() => setSelectedMember(null)} clearLabel="Trocar membro">
+                <p className="truncate font-medium">{fullName(selectedMember)}</p>
+              </SelectedPick>
+            ) : (
+              <>
+                <SearchInput value={memberSearch} onChange={setMemberSearch} placeholder="Buscar membro…" />
+                <SearchPickList
+                  label="Membros"
+                  items={filteredMembers}
+                  isLoading={isLoadingMembers}
+                  getKey={(member) => member.id}
+                  onSelect={setSelectedMember}
+                  emptyMessage={memberSearch ? "Nenhum membro encontrado" : "Nenhum membro cadastrado"}
+                  renderItem={(member) => <span className="block w-full truncate font-medium">{fullName(member)}</span>}
+                />
+              </>
+            )}
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="role-input">Função</Label>
-          <Input
-            id="role-input"
-            placeholder="Ex: Vocalista, Back Vocal…"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            list="role-suggestions"
-            autoComplete="off"
-            enterKeyHint="done"
-          />
-          <datalist id="role-suggestions">
-            {COMMON_ROLES.map((commonRole) => (
-              <option key={commonRole} value={commonRole} />
-            ))}
-          </datalist>
-        </div>
+          <div className="space-y-2">
+            <Label htmlFor="role-input">Função</Label>
+            <Input
+              id="role-input"
+              placeholder="Ex: Vocalista, Back Vocal…"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              list="role-suggestions"
+              autoComplete="off"
+              enterKeyHint="done"
+            />
+            <datalist id="role-suggestions">
+              {COMMON_ROLES.map((commonRole) => (
+                <option key={commonRole} value={commonRole} />
+              ))}
+            </datalist>
+          </div>
 
-        <div className="flex justify-end">
-          <Button
-            onClick={handleAddParticipant}
-            disabled={!selectedMember || !trimmedRole || addParticipantMutation.isPending}
-            className="w-full sm:w-auto"
-          >
-            <Plus />
-            Adicionar
-          </Button>
-        </div>
-      </CollapsibleAddPanel>
+          <div className="flex justify-end">
+            <Button
+              onClick={handleAddParticipant}
+              disabled={!selectedMember || !trimmedRole || addParticipantMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Plus />
+              Adicionar
+            </Button>
+          </div>
+        </CollapsibleAddPanel>
+      )}
 
       <Card>
         <CardContent className="p-4">
@@ -149,7 +154,7 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
             <EmptyState
               icon={Users}
               title="Nenhum participante adicionado"
-              description="Adicione participantes usando o formulário acima."
+              description={canEdit ? "Adicione participantes usando o formulário acima." : "Ninguém foi escalado ainda."}
               className="py-8"
             />
           ) : (
@@ -168,17 +173,19 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
                     </p>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleRemoveParticipant(participant)}
-                    disabled={removeParticipantMutation.isPending}
-                    className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    title="Remover participante"
-                    aria-label="Remover participante"
-                  >
-                    <Trash2 />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleRemoveParticipant(participant)}
+                      disabled={removeParticipantMutation.isPending}
+                      className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title="Remover participante"
+                      aria-label="Remover participante"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>

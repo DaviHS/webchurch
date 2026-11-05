@@ -127,6 +127,13 @@ export const songs = createTable("songs", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
+export const ministryPermissions = createTable("ministry_permissions", (d) => ({
+  id: d.serial("id").primaryKey(),
+  ministryId: d.integer("ministry_id").notNull().references(() => ministries.id, { onDelete: "cascade" }),
+  functionId: d.integer("function_id").references(() => functions.id, { onDelete: "cascade" }),
+  permission: d.varchar("permission", { length: 40 }).notNull(),
+}))
+
 export const events = createTable("events", (d) => ({
   id: d.serial("id").primaryKey(),
   title: d.varchar("title", { length: 200 }).notNull(),

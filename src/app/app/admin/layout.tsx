@@ -1,16 +1,19 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
+import { usePathname } from "next/navigation";
 import { Lock } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { PageContainer } from "@/components/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { findActiveLink } from "@/config/navigation";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function AdminLayout({ children }: Readonly<PropsWithChildren>) {
-  const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const { can, isLoading } = usePermissions();
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <PageContainer>
         <LoadingState />
@@ -18,10 +21,14 @@ export default function AdminLayout({ children }: Readonly<PropsWithChildren>) {
     );
   }
 
-  if (session?.user.isAdmin !== true) {
+  if (!can(findActiveLink(pathname)?.link.permission)) {
     return (
       <PageContainer>
-        <EmptyState icon={Lock} title="Acesso restrito" description="Esta área é apenas para administradores." />
+        <EmptyState
+          icon={Lock}
+          title="Acesso restrito"
+          description="Você não tem permissão para acessar esta área. Fale com um administrador."
+        />
       </PageContainer>
     );
   }
