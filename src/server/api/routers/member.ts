@@ -7,9 +7,12 @@ import {
   memberMinistries,
   users,
   functions,
+  functionPermissions,
   ministries,
 } from "@/server/db/schema";
 import { memberSchema } from "@/validators/member";
+import { isPermission } from "@/lib/permissions";
+import type { Access } from "@/server/access";
 import {
   eq,
   and,
@@ -36,8 +39,28 @@ const toMemberMinistryRows = (memberId: number, ministriesInput: MinistryInput[]
 
 const manageMembers = can("members.manage");
 
+async function assertCanGrantFunctions(access: Access, ministriesInput: MinistryInput[] = [], alreadyHeld = new Set<number>()) {
+  const functionIds = [
+    ...new Set(ministriesInput.flatMap((m) => (m.functionId && !alreadyHeld.has(m.functionId) ? [m.functionId] : []))),
+  ];
+  if (functionIds.length === 0) return;
+
+  const granted = await db
+    .select({ permission: functionPermissions.permission })
+    .from(functionPermissions)
+    .where(inArray(functionPermissions.functionId, functionIds));
+
+  if (granted.some((row) => !isPermission(row.permission) || !access.permissions.has(row.permission))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Você não pode atribuir funções com permissões que você mesmo não tem.",
+    });
+  }
+}
+
 export const memberRouter = createTRPCRouter({
-  create: manageMembers.input(memberSchema).mutation(async ({ input }) => {
+  create: manageMembers.input(memberSchema).mutation(async ({ input, ctx }) => {
+    await assertCanGrantFunctions(ctx.access, input.ministries);
     const { ministries: ministriesInput, ...memberData } = input;
     const cleanedData = cleanEmptyStrings(memberData);
 
@@ -202,7 +225,17 @@ export const memberRouter = createTRPCRouter({
         data: memberSchema,
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const held = await db
+        .select({ functionId: memberMinistries.functionId })
+        .from(memberMinistries)
+        .where(and(eq(memberMinistries.memberId, input.id), eq(memberMinistries.isActive, true)));
+      await assertCanGrantFunctions(
+        ctx.access,
+        input.data.ministries,
+        new Set(held.flatMap((row) => (row.functionId === null ? [] : [row.functionId]))),
+      );
+
       const { ministries: ministriesInput, ...memberData } = input.data;
       const updateData = {
         ...emptyStringsToNull(memberData),

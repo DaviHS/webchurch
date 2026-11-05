@@ -225,18 +225,6 @@ export const monthlyClosures = createTable("monthly_closures", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }), (t) => [uniqueIndex("monthly_closures_month_year_unique").on(t.month, t.year)]);
 
-export const budgets = createTable("budgets", (d) => ({
-  id: d.serial("id").primaryKey(),
-  categoryId: d.integer("category_id").notNull().references(() => financialCategories.id),
-  month: d.integer("month").notNull(),
-  year: d.integer("year").notNull(),
-  allocatedAmount: d.numeric("allocated_amount", { precision: 10, scale: 2 }).notNull(),
-  actualAmount: d.numeric("actual_amount", { precision: 10, scale: 2 }),
-  description: d.text("description"),
-  createdAt: d.timestamp("created_at").notNull().defaultNow(),
-  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
-}));
-
 export const membersRelations = relations(members, ({ many, one }) => ({
   memberMinistries: many(memberMinistries),
   user: one(users, {
