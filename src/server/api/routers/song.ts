@@ -6,6 +6,7 @@ import { songs, eventSongs } from "@/server/db/schema";
 import { songSchema, songCategories, type SongCategory } from "@/validators/song";
 import { eq, ne, desc, and, or, sql, count, isNotNull, type SQL } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
+import { songKey } from "@/lib/song-key";
 import { youtubeService, YouTubeIntegrationError } from "@/lib/youtube";
 import { youtubeWatchUrl } from "@/lib/youtube-url";
 import { spotifyService } from "@/lib/spotify";
@@ -21,7 +22,23 @@ const normalizeLink = (value: string | null | undefined): string | null => {
   return trimmed;
 };
 
-const integrationWarning = (what: string, error: unknown) =>
+async function findDuplicate(title: string, artist: string | null | undefined, excludeId?: number) {
+  const key = songKey(title, artist);
+  const rows = await db
+    .select({ id: songs.id, title: songs.title, artist: songs.artist })
+    .from(songs)
+    .where(excludeId === undefined ? undefined : ne(songs.id, excludeId));
+  return rows.find((row) => songKey(row.title, row.artist) === key) ?? null;
+}
+
+async function assertNoDuplicate(title: string, artist: string | null | undefined, excludeId?: number) {
+  const duplicate = await findDuplicate(title, artist, excludeId);
+  if (!duplicate) return;
+  const by = duplicate.artist ? ` de ${duplicate.artist}` : "";
+  throw new TRPCError({ code: "CONFLICT", message: `Já existe a música "${duplicate.title}"${by}.` });
+}
+
+const integrationWarning =(what: string, error: unknown) =>
   `Música salva, mas ${what}: ${error instanceof Error ? error.message : "erro desconhecido"}`;
 
 interface YouTubeFields {
@@ -155,7 +172,7 @@ export const songRouter = createTRPCRouter({
         db.select()
           .from(songs)
           .where(where)
-          .orderBy(desc(songs.createdAt))
+          .orderBy(desc(songs.createdAt), desc(songs.id))
           .limit(limit)
           .offset(offset),
         db.select({ count: count() })
@@ -182,7 +199,12 @@ export const songRouter = createTRPCRouter({
     return song ?? null;
   }),
 
-  create: protectedProcedure.input(songSchema).mutation(async ({ input }) => {
+  findDuplicate: protectedProcedure
+    .input(z.object({ title: z.string(), artist: z.string().optional(), excludeId: z.number().optional() }))
+    .query(({ input }) => (input.title.trim() ? findDuplicate(input.title, input.artist, input.excludeId) : null)),
+
+  create: protectedProcedure.input(songSchema.extend({ allowDuplicate: z.boolean().optional() })).mutation(async ({ input: { allowDuplicate, ...input } }) => {
+    if (!allowDuplicate) await assertNoDuplicate(input.title, input.artist);
     const warnings: string[] = [];
 
     const [youtube, spotify] = await Promise.all([
@@ -209,6 +231,7 @@ export const songRouter = createTRPCRouter({
       z.object({
         id: z.number(),
         data: songSchema.partial(),
+        allowDuplicate: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -227,6 +250,9 @@ export const songRouter = createTRPCRouter({
 
       const title = data.title ?? currentSong.title;
       const artist = data.artist ?? currentSong.artist;
+
+      const identityChanged = songKey(title, artist) !== songKey(currentSong.title, currentSong.artist);
+      if (identityChanged && !input.allowDuplicate) await assertNoDuplicate(title, artist, currentSong.id);
 
       const updateData: Partial<typeof songs.$inferInsert> = {
         title: data.title,

@@ -49,7 +49,7 @@ export default function SongsPage() {
     category: category === "" ? undefined : category,
     page,
     limit: PAGE_SIZE,
-  });
+  }, { placeholderData: (previous) => previous });
 
   const { handleSubmit, handleDelete, isPending } = useSongMutations({
     onSuccess: songDialog.close,
@@ -58,7 +58,7 @@ export default function SongsPage() {
   const editingSong = songDialog.editing;
 
   const handleFormSubmit = (formData: SongFormData) => {
-    handleSubmit(formData, editingSong);
+    void handleSubmit(formData, editingSong);
   };
 
   const initialFormData = editingSong

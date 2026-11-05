@@ -56,11 +56,26 @@ export function useSongMutations(options?: UseSongMutationsOptions) {
     })
   );
 
-  const handleSubmit = (data: SongFormData, editingSong: Pick<Song, "id"> | null) => {
+  const handleSubmit = async (data: SongFormData, editingSong: Pick<Song, "id"> | null) => {
+    const duplicate = await utils.song.findDuplicate
+      .fetch({ title: data.title, artist: data.artist, excludeId: editingSong?.id }, { staleTime: 0 })
+      .catch(() => null);
+
+    if (duplicate) {
+      const by = duplicate.artist ? ` de ${duplicate.artist}` : "";
+      const confirmed = await confirm({
+        title: "Música já cadastrada",
+        description: `Já existe "${duplicate.title}"${by}. Deseja salvar mesmo assim?`,
+        confirmLabel: "Salvar mesmo assim",
+      });
+      if (!confirmed) return;
+    }
+
+    const allowDuplicate = duplicate ? true : undefined;
     if (editingSong) {
-      updateSongMutation.mutate({ id: editingSong.id, data });
+      updateSongMutation.mutate({ id: editingSong.id, data, allowDuplicate });
     } else {
-      createSongMutation.mutate(data);
+      createSongMutation.mutate({ ...data, allowDuplicate });
     }
   };
 
