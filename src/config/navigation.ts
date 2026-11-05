@@ -3,6 +3,7 @@ import {
   BookOpen,
   Calendar,
   DollarSign,
+  History,
   Home,
   Music,
   Shield,
@@ -51,6 +52,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Aprovações", url: "/app/admin/members/pending", icon: UserCheck, badge: "pendingUsers", permission: "users.manage" },
       { title: "Ministérios e Funções", url: "/app/admin/ministries", icon: Workflow, permission: "ministries.manage" },
       { title: "Finanças", url: "/app/admin/finance", icon: DollarSign, permission: "finance.access" },
+      { title: "Histórico", url: "/app/admin/audit", icon: History, permission: "audit.view" },
     ],
   },
 ];

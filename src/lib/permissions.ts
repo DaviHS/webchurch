@@ -18,6 +18,10 @@ export const PERMISSION_GROUPS = [
     title: "Finanças",
     items: [{ key: "finance.access", label: "Acessar as finanças", description: "Ver e editar lançamentos, categorias e fechamentos." }],
   },
+  {
+    title: "Sistema",
+    items: [{ key: "audit.view", label: "Ver o histórico de alterações", description: "Consultar quem alterou o quê no sistema." }],
+  },
 ] as const;
 
 export type Permission = (typeof PERMISSION_GROUPS)[number]["items"][number]["key"];

@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 
 import { auth } from "@/server/auth";
 import { loadAccess } from "@/server/access";
+import { recordAudit } from "@/server/audit";
 import type { Permission } from "@/lib/permissions";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
@@ -64,13 +65,22 @@ export const protectedProcedure = t.procedure
   });
 
 export const can = (permission: Permission) =>
-  protectedProcedure.use(async ({ ctx, next }) => {
+  protectedProcedure.use(async ({ ctx, next, type, path, getRawInput }) => {
     const userId = Number(ctx.session.user.id);
     const access = Number.isInteger(userId) ? await loadAccess(userId) : null;
     if (!access?.permissions.has(permission)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para esta ação." });
     }
-    return next({ ctx: { ...ctx, access } });
+    const result = await next({ ctx: { ...ctx, access } });
+    if (type === "mutation" && result.ok) {
+      await recordAudit({
+        userId,
+        userLabel: ctx.session.user.name ?? ctx.session.user.email ?? `Usuário #${userId}`,
+        action: path,
+        input: await getRawInput().catch(() => null),
+      });
+    }
+    return result;
   });
 
 export const createCallerFactory = t.createCallerFactory;

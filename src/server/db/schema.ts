@@ -1,4 +1,4 @@
-import { pgTableCreator, pgEnum, uniqueIndex, primaryKey } from "drizzle-orm/pg-core"
+import { pgTableCreator, pgEnum, uniqueIndex, primaryKey, index } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
 export const createTable = pgTableCreator((name) => `${name}`)
@@ -393,3 +393,18 @@ export const presentationCommands = createTable("presentation_commands", (d) => 
   command: d.jsonb("command").notNull(),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
 }))
+
+export const auditLogs = createTable(
+  "audit_logs",
+  (d) => ({
+    id: d.serial("id").primaryKey(),
+    userId: d.integer("user_id"),
+    userLabel: d.varchar("user_label", { length: 150 }).notNull(),
+    action: d.varchar("action", { length: 100 }).notNull(),
+    input: d.jsonb("input"),
+    createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  }),
+  (t) => [index("audit_logs_created_at_idx").on(t.createdAt)],
+)
+
+export type AuditLog = typeof auditLogs.$inferSelect
