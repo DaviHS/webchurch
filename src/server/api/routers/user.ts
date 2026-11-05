@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
+import { adminProcedure, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { db } from "@/server/db"
@@ -23,7 +23,7 @@ const safeUserColumns = {
 }
 
 export const userRouter = createTRPCRouter({
-  create: protectedProcedure
+  create: adminProcedure
     .input(userCreateSchema)
     .mutation(async ({ input }) => {
       const existing = await db
@@ -53,7 +53,7 @@ export const userRouter = createTRPCRouter({
       return newUser
     }),
 
-  list: protectedProcedure.query(async () => {
+  list: adminProcedure.query(async () => {
     return await db
       .select({
         id: users.id,
@@ -68,7 +68,7 @@ export const userRouter = createTRPCRouter({
       .leftJoin(members, eq(users.memberId, members.id))
   }),
 
-  getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  getById: adminProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const [user] = await db
       .select({
         id: users.id,
@@ -86,7 +86,7 @@ export const userRouter = createTRPCRouter({
     return user
   }),
 
-  getByMemberId: protectedProcedure
+  getByMemberId: adminProcedure
     .input(z.object({ memberId: z.number() }))
     .query(async ({ input }) => {
       const [user] = await db
@@ -98,7 +98,7 @@ export const userRouter = createTRPCRouter({
       return user ?? null;
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(userUpdateSchema.extend({
       status: z.enum(["pending", "active", "inactive"]).optional(),
     }))
@@ -108,12 +108,6 @@ export const userRouter = createTRPCRouter({
 
       if (rest.isAdmin !== undefined) {
         const callerId = Number(ctx.session.user.id)
-        const [caller] = Number.isInteger(callerId)
-          ? await db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, callerId)).limit(1)
-          : []
-        if (!caller?.isAdmin) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o perfil de administrador." })
-        }
         if (callerId === id && !rest.isAdmin) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode remover o seu próprio acesso de administrador." })
         }
@@ -142,7 +136,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser
     }),
 
-  deactivate: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  deactivate: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const [deletedUser] = await db
       .update(users)
       .set({
@@ -155,7 +149,7 @@ export const userRouter = createTRPCRouter({
     return deletedUser
   }),
 
-  approve: protectedProcedure
+  approve: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
@@ -175,7 +169,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
-  reject: protectedProcedure
+  reject: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
@@ -194,7 +188,7 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
-  getPending: protectedProcedure.query(async () => {
+  getPending: adminProcedure.query(async () => {
     return await db
       .select({
         id: users.id,
@@ -214,7 +208,7 @@ export const userRouter = createTRPCRouter({
       .orderBy(asc(users.createdAt));
   }),
 
-  getPendingCount: protectedProcedure.query(async () => {
+  getPendingCount: adminProcedure.query(async () => {
     const [result] = await db
       .select({ count: count() })
       .from(users)

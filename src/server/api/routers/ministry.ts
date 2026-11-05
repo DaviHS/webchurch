@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
+import { adminProcedure, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { ministries, functions, ministryFunctions, memberMinistries, members } from "@/server/db/schema"
 import { eq, and, inArray, asc, not, countDistinct } from "drizzle-orm"
@@ -20,7 +20,7 @@ export const ministryRouter = createTRPCRouter({
       .orderBy(ministries.name);
   }),
 
-  create: protectedProcedure
+  create: adminProcedure
     .input(ministrySchema)
     .mutation(async ({ input }) => {
       const [newMinistry] = await db
@@ -30,7 +30,7 @@ export const ministryRouter = createTRPCRouter({
       return newMinistry
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(ministrySchema.extend({ id: z.number() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input
@@ -45,7 +45,7 @@ export const ministryRouter = createTRPCRouter({
       return updatedMinistry
     }),
 
-  deactivate: protectedProcedure
+  deactivate: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deletedMinistry] = await db
@@ -72,7 +72,7 @@ export const ministryRouter = createTRPCRouter({
       .orderBy(functions.displayOrder, functions.name);
   }),
 
-  createFunction: protectedProcedure
+  createFunction: adminProcedure
     .input(functionSchema)
     .mutation(async ({ input }) => {
       const [newFunction] = await db
@@ -82,7 +82,7 @@ export const ministryRouter = createTRPCRouter({
       return newFunction
     }),
 
-  updateFunction: protectedProcedure
+  updateFunction: adminProcedure
     .input(functionSchema.extend({ id: z.number() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input
@@ -97,7 +97,7 @@ export const ministryRouter = createTRPCRouter({
       return updatedFunction
     }),
 
-  deactivateFunction: protectedProcedure
+  deactivateFunction: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [deletedFunction] = await db
@@ -134,7 +134,7 @@ export const ministryRouter = createTRPCRouter({
         .orderBy(functions.name);
     }),
 
-  addFunctionToMinistry: protectedProcedure
+  addFunctionToMinistry: adminProcedure
     .input(ministryFunctionSchema)
     .mutation(async ({ input }) => {
       const [existing] = await db
@@ -181,7 +181,7 @@ export const ministryRouter = createTRPCRouter({
       );
   }),
 
-  removeFunctionFromMinistry: protectedProcedure
+  removeFunctionFromMinistry: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const [removedRelation] = await db
