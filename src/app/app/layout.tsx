@@ -35,7 +35,7 @@ export default function AppLayout({ children }: Readonly<PropsWithChildren>) {
       <AppSidebar />
       <SidebarInset className="flex min-h-svh min-w-0 flex-col bg-background">
         <AppHeader />
-        <main className="w-full flex-1 p-4 print:p-0 pb-[calc(9rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+        <main className="w-full flex-1 p-4 print:p-0 pb-[calc(10rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           <Suspense fallback={<LoadingState />}>{children}</Suspense>
         </main>
         <MobileNavigation />

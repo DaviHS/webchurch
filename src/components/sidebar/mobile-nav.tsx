@@ -59,12 +59,12 @@ export function MobileNavigation() {
           onClick={() => setIsFabOpen(false)}
         />
       )}
-      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2">
+      <div className="pointer-events-none fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2">
         <div
           id="quick-actions"
           className={cn(
             "flex flex-col items-end gap-2 transition-all duration-200 ease-out",
-            isFabOpen ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
+            isFabOpen ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
           )}
         >
           {QUICK_ACTIONS.map(({ title, url, icon: Icon }) => (
@@ -87,7 +87,7 @@ export function MobileNavigation() {
           aria-controls="quick-actions"
           onClick={() => setIsFabOpen((open) => !open)}
           className={cn(
-            "flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform duration-200 active:scale-90",
+            "pointer-events-auto flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform duration-200 active:scale-90",
             isFabOpen && "rotate-45"
           )}
         >
