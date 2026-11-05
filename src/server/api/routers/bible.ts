@@ -1,20 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
-import { formatReference, getBook, parseReference } from "@/lib/bible";
-
-async function findVersion(code: string) {
-  const [version] = await db
-    .select({ id: bibleVersions.id, code: bibleVersions.code, name: bibleVersions.name, language: bibleVersions.language })
-    .from(bibleVersions)
-    .where(and(eq(bibleVersions.code, code), eq(bibleVersions.isActive, true)))
-    .limit(1);
-  if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Versão da Bíblia não encontrada" });
-  return version;
-}
+import { getBook } from "@/lib/bible";
+import { findVersion, loadPassage } from "@/server/bible-passage";
 
 const versionCode = z.string().min(1).max(10);
 
@@ -52,36 +43,7 @@ export const bibleRouter = createTRPCRouter({
 
   getPassage: protectedProcedure
     .input(z.object({ version: versionCode, reference: z.string().min(2).max(60) }))
-    .query(async ({ input }) => {
-      const ref = parseReference(input.reference);
-      if (!ref) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Referência inválida. Exemplo: Jo 3:16-18" });
-      }
-      const version = await findVersion(input.version);
-      const conditions = [
-        eq(bibleVerses.versionId, version.id),
-        eq(bibleVerses.bookId, ref.book.id),
-        eq(bibleVerses.chapter, ref.chapter),
-      ];
-      if (ref.verseStart !== null) conditions.push(gte(bibleVerses.verse, ref.verseStart));
-      if (ref.verseEnd !== null) conditions.push(lte(bibleVerses.verse, ref.verseEnd));
-
-      const verses = await db
-        .select({ verse: bibleVerses.verse, text: bibleVerses.text })
-        .from(bibleVerses)
-        .where(and(...conditions))
-        .orderBy(asc(bibleVerses.verse));
-      if (verses.length === 0) {
-        throw new TRPCError({ code: "NOT_FOUND", message: `${formatReference(ref)} não existe em ${version.code}` });
-      }
-
-      return {
-        title: formatReference(ref),
-        bookChapter: `${ref.book.namePt} ${ref.chapter}`,
-        version: { code: version.code, name: version.name },
-        verses,
-      };
-    }),
+    .query(({ input }) => loadPassage(input.version, input.reference)),
 
   search: protectedProcedure
     .input(z.object({ version: versionCode, query: z.string().trim().min(2).max(100), limit: z.number().int().min(1).max(50).default(30) }))

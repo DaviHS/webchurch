@@ -143,6 +143,16 @@ export const events = createTable("events", (d) => ({
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
+export const eventPassages = createTable("event_passages", (d) => ({
+  id: d.serial("id").primaryKey(),
+  eventId: d.integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  reference: d.varchar("reference", { length: 60 }).notNull(),
+  versionCode: d.varchar("version_code", { length: 10 }).notNull(),
+  placement: d.varchar("placement", { length: 6 }).notNull().default("after"),
+  order: d.integer("order").notNull(),
+  createdAt: d.timestamp("created_at").notNull().defaultNow(),
+}))
+
 export const eventSongs = createTable("event_songs", (d) => ({
   id: d.serial("id").primaryKey(),
   eventId: d.integer("event_id").notNull().references(() => events.id),

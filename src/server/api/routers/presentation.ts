@@ -3,7 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { asc, eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-import { events, eventSongs, songs } from "@/server/db/schema";
+import { events, eventPassages, eventSongs, songs } from "@/server/db/schema";
+import { loadPassage } from "@/server/bible-passage";
 
 const deckSongColumns = {
   id: songs.id,
@@ -53,6 +54,22 @@ export const presentationRouter = createTRPCRouter({
         .where(eq(eventSongs.eventId, event.id))
         .orderBy(asc(eventSongs.order), asc(eventSongs.id));
 
-      return { key: `event-${event.id}`, title: event.title, subtitle: null, date: event.date, songs: setlist };
+      const savedPassages = await db
+        .select({ reference: eventPassages.reference, versionCode: eventPassages.versionCode, placement: eventPassages.placement })
+        .from(eventPassages)
+        .where(eq(eventPassages.eventId, event.id))
+        .orderBy(asc(eventPassages.order), asc(eventPassages.id));
+
+      const loaded = await Promise.all(
+        savedPassages.map((saved) =>
+          loadPassage(saved.versionCode, saved.reference).then(
+            (passage) => ({ placement: saved.placement === "before" ? ("before" as const) : ("after" as const), passage }),
+            () => null,
+          ),
+        ),
+      );
+      const passages = loaded.filter((item) => item !== null);
+
+      return { key: `event-${event.id}`, title: event.title, subtitle: null, date: event.date, songs: setlist, passages };
     }),
 });

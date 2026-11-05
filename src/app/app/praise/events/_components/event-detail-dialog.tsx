@@ -22,6 +22,7 @@ import { api } from "@/trpc/react";
 import type { EventData, EventWithDetails } from "@/types";
 import { EventParticipantsManager } from "./event-participants-manager";
 import { EventSongsManager } from "./event-songs-manager";
+import { EventPassagesManager } from "./event-passages-manager";
 
 interface EventDetailDialogProps {
   event: EventData | EventWithDetails;
@@ -47,6 +48,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
   const utils = api.useUtils();
 
   const songs = "songs" in event ? event.songs : [];
+  const passages = "passages" in event ? event.passages : [];
   const participants = "participants" in event ? event.participants : [];
   const hasMessage = Boolean(event.preacher) || Boolean(event.bibleVerse);
 
@@ -207,8 +209,9 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                 </Card>
               </TabsContent>
 
-              <TabsContent value="songs" className="mt-0">
+              <TabsContent value="songs" className="mt-0 space-y-4">
                 <EventSongsManager eventId={event.id} songs={songs} onUpdate={handleUpdate} />
+                <EventPassagesManager eventId={event.id} passages={passages} onUpdate={handleUpdate} />
               </TabsContent>
 
               <TabsContent value="participants" className="mt-0">

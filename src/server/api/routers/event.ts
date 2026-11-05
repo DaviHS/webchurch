@@ -5,12 +5,14 @@ import { db } from "@/server/db";
 import {
   events,
   eventSongs,
+  eventPassages,
   eventParticipants,
   songs,
   members,
 } from "@/server/db/schema";
-import { eq, desc, and, gte, lte, ilike, inArray, or, count } from "drizzle-orm";
+import { eq, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
+import { loadPassage } from "@/server/bible-passage";
 import { eventSchema, eventUpdateSchema, eventTypes, type EventType } from "@/validators/event";
 
 const eventSongInputSchema = z.object({
@@ -97,7 +99,7 @@ export const eventRouter = createTRPCRouter({
 
     if (!event) return null;
 
-    const [songsList, participants] = await Promise.all([
+    const [songsList, participants, passages] = await Promise.all([
       db
         .select({
           id: eventSongs.id,
@@ -126,12 +128,18 @@ export const eventRouter = createTRPCRouter({
         .from(eventParticipants)
         .where(eq(eventParticipants.eventId, input))
         .leftJoin(members, eq(eventParticipants.memberId, members.id)),
+      db
+        .select()
+        .from(eventPassages)
+        .where(eq(eventPassages.eventId, input))
+        .orderBy(eventPassages.order, eventPassages.id),
     ]);
 
     return {
       ...event,
       songs: songsList,
       participants: participants,
+      passages,
     };
   }),
 
@@ -204,6 +212,39 @@ export const eventRouter = createTRPCRouter({
       const [eventSong] = await db.insert(eventSongs).values(cleanedData).returning();
       return eventSong;
     }),
+
+  addPassage: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number().int().positive(),
+        reference: z.string().trim().min(2).max(60),
+        versionCode: z.string().min(1).max(10),
+        placement: z.enum(["before", "after"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const passage = await loadPassage(input.versionCode, input.reference);
+      const [last] = await db
+        .select({ max: sql<number | null>`max(${eventPassages.order})` })
+        .from(eventPassages)
+        .where(eq(eventPassages.eventId, input.eventId));
+      const [created] = await db
+        .insert(eventPassages)
+        .values({
+          eventId: input.eventId,
+          reference: passage.title,
+          versionCode: passage.version.code,
+          placement: input.placement,
+          order: (last?.max ?? 0) + 1,
+        })
+        .returning();
+      return created;
+    }),
+
+  removePassage: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+    await db.delete(eventPassages).where(eq(eventPassages.id, input));
+    return { success: true };
+  }),
 
   removeSong: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
     await db.delete(eventSongs).where(eq(eventSongs.id, input));
@@ -351,6 +392,19 @@ export const eventRouter = createTRPCRouter({
             order: song.order,
             leaderId: song.leaderId,
             notes: song.notes,
+          }))
+        );
+      }
+
+      const templatePassages = await db.select().from(eventPassages).where(eq(eventPassages.eventId, templateId));
+      if (templatePassages.length > 0) {
+        await db.insert(eventPassages).values(
+          templatePassages.map((passage) => ({
+            eventId: newEvent.id,
+            reference: passage.reference,
+            versionCode: passage.versionCode,
+            placement: passage.placement,
+            order: passage.order,
           }))
         );
       }
