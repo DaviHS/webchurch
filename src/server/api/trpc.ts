@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { auth } from "@/server/auth";
 import { loadAccess } from "@/server/access";
 import { recordAudit } from "@/server/audit";
+import { describeAuditTarget } from "@/server/audit-target";
 import type { Permission } from "@/lib/permissions";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
@@ -71,13 +72,18 @@ export const can = (permission: Permission) =>
     if (!access?.permissions.has(permission)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para esta ação." });
     }
+    // O alvo é descrito antes da ação, para existir mesmo quando ela exclui ou mescla o registro.
+    const rawInput = type === "mutation" ? await getRawInput().catch(() => null) : null;
+    const target = type === "mutation" ? await describeAuditTarget(path, rawInput).catch(() => null) : null;
+
     const result = await next({ ctx: { ...ctx, access } });
     if (type === "mutation" && result.ok) {
       await recordAudit({
         userId,
         userLabel: ctx.session.user.name ?? ctx.session.user.email ?? `Usuário #${userId}`,
         action: path,
-        input: await getRawInput().catch(() => null),
+        target,
+        input: rawInput,
       });
     }
     return result;

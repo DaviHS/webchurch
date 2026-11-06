@@ -40,7 +40,7 @@ export default function AuditPage() {
             setSearch(value);
             setPage(1);
           }}
-          placeholder="Buscar por pessoa ou ação"
+          placeholder="Buscar por pessoa, ação ou nome"
           aria-label="Buscar no histórico"
         />
         <Select
@@ -88,6 +88,7 @@ export default function AuditPage() {
                         {AUDIT_AREAS[entry.action.split(".")[0] ?? ""] ?? entry.action}
                       </Badge>
                     </div>
+                    {entry.target && <p className="break-words text-sm">{entry.target}</p>}
                     {summary && <p className="break-words text-xs text-muted-foreground">{summary}</p>}
                   </CardContent>
                 </Card>

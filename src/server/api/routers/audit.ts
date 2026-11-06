@@ -21,7 +21,7 @@ export const auditRouter = createTRPCRouter({
       if (input.area) filters.push(ilike(auditLogs.action, `${input.area}.%`));
       if (input.search) {
         const term = `%${input.search.replace(/[%_]/g, "")}%`;
-        filters.push(or(ilike(auditLogs.userLabel, term), ilike(auditLogs.action, term)));
+        filters.push(or(ilike(auditLogs.userLabel, term), ilike(auditLogs.action, term), ilike(auditLogs.target, term)));
       }
       const where = filters.length > 0 ? and(...filters) : undefined;
 

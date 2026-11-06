@@ -404,6 +404,7 @@ export const auditLogs = createTable(
     userId: d.integer("user_id"),
     userLabel: d.varchar("user_label", { length: 150 }).notNull(),
     action: d.varchar("action", { length: 100 }).notNull(),
+    target: d.text("target"),
     input: d.jsonb("input"),
     createdAt: d.timestamp("created_at").notNull().defaultNow(),
   }),

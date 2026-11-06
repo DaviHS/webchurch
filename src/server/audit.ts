@@ -24,12 +24,13 @@ export function sanitizeAuditInput(value: unknown, depth = 0): unknown {
   return null;
 }
 
-export async function recordAudit(entry: { userId: number | null; userLabel: string; action: string; input: unknown }) {
+export async function recordAudit(entry: { userId: number | null; userLabel: string; action: string; target?: string | null; input: unknown }) {
   try {
     await db.insert(auditLogs).values({
       userId: entry.userId,
       userLabel: entry.userLabel.slice(0, 150),
       action: entry.action,
+      target: entry.target ?? null,
       input: sanitizeAuditInput(entry.input),
     });
   } catch (error) {
