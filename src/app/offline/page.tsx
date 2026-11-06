@@ -6,6 +6,18 @@ export const metadata: Metadata = {
   title: "Sem conexão",
 };
 
+/**
+ * Roda direto do HTML (sem esperar o React, que sem internet pode nem carregar). Se a Bíblia foi
+ * baixada neste aparelho, leva para ela, uma vez por sessão, para não entrar em laço. As chaves
+ * são as de src/lib/bible-offline.ts.
+ */
+const OPEN_BIBLE_SCRIPT = `(function(){try{
+var downloaded=false;
+for(var i=0;i<localStorage.length;i++){if(localStorage.key(i).indexOf("bible-offline:")===0){downloaded=true;break}}
+if(downloaded||localStorage.getItem("bible-last-read")!==null){document.getElementById("open-bible").style.display="inline-block"}
+if(downloaded&&!sessionStorage.getItem("offline-redirected-to-bible")){sessionStorage.setItem("offline-redirected-to-bible","1");location.replace("/app/bible")}
+}catch(e){}})();`;
+
 export default function OfflinePage() {
   return (
     <main
@@ -28,7 +40,24 @@ export default function OfflinePage() {
       <p style={{ maxWidth: 360, margin: 0, color: "#4b5563", lineHeight: 1.5 }}>
         Não foi possível carregar esta página. Verifique sua internet e tente novamente.
       </p>
+      <a
+        id="open-bible"
+        href="/app/bible"
+        suppressHydrationWarning
+        style={{
+          display: "none",
+          padding: "0.625rem 1.25rem",
+          borderRadius: 8,
+          border: "1px solid #003F2D",
+          color: "#003F2D",
+          fontWeight: 600,
+          textDecoration: "none",
+        }}
+      >
+        Abrir a Bíblia
+      </a>
       <RetryButton />
+      <script dangerouslySetInnerHTML={{ __html: OPEN_BIBLE_SCRIPT }} />
     </main>
   );
 }

@@ -10,6 +10,7 @@ import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
 import { PassagePickerDialog } from "./_components/passage-picker-dialog";
 import { CompareDialog } from "./_components/compare-dialog";
 import { VersionSelect } from "./_components/version-select";
+import { OfflinePrompt } from "./_components/offline-prompt";
 import { ReadingSettings } from "./_components/reading-settings";
 import { fontFamilyOf, READING_SIZES, useReadingPrefs } from "@/hooks/use-reading-prefs";
 import { VerseNoteDialog } from "./_components/verse-note-dialog";
@@ -514,6 +515,7 @@ function BibleReader() {
 
   return (
     <PageContainer>
+      <OfflinePrompt version={version} />
 
       <div className="space-y-3">
         <div ref={searchBox} className="relative">

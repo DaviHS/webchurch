@@ -3,93 +3,36 @@
 import { useRef, useState } from "react";
 import { CloudDownload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { TRPCClientError } from "@trpc/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { BIBLE_BOOKS } from "@/lib/bible";
+import { downloadBibleVersion, markDownloaded, readDownloadedAt } from "@/lib/bible-offline";
 import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 
-const WORKERS = 4;
-/** Falhas seguidas que indicam falta de internet: melhor parar do que insistir. */
-const MAX_CONSECUTIVE_FAILURES = 8;
-
-const ALL_CHAPTERS = BIBLE_BOOKS.flatMap((book) =>
-  Array.from({ length: book.chapters }, (_, index) => ({ bookId: book.id, chapter: index + 1 })),
-);
-
-const storageKey = (version: string) => `bible-offline:${version}`;
-
-function readSavedAt(version: string): string | null {
-  try {
-    return localStorage.getItem(storageKey(version));
-  } catch {
-    return null;
-  }
-}
-
-function writeSavedAt(version: string, value: string) {
-  try {
-    localStorage.setItem(storageKey(version), value);
-  } catch {
-    // Sem armazenamento local, só não mostramos a data do download.
-  }
-}
-
-const isNotFound = (error: unknown) =>
-  error instanceof TRPCClientError && (error.data as { code?: string } | undefined)?.code === "NOT_FOUND";
-
-/** Baixa todos os capítulos de uma versão. O service worker guarda cada resposta para uso sem internet. */
+/** Baixa todos os capítulos de uma versão para ler sem internet (em "Aa"). */
 export function OfflineDownload({ version }: { version: string }) {
   const utils = api.useUtils();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [savedAt, setSavedAt] = useState(() => readSavedAt(version));
-  const cancelled = useRef(false);
+  const [savedAt, setSavedAt] = useState(() => readDownloadedAt(version));
+  const control = useRef({ cancelled: false });
 
   const download = async () => {
-    cancelled.current = false;
-    setProgress({ done: 0, total: ALL_CHAPTERS.length });
-    void navigator.storage?.persist?.().catch(() => false);
-
-    let next = 0;
-    let done = 0;
-    let failures = 0;
-    let consecutive = 0;
-
-    const worker = async () => {
-      while (!cancelled.current) {
-        const item = ALL_CHAPTERS[next++];
-        if (!item) return;
-        try {
-          await utils.client.bible.getChapter.query({ version, ...item });
-          consecutive = 0;
-        } catch (error) {
-          if (isNotFound(error)) {
-            // A versão não tem este capítulo (ex.: traduções parciais): não é falha.
-            consecutive = 0;
-          } else {
-            failures += 1;
-            consecutive += 1;
-            if (consecutive >= MAX_CONSECUTIVE_FAILURES) cancelled.current = true;
-          }
-        }
-        done += 1;
-        setProgress({ done, total: ALL_CHAPTERS.length });
-      }
-    };
-
-    await Promise.all(Array.from({ length: WORKERS }, worker));
+    control.current = { cancelled: false };
+    setProgress({ done: 0, total: 1 });
+    const result = await downloadBibleVersion(utils.client.bible.getChapter, version, control.current, (done, total) =>
+      setProgress({ done, total }),
+    );
     setProgress(null);
 
-    if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
+    if (result.offline) {
       toastError("Não foi possível baixar. Verifique a internet e tente de novo.");
-    } else if (cancelled.current) {
+    } else if (result.cancelled) {
       toast.message("Download cancelado");
-    } else if (failures > 0) {
-      toastError(`${failures} capítulo(s) não foram baixados. Tente de novo.`);
+    } else if (result.failures > 0) {
+      toastError(`${result.failures} capítulo(s) não foram baixados. Tente de novo.`);
     } else {
       const stamp = new Date().toLocaleDateString("pt-BR");
-      writeSavedAt(version, stamp);
+      markDownloaded(version, stamp);
       setSavedAt(stamp);
       toast.success(`${version} disponível sem internet`);
     }
@@ -105,9 +48,9 @@ export function OfflineDownload({ version }: { version: string }) {
           <Progress value={percent} aria-label="Baixando a Bíblia" />
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" /> {percent}% ({progress.done} de {progress.total})
+              <Loader2 className="size-3.5 animate-spin" /> {percent}%
             </span>
-            <Button type="button" size="sm" variant="outline" onClick={() => (cancelled.current = true)}>
+            <Button type="button" size="sm" variant="outline" onClick={() => (control.current.cancelled = true)}>
               Cancelar
             </Button>
           </div>
