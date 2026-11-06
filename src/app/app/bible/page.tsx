@@ -3,7 +3,7 @@
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, StickyNote, X } from "lucide-react";
+import { Bookmark, BookOpenCheck, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, StickyNote, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
@@ -91,7 +91,7 @@ function ChapterColumn({
 }) {
   const { data, isPending, error } = api.bible.getChapter.useQuery(
     { version, ...location },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    { staleTime: Infinity, networkMode: "always", refetchOnWindowFocus: false },
   );
   const [reading] = useReadingPrefs();
   const onePerLine = reading.layout === "lines";
@@ -265,7 +265,7 @@ function SearchResults({
 function BibleReader() {
   const router = useRouter();
   const params = useSearchParams();
-  const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
+  const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity, networkMode: "always" });
 
   const bookParam = Number(params.get("b"));
   const chapterParam = Number(params.get("c"));
@@ -286,7 +286,7 @@ function BibleReader() {
 
   const utils = api.useUtils();
   const { data: preferences, isPending: preferencesPending } = api.bible.preferences.useQuery(undefined, {
-    staleTime: Infinity,
+    staleTime: Infinity, networkMode: "always",
     refetchOnWindowFocus: false,
   });
   const { mutate: savePreferences } = api.bible.savePreferences.useMutation();
@@ -339,7 +339,7 @@ function BibleReader() {
 
   const { data: firstChapter } = api.bible.getChapter.useQuery(
     { version: version ?? "", ...location },
-    { enabled: !!version, staleTime: Infinity, refetchOnWindowFocus: false },
+    { enabled: !!version, staleTime: Infinity, networkMode: "always", refetchOnWindowFocus: false },
   );
   const allVerses = firstChapter?.verses.map((v) => v.verse) ?? [];
   const wholeChapterSelected = allVerses.length > 0 && allVerses.every((verse) => selected.has(verse));
@@ -529,7 +529,7 @@ function BibleReader() {
               <Search className="sm:mr-1" />
               <span className="hidden sm:inline">Buscar</span>
             </Button>
-            <ReadingSettings className="shrink-0" />
+            <ReadingSettings className="shrink-0" version={version} />
             <Button asChild variant="outline" size="icon" className="shrink-0">
               <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
                 <Bookmark />
@@ -653,6 +653,14 @@ function BibleReader() {
           </Button>
         </nav>
       )}
+
+      <div className="flex justify-center">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/app/bible/plan">
+            <BookOpenCheck className="mr-1" /> Plano de leitura
+          </Link>
+        </Button>
+      </div>
 
       <PassagePickerDialog
         open={pickerOpen}

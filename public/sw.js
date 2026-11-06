@@ -1,8 +1,12 @@
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `static-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
 const OFFLINE_URL = "/offline";
+// Texto da Bíblia (capítulos e lista de versões): fica guardado para ler sem internet.
+// Tem nome fixo, sem VERSION, para uma nova versão do service worker não apagar o que foi baixado.
+const BIBLE_CACHE = "bible-text";
+const BIBLE_API_PREFIXES = ["/api/trpc/bible.getChapter", "/api/trpc/bible.versions"];
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
@@ -23,7 +27,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  const current = new Set([STATIC_CACHE, RUNTIME_CACHE, PAGES_CACHE]);
+  const current = new Set([STATIC_CACHE, RUNTIME_CACHE, PAGES_CACHE, BIBLE_CACHE]);
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
@@ -54,6 +58,10 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (BIBLE_API_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    event.respondWith(staleWhileRevalidate(event, BIBLE_CACHE));
+    return;
+  }
   if (url.pathname.startsWith("/api/")) return;
   if (url.pathname === "/sw.js") return;
 
@@ -82,7 +90,12 @@ async function networkFirstPage(event) {
     }
     return response;
   } catch {
-    const cached = await cache.match(event.request);
+    const cached =
+      (await cache.match(event.request)) ||
+      // A Bíblia abre com qualquer capítulo: sem internet, usa a última tela da Bíblia guardada.
+      (new URL(event.request.url).pathname.startsWith("/app/bible")
+        ? await cache.match(event.request, { ignoreSearch: true })
+        : undefined);
     if (cached) return cached;
     const offline = await caches.match(OFFLINE_URL);
     return offline || new Response("Sem conexão", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });

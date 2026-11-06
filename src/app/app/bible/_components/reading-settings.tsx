@@ -11,6 +11,7 @@ import {
   type ReadingLayout,
 } from "@/hooks/use-reading-prefs";
 import { cn } from "@/lib/utils";
+import { OfflineDownload } from "./offline-download";
 
 const LAYOUTS: { value: ReadingLayout; label: string; icon: typeof List }[] = [
   { value: "flow", label: "Texto corrido", icon: AlignJustify },
@@ -23,7 +24,7 @@ const optionClass = (active: boolean) =>
     active && "border-primary bg-primary/10 text-primary",
   );
 
-export function ReadingSettings({ className }: { className?: string }) {
+export function ReadingSettings({ className, version }: { className?: string; version?: string }) {
   const [prefs, update] = useReadingPrefs();
   const pixels = READING_SIZES[prefs.size] ?? READING_SIZES[DEFAULT_READING_PREFS.size];
 
@@ -99,6 +100,7 @@ export function ReadingSettings({ className }: { className?: string }) {
             ))}
           </div>
         </div>
+        {version && <OfflineDownload version={version} />}
       </PopoverContent>
     </Popover>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { loggerLink, unstable_httpBatchStreamLink } from "@trpc/client";
+import { httpLink, loggerLink, splitLink, unstable_httpBatchStreamLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
@@ -24,6 +24,12 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
 
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
+/**
+ * Consultas que o service worker guarda para a Bíblia funcionar sem internet. Saem sozinhas (sem
+ * agrupar com outras), para cada uma ter o seu próprio endereço e poder ser guardada.
+ */
+const OFFLINE_CACHEABLE = new Set(["bible.getChapter", "bible.versions"]);
+
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
@@ -35,14 +41,26 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             process.env.NODE_ENV === "development" ||
             (op.direction === "down" && op.result instanceof Error),
         }),
-        unstable_httpBatchStreamLink({
-          transformer: SuperJSON,
-          url: getBaseUrl() + `/api/trpc`,
-          headers: () => {
-            const headers = new Headers();
-            headers.set("x-trpc-source", "nextjs-react");
-            return headers;
-          },
+        splitLink({
+          condition: (op) => op.type === "query" && OFFLINE_CACHEABLE.has(op.path),
+          true: httpLink({
+            transformer: SuperJSON,
+            url: getBaseUrl() + `/api/trpc`,
+            headers: () => {
+              const headers = new Headers();
+              headers.set("x-trpc-source", "nextjs-react");
+              return headers;
+            },
+          }),
+          false: unstable_httpBatchStreamLink({
+            transformer: SuperJSON,
+            url: getBaseUrl() + `/api/trpc`,
+            headers: () => {
+              const headers = new Headers();
+              headers.set("x-trpc-source", "nextjs-react");
+              return headers;
+            },
+          }),
         }),
       ],
     })

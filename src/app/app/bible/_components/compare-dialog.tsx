@@ -58,7 +58,7 @@ function CompareColumn({
   const [reading] = useReadingPrefs();
   const { data, isPending, error } = api.bible.getChapter.useQuery(
     { version, ...location },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    { staleTime: Infinity, networkMode: "always", refetchOnWindowFocus: false },
   );
   const wanted = new Set(verses);
   const shown = data?.verses.filter((v) => wanted.has(v.verse)) ?? [];

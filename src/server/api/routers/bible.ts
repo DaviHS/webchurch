@@ -7,11 +7,13 @@ import { bibleHeadings, bibleVerses, bibleVersions } from "@/server/db/schema";
 import { getBook } from "@/lib/bible";
 import { findVersion, loadPassage } from "@/server/bible-passage";
 import { biblePersonalProcedures } from "@/server/api/routers/bible-personal";
+import { bibleReadingPlanProcedures } from "@/server/api/routers/bible-plan";
 
 const versionCode = z.string().min(1).max(10);
 
 export const bibleRouter = createTRPCRouter({
   ...biblePersonalProcedures,
+  ...bibleReadingPlanProcedures,
 
   versions: protectedProcedure.query(() =>
     db

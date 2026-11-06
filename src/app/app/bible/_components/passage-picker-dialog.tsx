@@ -49,7 +49,7 @@ function VerseGrid({
 }) {
   const { data, isPending, error } = api.bible.getChapter.useQuery(
     { version: version ?? "", ...location },
-    { enabled: !!version, staleTime: Infinity, refetchOnWindowFocus: false },
+    { enabled: !!version, staleTime: Infinity, networkMode: "always", refetchOnWindowFocus: false },
   );
 
   return (

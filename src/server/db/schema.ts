@@ -450,3 +450,27 @@ export const appSettings = createTable("app_settings", (d) => ({
   value: d.text("value").notNull(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
+
+/** Planos de leitura da Bíblia que a pessoa começou (o conteúdo de cada plano fica no código). */
+export const bibleReadingPlans = createTable(
+  "bible_reading_plans",
+  (d) => ({
+    userId: d.integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    planKey: d.varchar("plan_key", { length: 30 }).notNull(),
+    startedOn: d.date("started_on").notNull(),
+    createdAt: d.timestamp("created_at").notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.planKey] })],
+)
+
+/** Dias de leitura já concluídos em cada plano. */
+export const bibleReadingProgress = createTable(
+  "bible_reading_progress",
+  (d) => ({
+    userId: d.integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    planKey: d.varchar("plan_key", { length: 30 }).notNull(),
+    day: d.integer("day").notNull(),
+    completedAt: d.timestamp("completed_at").notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.planKey, t.day] })],
+)

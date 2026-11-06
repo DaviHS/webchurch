@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Bookmark, ChevronLeft, StickyNote } from "lucide-react";
+import { Bookmark, BookOpenCheck, ChevronLeft, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,11 +40,18 @@ export default function MyMarksPage() {
         icon={Bookmark}
         description="Versículos que você marcou ou anotou. Só você vê esta lista."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/app/bible">
-              <ChevronLeft className="mr-1" /> Voltar à Bíblia
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/app/bible/plan">
+                <BookOpenCheck className="mr-1" /> Plano de leitura
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/app/bible">
+                <ChevronLeft className="mr-1" /> Voltar à Bíblia
+              </Link>
+            </Button>
+          </>
         }
       />
 
