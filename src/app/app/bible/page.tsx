@@ -3,12 +3,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Bookmark, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Plus, Projector, StickyNote, X } from "lucide-react";
+import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Plus, Projector, Search, StickyNote, X } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
 import { VerseNoteDialog } from "./_components/verse-note-dialog";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
-import { PageContainer, PageHeader } from "@/components/page-header";
+import { PageContainer } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import {
@@ -201,6 +203,7 @@ function ChapterColumn({
   );
 }
 
+const SEARCH_IDLE_MS = 900;
 const SEARCH_STEP = 30;
 const SEARCH_MAX = 200;
 const SEARCH_SCOPES = [
@@ -238,10 +241,12 @@ function SearchResults({
   version,
   query,
   onPick,
+  onClose,
 }: {
   version: string;
   query: string;
   onPick: (location: Location, verse: number) => void;
+  onClose: () => void;
 }) {
   const [scope, setScope] = useState<SearchScope>("all");
   const [limit, setLimit] = useState(SEARCH_STEP);
@@ -251,7 +256,7 @@ function SearchResults({
   );
   const hits = data?.hits ?? [];
   return (
-    <div className="space-y-2 rounded-lg border p-3">
+    <div className="space-y-2 rounded-lg border bg-background p-3 shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Resultados em {version}
@@ -276,6 +281,9 @@ function SearchResults({
             ))}
           </SelectContent>
         </Select>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar resultados">
+          <X />
+        </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error.message}</p>}
       {data && hits.length === 0 && <p className="text-sm text-muted-foreground">Nada encontrado.</p>}
@@ -410,10 +418,11 @@ function BibleReader() {
     }
   });
 
-  const submitSearch = (event: React.FormEvent) => {
-    event.preventDefault();
-    const value = searchText.trim();
+  const lastSearched = useRef("");
+  const runSearch = (raw: string) => {
+    const value = raw.trim();
     if (!value) return;
+    lastSearched.current = value;
     const ref = parseReference(value);
     if (ref) {
       setTextQuery(null);
@@ -431,6 +440,52 @@ function BibleReader() {
       setTextQuery(value);
     }
   };
+
+  // Busca sozinha quando a pessoa para de digitar.
+  const searchRef = useRef(runSearch);
+  useEffect(() => {
+    searchRef.current = runSearch;
+  });
+  const idleText = useDebounce(searchText, SEARCH_IDLE_MS).trim();
+  useEffect(() => {
+    if (idleText.length >= 3 && idleText !== lastSearched.current) searchRef.current(idleText);
+  }, [idleText]);
+
+  const onSearchChange = (value: string) => {
+    setSearchText(value);
+    if (value === "") {
+      lastSearched.current = "";
+      setTextQuery(null);
+    }
+  };
+
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    runSearch(searchText);
+  };
+
+  // Toque fora (ou Esc) fecha os resultados da busca.
+  const searchBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!textQuery) return;
+    const close = () => setTextQuery(null);
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target || searchBox.current?.contains(target)) return;
+      // O seletor "Onde buscar" abre numa camada própria, fora da caixa.
+      if (target.closest("[role='listbox'], [data-radix-popper-content-wrapper]")) return;
+      close();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [textQuery]);
 
   const book = getBook(location.bookId)!;
   const prev = neighborChapter(location.bookId, location.chapter, -1);
@@ -526,51 +581,39 @@ function BibleReader() {
 
   return (
     <PageContainer>
-      <div className="relative">
-        <PageHeader title="Bíblia" icon={BookOpen} className="pr-12" />
-        <Button asChild variant="outline" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2">
-          <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
-            <Bookmark />
-          </Link>
-        </Button>
-      </div>
 
       <div className="space-y-3">
-        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
-          <SearchInput
-            value={searchText}
-            onChange={(value) => {
-              setSearchText(value);
-              if (value === "") setTextQuery(null);
-            }}
-            placeholder="Ir para (Jo 3:16) ou buscar um texto (“Jesus chorou”)"
-            aria-label="Ir para uma referência ou buscar um texto"
-          />
-          <Button type="submit" disabled={searchText.trim().length < 2} className="sm:w-28">
-            Buscar
-          </Button>
-        </form>
-
-        {textQuery && selectedVersions[0] && (
-          <div className="space-y-2">
-            <div className="flex justify-end">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setTextQuery(null)}>
-                <X className="mr-1" /> Fechar resultados
-              </Button>
-            </div>
-            <SearchResults
-              key={`${selectedVersions[0]}:${textQuery}`}
-              version={selectedVersions[0]}
-              query={textQuery}
-              onPick={(target, verse) => {
-                go(target);
-                selectVerses(target, [verse]);
-                pendingScroll.current = verse;
-                setTextQuery(null);
-              }}
+        <div ref={searchBox} className="relative">
+          <form className="flex items-center gap-2" onSubmit={submitSearch}>
+            <SearchInput
+              value={searchText}
+              onChange={onSearchChange}
+              placeholder="Ir para (Jo 3:16) ou buscar um texto (“Jesus chorou”)"
+              aria-label="Ir para uma referência ou buscar um texto"
             />
-          </div>
-        )}
+            <Button type="submit" disabled={searchText.trim().length < 2} className="shrink-0 max-sm:w-9 max-sm:px-0 sm:w-28" aria-label="Buscar">
+              <Search className="sm:mr-1" />
+              <span className="hidden sm:inline">Buscar</span>
+            </Button>
+          </form>
+
+          {textQuery && selectedVersions[0] && (
+            <div className="absolute inset-x-0 top-full z-30 mt-1">
+              <SearchResults
+                key={`${selectedVersions[0]}:${textQuery}`}
+                version={selectedVersions[0]}
+                query={textQuery}
+                onClose={() => setTextQuery(null)}
+                onPick={(target, verse) => {
+                  go(target);
+                  selectVerses(target, [verse]);
+                  pendingScroll.current = verse;
+                  setTextQuery(null);
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex gap-2">
@@ -598,6 +641,11 @@ function BibleReader() {
                 ))}
               </SelectContent>
             </Select>
+            <Button asChild variant="outline" size="icon" className="shrink-0">
+              <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
+                <Bookmark />
+              </Link>
+            </Button>
           </div>
 
           {versions && (
@@ -697,23 +745,29 @@ function BibleReader() {
       </div>
 
       {notedVerses.length > 0 && (
-        <section aria-label="Minhas anotações neste capítulo" className="space-y-2 rounded-lg border p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minhas anotações neste capítulo</h3>
-          <ul className="space-y-1">
-            {notedVerses.map((mark) => (
-              <li key={mark.verse}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-2 rounded px-2 py-2 text-left text-sm hover:bg-accent"
-                  onClick={() => setNoteVerse(mark.verse)}
-                >
-                  <span className="shrink-0 font-semibold">v. {mark.verse}</span>
-                  <span className="line-clamp-2 min-w-0 whitespace-pre-line text-muted-foreground">{mark.note}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Collapsible className="rounded-lg border">
+          <CollapsibleTrigger className="group flex w-full items-center gap-2 p-3 text-left text-sm font-semibold">
+            <StickyNote className="size-4 shrink-0 text-primary" />
+            <span className="flex-1">Minhas anotações ({notedVerses.length})</span>
+            <ChevronDown className="size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="space-y-1 px-2 pb-2">
+              {notedVerses.map((mark) => (
+                <li key={mark.verse}>
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-2 rounded px-2 py-2 text-left text-sm hover:bg-accent"
+                    onClick={() => setNoteVerse(mark.verse)}
+                  >
+                    <span className="shrink-0 font-semibold">v. {mark.verse}</span>
+                    <span className="line-clamp-2 min-w-0 whitespace-pre-line text-muted-foreground">{mark.note}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {(prev ?? next) && (
