@@ -715,8 +715,8 @@ function BibleReader() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5" role="group" aria-label="Marcar com uma cor">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center justify-between gap-1.5 sm:justify-start" role="group" aria-label="Marcar com uma cor">
               {BIBLE_MARK_COLORS.map((color) => (
                 <button
                   key={color.value}
@@ -740,7 +740,7 @@ function BibleReader() {
                 <Eraser />
               </Button>
             </div>
-            <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:items-center">
               <Button
                 type="button"
                 variant="outline"
