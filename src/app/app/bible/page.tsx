@@ -13,6 +13,7 @@ import { fontFamilyOf, READING_SIZES, useReadingPrefs } from "@/hooks/use-readin
 import { VerseNoteDialog } from "./_components/verse-note-dialog";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { PageContainer } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
@@ -542,7 +543,7 @@ function BibleReader() {
       await navigator.clipboard.writeText(`${passage}\n— ${selectionLabel} (${version})`);
       toast.success("Versículos copiados");
     } catch {
-      toast.error("Não foi possível copiar.");
+      toastError("Não foi possível copiar.");
     }
   };
 
@@ -562,7 +563,7 @@ function BibleReader() {
       setSelection({ key, verses: new Set() });
       toast.success(variables.color ? "Versículos marcados" : "Marcação removida");
     },
-    onError: () => toast.error("Não foi possível salvar a marcação."),
+    onError: () => toastError("Não foi possível salvar a marcação."),
   });
 
   const setNoteMutation = api.bible.setNote.useMutation({
@@ -572,7 +573,7 @@ function BibleReader() {
       setSelection({ key, verses: new Set() });
       toast.success(variables.note ? "Anotação salva" : "Anotação excluída");
     },
-    onError: () => toast.error("Não foi possível salvar a anotação."),
+    onError: () => toastError("Não foi possível salvar a anotação."),
   });
 
   const applyColor = (color: (typeof BIBLE_MARK_COLORS)[number]["value"] | null) =>

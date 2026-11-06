@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, Loader2, Monitor, MonitorSmartphone, Projector, Tv } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -115,7 +116,7 @@ export function ScreenSetupDialog({ open, onOpenChange }: ScreenSetupDialogProps
         toast.warning("Só uma tela foi encontrada. Ligue o projetor e a TV e detecte de novo.");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível detectar as telas.");
+      toastError(error instanceof Error ? error.message : "Não foi possível detectar as telas.");
     } finally {
       setDetecting(false);
     }

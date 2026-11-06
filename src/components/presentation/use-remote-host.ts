@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { TRPCClientError } from "@trpc/client";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { slideAt, slideLabel } from "./deck";
 import {
@@ -86,7 +86,7 @@ export function useRemoteHost(controller: PresentationController) {
       .catch((error: unknown) => {
         if (isSessionGone(error)) {
           endSession();
-          toast.error("O controle remoto foi encerrado. Ative de novo para gerar outro código.");
+          toastError("O controle remoto foi encerrado. Ative de novo para gerar outro código.");
         }
       });
     publishingRef.current = false;
@@ -161,7 +161,7 @@ export function useRemoteHost(controller: PresentationController) {
         setCode(result.code);
       })
       .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : "Não foi possível ativar o controle remoto.");
+        toastError(error instanceof Error ? error.message : "Não foi possível ativar o controle remoto.");
       });
   };
 

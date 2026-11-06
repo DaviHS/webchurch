@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { BookOpen, Loader2, Music, Plus, X } from "lucide-react";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
       onAdd(passageToDeckSong(passage, `bible:${passage.title}:${version}:${Date.now()}`, perSlide));
       setReference("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
+      toastError(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
     } finally {
       setLoading(false);
     }

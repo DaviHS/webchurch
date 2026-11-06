@@ -5,6 +5,7 @@ import { useForm, useFieldArray, useWatch, type FieldErrors } from "react-hook-f
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronLeft, ChevronRight, Key, Loader2, Plus, Save, Trash2, User, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { useSession } from "next-auth/react";
 import { memberSchema, type MemberFormData, type MemberFormInput } from "@/validators/member";
 import {
@@ -293,13 +294,13 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     const firstField = Object.keys(formErrors)[0] as keyof MemberFormInput | undefined;
     if (!firstField) return;
     setActiveTab(FIELD_TABS[firstField] ?? "personal");
-    toast.error("Revise os campos destacados antes de salvar");
+    toastError("Revise os campos destacados antes de salvar");
   };
 
   const handleCreateUserAccess = () => {
     if (memberId === undefined) return;
     if (!email) {
-      toast.error("O membro precisa ter um email para criar acesso");
+      toastError("O membro precisa ter um email para criar acesso");
       return;
     }
 

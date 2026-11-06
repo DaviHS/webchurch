@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -107,7 +108,7 @@ function OutputControls({ controller, remote }: { controller: PresentationContro
     }
     const win = openOutputWindow(role, screen);
     if (!win) {
-      toast.error(`O navegador bloqueou a janela do ${OUTPUT_LABELS[role].toLowerCase()}. Permita pop-ups para este site.`);
+      toastError(`O navegador bloqueou a janela do ${OUTPUT_LABELS[role].toLowerCase()}. Permita pop-ups para este site.`);
     }
   };
 
@@ -321,7 +322,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
         passageToDeckSong(passage, `bible:${passage.title}:${target.version}:${Date.now()}`, target.versesPerSlide ?? null),
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
+      toastError(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
     }
   });
   const initialPassageLoaded = useRef(false);

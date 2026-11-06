@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,7 +64,7 @@ function PassageVersionSelect({
       const passage = await utils.bible.getPassage.fetch({ version: code, reference: song.source.title });
       onPassage(song.uid, passage);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível trocar a versão.");
+      toastError(error instanceof Error ? error.message : "Não foi possível trocar a versão.");
     } finally {
       setLoading(false);
     }

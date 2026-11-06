@@ -23,6 +23,7 @@ export function YouTubeStatus() {
 
   const syncPlaylistMutation = api.song.syncYouTubePlaylist.useMutation(
     mutationFeedback({
+      loading: "Sincronizando a playlist do YouTube...",
       success: (result) => {
         const parts = [
           result.added > 0 ? `${result.added} vídeo(s) adicionado(s) à playlist` : null,

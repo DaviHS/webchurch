@@ -77,6 +77,7 @@ export function DuplicateSongsDialog({ open, onOpenChange }: { open: boolean; on
 
   const merge = api.song.merge.useMutation(
     mutationFeedback({
+      loading: "Mesclando músicas...",
       success: ({ merged }) => `${merged} música(s) mesclada(s)`,
       error: "Erro ao mesclar",
       onSuccess: async ({ warnings }) => {

@@ -11,6 +11,7 @@ export function useReopenMonth() {
 
   const reopenMonthMutation = api.finance.reopenMonth.useMutation(
     mutationFeedback({
+      loading: "Reabrindo o mês...",
       success: "Mês reaberto com sucesso",
       error: "Erro ao reabrir mês",
       onSuccess: () => utils.finance.invalidate(),

@@ -3,6 +3,7 @@
 import { Copy, Loader2, Smartphone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,7 +35,7 @@ export function RemoteDialog({ open, onOpenChange, host, now }: RemoteDialogProp
     await navigator.clipboard
       .writeText(url)
       .then(() => toast.success("Link copiado"))
-      .catch(() => toast.error("Não foi possível copiar o link."));
+      .catch(() => toastError("Não foi possível copiar o link."));
   };
 
   return (

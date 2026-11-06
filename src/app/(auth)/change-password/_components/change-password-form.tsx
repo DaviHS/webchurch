@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/password-input";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { Loader2 } from "lucide-react";
 
@@ -41,7 +42,7 @@ export function ChangePasswordForm() {
       router.replace("/app");
     },
     onError: (error) => {
-      toast.error(`Erro ao trocar senha: ${error.message}`);
+      toastError(`Erro ao trocar senha: ${error.message}`);
     },
   });
 

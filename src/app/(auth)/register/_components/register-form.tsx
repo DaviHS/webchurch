@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -74,7 +75,7 @@ export function RegisterForm() {
       router.push("/sign-in");
     },
     onError: (error) => {
-      toast.error(`Erro ao criar conta: ${error.message}`);
+      toastError(`Erro ao criar conta: ${error.message}`);
     },
   });
 
@@ -87,7 +88,7 @@ export function RegisterForm() {
   const handleInvalid = (errors: FieldErrors<RegisterInput>) => {
     const stepWithError = STEPS.find(({ fields }) => fields.some((field) => field in errors));
     if (stepWithError) setActiveStep(stepWithError.value);
-    toast.error("Corrija os campos indicados antes de continuar");
+    toastError("Corrija os campos indicados antes de continuar");
   };
 
   const handleStepChange = (value: string) => {

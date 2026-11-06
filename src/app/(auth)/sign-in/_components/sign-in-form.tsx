@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { SignInFields } from "./sign-in-fields"
 import { Lock } from "lucide-react"
 import { toast } from "sonner"
+import { toastError } from "@/lib/toast";
 
 function destinationAfterLogin(): string {
   const target = new URLSearchParams(window.location.search).get("callbackUrl")
@@ -40,20 +41,20 @@ export function SignInForm() {
         switch (result.error) {
           case "PENDING":
             setError("Seu cadastro está pendente de aprovação. Aguarde a liberação do acesso.")
-            toast.error("Cadastro pendente de aprovação", { id: toastId })
+            toastError("Cadastro pendente de aprovação", { id: toastId })
             break
           case "INVALID_CREDENTIALS":
           case "USER_NOT_FOUND":
             setError("Credenciais inválidas. Por favor, tente novamente.")
-            toast.error("Credenciais inválidas. Verifique seus dados e tente novamente.", { id: toastId })
+            toastError("Credenciais inválidas. Verifique seus dados e tente novamente.", { id: toastId })
             break
           case "INACTIVE":
             setError("Seu cadastro não está ativo. Entre em contato com o suporte.")
-            toast.error("Cadastro inativo", { id: toastId })
+            toastError("Cadastro inativo", { id: toastId })
             break
           default:
             setError(result.error)
-            toast.error(result.error, { id: toastId })
+            toastError(result.error, { id: toastId })
             break
         }
       } else {
@@ -63,7 +64,7 @@ export function SignInForm() {
       }
     } catch {
       setError("Ocorreu um erro ao fazer login. Por favor, tente novamente.")
-      toast.error("Erro de servidor. Tente novamente mais tarde.", { id: toastId })
+      toastError("Erro de servidor. Tente novamente mais tarde.", { id: toastId })
     } finally {
       setIsLoading(false)
     }

@@ -78,6 +78,7 @@ function MonthlyClosureForm({ summary, onDone }: { summary: MonthSummary; onDone
 
   const closeMonthMutation = api.finance.closeMonth.useMutation(
     mutationFeedback({
+      loading: "Fechando o mês...",
       success: "Mês fechado com sucesso",
       error: "Erro ao fechar mês",
       onSuccess: async () => {

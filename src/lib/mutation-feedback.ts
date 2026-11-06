@@ -1,20 +1,29 @@
 import { toast } from "sonner";
+import { errorMessage, toastError } from "@/lib/toast";
 
 interface FeedbackMessages<TData> {
+  /** Só para operações lentas: mostra "carregando" e troca o mesmo aviso pelo resultado. */
+  loading?: string;
   success?: string | ((data: TData) => string);
   error: string;
   onSuccess?: (data: TData) => unknown;
 }
 
-export function mutationFeedback<TData>({ success, error, onSuccess }: FeedbackMessages<TData>) {
+interface FeedbackContext {
+  toastId?: string | number;
+}
+
+export function mutationFeedback<TData>({ loading, success, error, onSuccess }: FeedbackMessages<TData>) {
   return {
-    onSuccess: async (data: TData) => {
+    onMutate: (): FeedbackContext => ({ toastId: loading ? toast.loading(loading) : undefined }),
+    onSuccess: async (data: TData, _variables: unknown, context?: FeedbackContext) => {
       const message = typeof success === "function" ? success(data) : success;
-      if (message) toast.success(message);
+      if (message) toast.success(message, { id: context?.toastId });
+      else if (context?.toastId !== undefined) toast.dismiss(context.toastId);
       await onSuccess?.(data);
     },
-    onError: (cause: { message: string }) => {
-      toast.error(`${error}: ${cause.message}`);
+    onError: (cause: { message: string }, _variables: unknown, context?: FeedbackContext) => {
+      toastError(errorMessage(error, cause), { id: context?.toastId });
     },
   };
 }
