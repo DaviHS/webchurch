@@ -14,7 +14,6 @@ export const env = createEnv({
     YOUTUBE_CLIENT_ID: z.string().optional(),
     YOUTUBE_CLIENT_SECRET: z.string().optional(),
     YOUTUBE_REFRESH_TOKEN: z.string().optional(),
-    YOUTUBE_PLAYLIST_ID: z.string().optional(),
   },
 
   client: {
@@ -27,7 +26,6 @@ export const env = createEnv({
     YOUTUBE_CLIENT_ID: process.env.YOUTUBE_CLIENT_ID,
     YOUTUBE_CLIENT_SECRET: process.env.YOUTUBE_CLIENT_SECRET,
     YOUTUBE_REFRESH_TOKEN: process.env.YOUTUBE_REFRESH_TOKEN,
-    YOUTUBE_PLAYLIST_ID: process.env.YOUTUBE_PLAYLIST_ID,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

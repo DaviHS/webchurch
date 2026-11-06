@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { RowActionsMenu } from "@/components/row-actions-menu";
 import { usePermissions } from "@/hooks/use-permissions";
 import { History, Play, Pencil, Trash2, Eye } from "lucide-react";
-import { Youtube } from "@/components/icons/brand";
+import { Spotify, Youtube } from "@/components/icons/brand";
 import { songCategoryLabel } from "@/lib/labels";
 import type { Song } from "@/types";
 
@@ -17,10 +17,11 @@ interface SongCardProps {
   onDelete: (song: Song) => void;
   onViewLyrics: (song: Song) => void;
   onPlayYouTube: (song: Song) => void;
+  onPlaySpotify: (song: Song) => void;
   onViewHistory: (song: Song) => void;
 }
 
-export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, onViewHistory }: SongCardProps) {
+export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, onPlaySpotify, onViewHistory }: SongCardProps) {
   const canEdit = usePermissions().can("songs.edit");
   return (
     <Card className="flex h-full flex-col transition-shadow [@media(hover:hover)]:hover:shadow-md">
@@ -46,6 +47,7 @@ export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, 
               { label: "Ver letra", icon: Eye, onSelect: () => onViewLyrics(song) },
               { label: "Histórico", icon: History, onSelect: () => onViewHistory(song) },
               { label: "Vídeo do YouTube", icon: Youtube, onSelect: () => onPlayYouTube(song), hidden: !song.youtubeUrl },
+              { label: "Ouvir no Spotify", icon: Spotify, onSelect: () => onPlaySpotify(song), hidden: !song.spotifyTrackId },
               { label: "Editar", icon: Pencil, onSelect: () => onEdit(song), hidden: !canEdit },
               { label: "Excluir", icon: Trash2, onSelect: () => onDelete(song), destructive: true, hidden: !canEdit },
             ]}

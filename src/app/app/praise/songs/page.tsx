@@ -18,6 +18,8 @@ import { isSongCategory } from "@/validators/song";
 import { LyricsDialog } from "./_components/lyrics-dialog";
 import { YouTubePlayer } from "./_components/youtube-player";
 import { YouTubeStatus } from "./_components/youtube-status";
+import { SpotifyPlayer } from "./_components/spotify-player";
+import { SpotifyStatus } from "./_components/spotify-status";
 import { LastExecutionsDialog } from "./_components/last-executions-dialog";
 import { DuplicateSongsDialog } from "./_components/duplicate-songs-dialog";
 import { SongCard } from "./_components/song-card";
@@ -40,6 +42,7 @@ export default function SongsPage() {
   const [category, setCategory] = useState("");
   const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
+  const [spotifyDialogOpen, setSpotifyDialogOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [duplicatesOpen, setDuplicatesOpen] = useState(false);
@@ -83,6 +86,11 @@ export default function SongsPage() {
     setYoutubeDialogOpen(true);
   };
 
+  const handlePlaySpotify = (song: Song) => {
+    setSelectedSong(song);
+    setSpotifyDialogOpen(true);
+  };
+
   const handleViewHistory = (song: Song) => {
     setHistorySong(song);
     setHistoryDialogOpen(true);
@@ -106,6 +114,8 @@ export default function SongsPage() {
     duration: song.duration ?? undefined,
     youtubeUrl: song.youtubeUrl ?? undefined,
     youtubeVideoId: song.youtubeVideoId ?? undefined,
+    spotifyUrl: song.spotifyUrl ?? undefined,
+    spotifyTrackId: song.spotifyTrackId ?? undefined,
   }));
 
   return (
@@ -118,6 +128,12 @@ export default function SongsPage() {
             song={selectedSong}
             open={youtubeDialogOpen}
             onOpenChange={setYoutubeDialogOpen}
+          />
+          <SpotifyPlayer
+            key={`spotify-${selectedSong.id}`}
+            song={selectedSong}
+            open={spotifyDialogOpen}
+            onOpenChange={setSpotifyDialogOpen}
           />
         </>
       )}
@@ -166,6 +182,7 @@ export default function SongsPage() {
       />
 
       <YouTubeStatus />
+      <SpotifyStatus />
 
       <Card>
         <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
@@ -192,6 +209,7 @@ export default function SongsPage() {
                     onDelete={(target) => void handleDelete(target)}
                     onViewLyrics={handleViewLyrics}
                     onPlayYouTube={handlePlayYouTube}
+                    onPlaySpotify={handlePlaySpotify}
                     onViewHistory={handleViewHistory}
                   />
                 ))}

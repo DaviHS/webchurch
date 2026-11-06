@@ -22,7 +22,7 @@ import { CheckCircle, Info } from "lucide-react";
 
 interface SongFormProps {
   onSubmit: (data: SongFormData) => void;
-  initialData?: Partial<SongFormData> & { youtubeVideoId?: string };
+  initialData?: Partial<SongFormData> & { youtubeVideoId?: string; spotifyTrackId?: string };
   isLoading?: boolean;
   onCancel?: () => void;
 }
@@ -43,6 +43,7 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
       category: initialData?.category ?? "praise",
       lyrics: initialData?.lyrics ?? "",
       youtubeUrl: initialData?.youtubeUrl ?? "",
+      spotifyUrl: initialData?.spotifyUrl ?? "",
       duration: initialData?.duration ? secondsToDurationString(initialData.duration) : "",
     },
   });
@@ -162,6 +163,26 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
             {initialData?.youtubeUrl
               ? "Atualize a URL para modificar o vídeo vinculado"
               : "Deixe em branco para buscar automaticamente pelo título e artista"}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="spotifyUrl">URL do Spotify</Label>
+          <Input
+            id="spotifyUrl"
+            {...form.register("spotifyUrl")}
+            placeholder="https://open.spotify.com/track/..."
+            inputMode="url"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
+          />
+          <p className="text-xs text-muted-foreground">
+            {initialData?.spotifyTrackId
+              ? "Vinculada à playlist do Spotify. Atualize a URL para trocar a faixa."
+              : "Deixe em branco para buscar automaticamente pelo título e artista, e adicionar à playlist do Spotify da igreja."}
           </p>
         </div>
 

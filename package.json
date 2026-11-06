@@ -17,6 +17,7 @@
     "clean": "rimraf .next node_modules",
     "deploy": "git pull && npm ci && npm run build",
     "youtube:token": "node scripts/get-youtube-token.ts",
+    "spotify:token": "node scripts/get-spotify-token.ts",
     "bible:headings": "node scripts/import-bible-headings.ts"
   },
   "dependencies": {

@@ -33,3 +33,14 @@ export function Youtube(props: IconProps) {
     </svg>
   );
 }
+
+export function Spotify(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M7 9.5c3.5-1 7.5-.7 10.5 1" />
+      <path d="M7.6 12.8c2.9-.8 6-.5 8.4.9" />
+      <path d="M8.3 15.8c2.3-.6 4.6-.3 6.5.7" />
+    </svg>
+  );
+}

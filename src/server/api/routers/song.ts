@@ -9,9 +9,8 @@ import { cleanEmptyStrings } from "@/lib/formatters";
 import { songKey } from "@/lib/song-key";
 import { youtubeService, YouTubeIntegrationError } from "@/lib/youtube";
 import { youtubeWatchUrl } from "@/lib/youtube-url";
-import { spotifyService } from "@/lib/spotify";
-
-const SPOTIFY_PLAYLIST_ID = process.env.SPOTIFY_PLAYLIST_ID;
+import { spotifyService, SpotifyIntegrationError } from "@/lib/spotify";
+import { getSetting, SETTING_SPOTIFY_PLAYLIST_ID } from "@/server/settings";
 
 const emptyToNull = (value: string | null | undefined) =>
   value === undefined ? undefined : value === null || value.trim() === "" ? null : value;
@@ -38,8 +37,10 @@ async function assertNoDuplicate(title: string, artist: string | null | undefine
   throw new TRPCError({ code: "CONFLICT", message: `Já existe a música "${duplicate.title}"${by}.` });
 }
 
-const integrationWarning =(what: string, error: unknown) =>
-  `Música salva, mas ${what}: ${error instanceof Error ? error.message : "erro desconhecido"}`;
+const integrationWarning = (what: string, error: unknown) => {
+  console.error(`[integração] ${what}:`, error instanceof Error ? error.message : error);
+  return `Música salva, mas ${what}. Avise o setor de desenvolvimento para verificar a integração.`;
+};
 
 interface YouTubeFields {
   youtubeUrl: string | null;
@@ -85,7 +86,7 @@ async function syncPlaylistVideo(
   songId: number | undefined,
   warnings: string[]
 ): Promise<void> {
-  if (!youtubeService.playlistId || !youtubeService.isConfigured() || oldId === newId) return;
+  if (!youtubeService.isConfigured() || oldId === newId || !(await youtubeService.getPlaylistId())) return;
   try {
     if (oldId && !(await isVideoUsedElsewhere(oldId, songId))) await youtubeService.removeFromPlaylist(oldId);
     if (newId) await youtubeService.addToPlaylist(newId);
@@ -113,24 +114,57 @@ interface SpotifyFields {
 async function resolveSpotify(
   url: string | null | undefined,
   title: string,
-  artist: string | null | undefined
+  artist: string | null | undefined,
+  warnings: string[]
 ): Promise<SpotifyFields> {
   const link = normalizeLink(url);
   if (link) {
     const data = spotifyService.extractId(link);
+    if (data?.type !== "track") warnings.push("O link informado não é uma faixa do Spotify reconhecida.");
     return { spotifyUrl: link, spotifyTrackId: data?.type === "track" ? data.id : null };
   }
-  const track = await spotifyService.searchTrack(title, artist);
-  return track
-    ? { spotifyUrl: track.external_urls.spotify, spotifyTrackId: track.id }
-    : { spotifyUrl: null, spotifyTrackId: null };
+  if (!spotifyService.isConfigured()) return { spotifyUrl: null, spotifyTrackId: null };
+  try {
+    const track = await spotifyService.searchTrack(title, artist);
+    return track
+      ? { spotifyUrl: track.external_urls.spotify, spotifyTrackId: track.id }
+      : { spotifyUrl: null, spotifyTrackId: null };
+  } catch (error) {
+    warnings.push(integrationWarning("não foi possível buscar a faixa no Spotify", error));
+    return { spotifyUrl: null, spotifyTrackId: null };
+  }
 }
 
-async function syncSpotifyTrack(oldId: string | null, newId: string | null): Promise<void> {
-  if (!SPOTIFY_PLAYLIST_ID || oldId === newId) return;
-  if (oldId) await spotifyService.removeFromPlaylist(oldId, SPOTIFY_PLAYLIST_ID);
-  if (newId) await spotifyService.addToPlaylist(newId, SPOTIFY_PLAYLIST_ID);
+const getSpotifyPlaylistId = () => getSetting(SETTING_SPOTIFY_PLAYLIST_ID);
+
+async function isTrackUsedElsewhere(trackId: string, exceptSongId?: number): Promise<boolean> {
+  const [row] = await db
+    .select({ count: count() })
+    .from(songs)
+    .where(and(eq(songs.spotifyTrackId, trackId), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
+  return (row?.count ?? 0) > 0;
 }
+
+async function syncSpotifyTrack(
+  oldId: string | null,
+  newId: string | null,
+  songId: number | undefined,
+  warnings: string[]
+): Promise<void> {
+  if (oldId === newId || !spotifyService.isConfigured()) return;
+  const playlistId = await getSpotifyPlaylistId();
+  if (!playlistId) return;
+  try {
+    if (oldId && !(await isTrackUsedElsewhere(oldId, songId))) await spotifyService.removeTrack(playlistId, oldId);
+    if (newId) await spotifyService.addTracks(playlistId, [newId]);
+  } catch (error) {
+    if (error instanceof SpotifyIntegrationError && error.reason === "not_configured") return;
+    warnings.push(integrationWarning("a playlist do Spotify não foi atualizada", error));
+  }
+}
+
+/** Quantas músicas sem faixa a sincronização busca por vez (evita estourar o limite de chamadas). */
+const SPOTIFY_RESOLVE_LIMIT = 40;
 
 const editSongs = can("songs.edit");
 
@@ -263,7 +297,7 @@ export const songRouter = createTRPCRouter({
           await syncPlaylistVideo(row.youtubeVideoId, null, row.id, warnings);
         }
         if (row.spotifyTrackId && row.spotifyTrackId !== (fill.spotifyTrackId ?? keep.spotifyTrackId)) {
-          await syncSpotifyTrack(row.spotifyTrackId, null);
+          await syncSpotifyTrack(row.spotifyTrackId, null, row.id, warnings);
         }
       }
       return { merged: removed.length, warnings };
@@ -275,13 +309,13 @@ export const songRouter = createTRPCRouter({
 
     const [youtube, spotify] = await Promise.all([
       resolveYouTube(input.youtubeUrl, input.title, input.artist, warnings),
-      resolveSpotify(input.spotifyUrl, input.title, input.artist),
+      resolveSpotify(input.spotifyUrl, input.title, input.artist, warnings),
     ]);
 
     const [duration] = await Promise.all([
       input.duration ? Promise.resolve(input.duration) : durationFromVideo(youtube.youtubeVideoId, warnings),
       syncPlaylistVideo(null, youtube.youtubeVideoId, undefined, warnings),
-      syncSpotifyTrack(null, spotify.spotifyTrackId),
+      syncSpotifyTrack(null, spotify.spotifyTrackId, undefined, warnings),
     ]);
 
     const [song] = await db
@@ -343,9 +377,9 @@ export const songRouter = createTRPCRouter({
       };
 
       const updateSpotify = async () => {
-        const spotify = await resolveSpotify(data.spotifyUrl, title, artist);
+        const spotify = await resolveSpotify(data.spotifyUrl, title, artist, warnings);
         Object.assign(updateData, spotify);
-        await syncSpotifyTrack(currentSong.spotifyTrackId, spotify.spotifyTrackId);
+        await syncSpotifyTrack(currentSong.spotifyTrackId, spotify.spotifyTrackId, currentSong.id, warnings);
       };
 
       await Promise.all([
@@ -385,11 +419,14 @@ export const songRouter = createTRPCRouter({
     const [deleted] = await db
       .delete(songs)
       .where(eq(songs.id, input))
-      .returning({ youtubeVideoId: songs.youtubeVideoId });
+      .returning({ youtubeVideoId: songs.youtubeVideoId, spotifyTrackId: songs.spotifyTrackId });
 
     const warnings: string[] = [];
     if (deleted?.youtubeVideoId) {
       await syncPlaylistVideo(deleted.youtubeVideoId, null, input, warnings);
+    }
+    if (deleted?.spotifyTrackId) {
+      await syncSpotifyTrack(deleted.spotifyTrackId, null, input, warnings);
     }
     return { success: true, warnings };
   }),
@@ -423,6 +460,57 @@ export const songRouter = createTRPCRouter({
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: error instanceof Error ? error.message : "Falha ao sincronizar a playlist do YouTube",
+      });
+    }
+  }),
+
+  getSpotifyStatus: protectedProcedure.query(async () => spotifyService.getStatus(await getSpotifyPlaylistId())),
+
+  syncSpotifyPlaylist: editSongs.mutation(async () => {
+    const playlistId = await getSpotifyPlaylistId();
+    if (!playlistId || !spotifyService.isConfigured()) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A integração com o Spotify não está configurada." });
+    }
+
+    try {
+      // 1) Músicas sem faixa: busca no Spotify pelo título e artista.
+      const unlinked = await db
+        .select({ id: songs.id, title: songs.title, artist: songs.artist })
+        .from(songs)
+        .where(sql`${songs.spotifyTrackId} is null and ${songs.spotifyUrl} is null`)
+        .orderBy(asc(songs.id))
+        .limit(SPOTIFY_RESOLVE_LIMIT + 1);
+      const toResolve = unlinked.slice(0, SPOTIFY_RESOLVE_LIMIT);
+      let resolved = 0;
+      let notFound = 0;
+      for (const song of toResolve) {
+        const track = await spotifyService.searchTrack(song.title, song.artist);
+        if (!track) {
+          notFound += 1;
+          continue;
+        }
+        await db
+          .update(songs)
+          .set({ spotifyUrl: track.external_urls.spotify, spotifyTrackId: track.id, updatedAt: new Date() })
+          .where(eq(songs.id, song.id));
+        resolved += 1;
+      }
+
+      // 2) Faixas que estão nas músicas e faltam na playlist.
+      const linked = await db
+        .select({ trackId: songs.spotifyTrackId })
+        .from(songs)
+        .where(isNotNull(songs.spotifyTrackId));
+      const added = await spotifyService.addTracks(
+        playlistId,
+        linked.flatMap((row) => (row.trackId ? [row.trackId] : []))
+      );
+
+      return { resolved, notFound, added, remaining: unlinked.length - toResolve.length };
+    } catch (error) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: error instanceof Error ? error.message : "Falha ao sincronizar a playlist do Spotify",
       });
     }
   }),

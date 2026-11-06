@@ -1,6 +1,7 @@
 import "server-only";
 import { auth, youtube, type youtube_v3 } from "@googleapis/youtube";
 import { env } from "@/env";
+import { getSetting, SETTING_YOUTUBE_PLAYLIST_ID } from "@/server/settings";
 import { extractYouTubeVideoId, youtubePlaylistUrl } from "@/lib/youtube-url";
 
 export type YouTubeErrorReason = "not_configured" | "auth" | "quota" | "playlist_not_found" | "unknown";
@@ -9,7 +10,7 @@ const MESSAGES: Record<YouTubeErrorReason, string> = {
   not_configured: "Integração com o YouTube não configurada.",
   auth: "A conexão com o YouTube expirou. Gere um novo token com `npm run youtube:token`.",
   quota: "A cota diária da API do YouTube acabou. Tente novamente amanhã.",
-  playlist_not_found: "A playlist configurada (YOUTUBE_PLAYLIST_ID) não foi encontrada nesta conta.",
+  playlist_not_found: "A playlist configurada não foi encontrada nesta conta.",
   unknown: "Erro inesperado ao falar com o YouTube.",
 };
 
@@ -82,14 +83,22 @@ export interface PlaylistSyncResult {
   failed: number;
 }
 
+const PLAYLIST_ID_TTL_MS = 60_000;
+
 class YouTubeService {
   private client: youtube_v3.Youtube | null = null;
   private authBrokenUntil = 0;
   private lastAuthError: YouTubeIntegrationError | null = null;
   private statusCache: YouTubeStatus | null = null;
 
-  get playlistId(): string | undefined {
-    return env.YOUTUBE_PLAYLIST_ID;
+  private playlistIdCache: { value: string | undefined; loadedAt: number } | null = null;
+
+  /** Id da playlist, guardado no banco (tabela app_settings). Fica em memória por 1 minuto. */
+  async getPlaylistId(): Promise<string | undefined> {
+    if (!this.playlistIdCache || Date.now() - this.playlistIdCache.loadedAt > PLAYLIST_ID_TTL_MS) {
+      this.playlistIdCache = { value: (await getSetting(SETTING_YOUTUBE_PLAYLIST_ID)) ?? undefined, loadedAt: Date.now() };
+    }
+    return this.playlistIdCache.value;
   }
 
   isConfigured(): boolean {
@@ -127,9 +136,9 @@ class YouTubeService {
     }
   }
 
-  private requirePlaylist(): string {
-    const id = this.playlistId;
-    if (!id) throw new YouTubeIntegrationError("not_configured", "YOUTUBE_PLAYLIST_ID ausente");
+  private async requirePlaylist(): Promise<string> {
+    const id = await this.getPlaylistId();
+    if (!id) throw new YouTubeIntegrationError("not_configured", "Playlist do YouTube não definida");
     return id;
   }
 
@@ -168,7 +177,7 @@ class YouTubeService {
   }
 
   private async findPlaylistItemId(videoId: string): Promise<string | null> {
-    const playlistId = this.requirePlaylist();
+    const playlistId = await this.requirePlaylist();
     const response = await this.call((client) =>
       client.playlistItems.list({ part: ["id"], playlistId, videoId, maxResults: 1 })
     );
@@ -177,7 +186,7 @@ class YouTubeService {
 
   async addToPlaylist(videoId: string): Promise<"added" | "already"> {
     if (await this.findPlaylistItemId(videoId)) return "already";
-    const playlistId = this.requirePlaylist();
+    const playlistId = await this.requirePlaylist();
     await this.call((client) =>
       client.playlistItems.insert({
         part: ["snippet"],
@@ -195,7 +204,7 @@ class YouTubeService {
   }
 
   private async listPlaylistVideoIds(): Promise<Set<string>> {
-    const playlistId = this.requirePlaylist();
+    const playlistId = await this.requirePlaylist();
     const ids = new Set<string>();
     let pageToken: string | undefined;
     do {
@@ -221,7 +230,7 @@ class YouTubeService {
       failed: 0,
     };
 
-    const playlistId = this.requirePlaylist();
+    const playlistId = await this.requirePlaylist();
     for (const videoId of missing.slice(0, maxInserts)) {
       try {
         await this.call((client) =>
@@ -247,12 +256,13 @@ class YouTubeService {
     }
 
     let status: YouTubeStatus;
-    if (!this.isConfigured() || !this.playlistId) {
+    const configuredPlaylistId = await this.getPlaylistId();
+    if (!this.isConfigured() || !configuredPlaylistId) {
       status = { configured: false, ok: false, reason: "not_configured", message: MESSAGES.not_configured, checkedAt: Date.now() };
     } else {
       try {
         if (force) this.authBrokenUntil = 0;
-        const playlistId = this.playlistId;
+        const playlistId = configuredPlaylistId;
         const response = await this.call((client) =>
           client.playlists.list({ part: ["snippet", "contentDetails"], id: [playlistId], maxResults: 1 })
         );

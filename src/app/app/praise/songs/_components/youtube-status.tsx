@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Youtube } from "@/components/icons/brand";
@@ -10,16 +9,10 @@ import { mutationFeedback } from "@/lib/mutation-feedback";
 
 export function YouTubeStatus() {
   const utils = api.useUtils();
-  const { data: status, isFetching } = api.song.getYouTubeStatus.useQuery(undefined, {
+  const { data: status } = api.song.getYouTubeStatus.useQuery(undefined, {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
-
-  const handleRecheck = async () => {
-    const fresh = await utils.song.getYouTubeStatus.fetch({ force: true });
-    utils.song.getYouTubeStatus.setData(undefined, fresh);
-    if (fresh.ok) toast.success("YouTube conectado");
-  };
 
   const syncPlaylistMutation = api.song.syncYouTubePlaylist.useMutation(
     mutationFeedback({
@@ -44,33 +37,11 @@ export function YouTubeStatus() {
     return (
       <Alert className="border-warning/50 bg-warning/10">
         <AlertTriangle className="h-4 w-4 !text-warning" />
-        <AlertTitle>Integração com o YouTube parada</AlertTitle>
-        <AlertDescription className="space-y-2">
-          <p>{status.message}</p>
-          {status.reason === "auth" && (
-            <ol className="list-decimal space-y-0.5 pl-5 text-sm">
-              <li>
-                No computador do sistema, rode <code className="rounded bg-muted px-1">npm run youtube:token</code> e autorize
-                com a conta dona da playlist.
-              </li>
-              <li>
-                Atualize <code className="rounded bg-muted px-1">YOUTUBE_REFRESH_TOKEN</code> no <code>.env</code> e na
-                Vercel (o script mostra o valor).
-              </li>
-              <li>
-                Para não expirar de novo: no Google Cloud, em <em>Tela de consentimento OAuth</em>, mude o app de “Teste”
-                para <strong>“Em produção”</strong>.
-              </li>
-            </ol>
-          )}
-          <p className="text-sm text-muted-foreground">
-            Enquanto isso, as músicas continuam sendo salvas — só não entram na playlist. Depois de corrigir, use
-            “Sincronizar”.
+        <AlertTitle>YouTube fora do ar</AlertTitle>
+        <AlertDescription>
+          <p>
+            Avise o setor de desenvolvimento para verificar a integração. Enquanto isso, as músicas continuam sendo salvas, só não entram na playlist.
           </p>
-          <Button type="button" size="sm" variant="outline" onClick={() => void handleRecheck()} disabled={isFetching}>
-            {isFetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-            Verificar novamente
-          </Button>
         </AlertDescription>
       </Alert>
     );

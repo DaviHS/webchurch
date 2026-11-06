@@ -2,9 +2,10 @@ import "dotenv/config";
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import readline from "node:readline/promises";
+import { neon } from "@neondatabase/serverless";
 import { auth, youtube } from "@googleapis/youtube";
 
-const { YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI, YOUTUBE_PLAYLIST_ID } = process.env;
+const { YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REDIRECT_URI, DATABASE_URL } = process.env;
 
 if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET || !YOUTUBE_REDIRECT_URI) {
   console.error("❌ Defina YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET e YOUTUBE_REDIRECT_URI no .env");
@@ -105,6 +106,11 @@ try {
     process.exitCode = 1;
   } else {
     oauth2Client.setCredentials(tokens);
+    // O id da playlist fica no banco (tabela app_settings).
+    const stored = DATABASE_URL
+      ? await neon(DATABASE_URL).query("select value from app_settings where key = 'youtube_playlist_id'")
+      : [];
+    const YOUTUBE_PLAYLIST_ID = (stored[0] as { value: string } | undefined)?.value;
     if (YOUTUBE_PLAYLIST_ID) {
       const client = youtube({ version: "v3", auth: oauth2Client });
       const { data } = await client.playlists.list({ part: ["snippet"], id: [YOUTUBE_PLAYLIST_ID] });
@@ -112,7 +118,7 @@ try {
       console.log(
         playlist
           ? `\n✅ Token válido — playlist "${playlist.snippet?.title}" acessível.`
-          : "\n⚠️  Token válido, mas a playlist de YOUTUBE_PLAYLIST_ID não foi encontrada nesta conta."
+          : "\n⚠️  Token válido, mas a playlist salva no banco não foi encontrada nesta conta."
       );
     }
 

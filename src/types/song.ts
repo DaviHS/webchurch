@@ -6,6 +6,8 @@ export interface Song {
   lyrics?: string;
   youtubeUrl?: string;
   youtubeVideoId?: string;
+  spotifyUrl?: string;
+  spotifyTrackId?: string;
   duration?: number;
   createdAt?: Date;
   updatedAt?: Date;

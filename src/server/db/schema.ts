@@ -444,3 +444,9 @@ export const bibleMarks = createTable(
 
 export type BibleMark = typeof bibleMarks.$inferSelect
 
+/** Configurações do sistema que não são segredo e quase não mudam (ex.: id da playlist do Spotify). */
+export const appSettings = createTable("app_settings", (d) => ({
+  key: d.varchar("key", { length: 100 }).primaryKey(),
+  value: d.text("value").notNull(),
+  updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+}))

@@ -50,6 +50,8 @@ export default function ReportsPage() {
     lyrics: song.lyrics ?? undefined,
     youtubeUrl: song.youtubeUrl ?? undefined,
     youtubeVideoId: song.youtubeVideoId ?? undefined,
+    spotifyUrl: song.spotifyUrl ?? undefined,
+    spotifyTrackId: song.spotifyTrackId ?? undefined,
     duration: song.duration ?? undefined,
   })) ?? [];
 
