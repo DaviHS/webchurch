@@ -632,7 +632,8 @@ function BibleReader() {
             </div>
           ))}
           {versions && (
-            <div className="flex items-center gap-2 sm:ml-auto">
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full text-xs sm:w-52" />
               {comparing && selectedVersions.length < MAX_COLUMNS && (
                 <Button type="button" variant="outline" size="sm" onClick={addVersion}>
                   <Plus className="mr-1" /> Versão
@@ -697,13 +698,13 @@ function BibleReader() {
       />
 
       {selected.size > 0 && (
-        <div className="sticky bottom-3 z-10 space-y-3 rounded-lg border bg-background p-3 shadow-lg">
-          <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 text-sm">
+        <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 space-y-2 rounded-lg border bg-background p-2.5 shadow-lg md:bottom-3">
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 flex-1 truncate text-sm">
               {selectionLabel ? (
                 <>
                   <span className="font-semibold">{selectionLabel}</span>
-                  {comparing && <span className="ml-2 text-muted-foreground">em {selectedVersions[0]} (versão 1)</span>}
+                  {comparing && <span className="ml-2 text-muted-foreground">em {selectedVersions[0]}</span>}
                 </>
               ) : (
                 <span className="text-muted-foreground">Para projetar, selecione versículos em sequência.</span>
@@ -714,7 +715,7 @@ function BibleReader() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5" role="group" aria-label="Marcar com uma cor">
               {BIBLE_MARK_COLORS.map((color) => (
                 <button
@@ -739,26 +740,24 @@ function BibleReader() {
                 <Eraser />
               </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={singleSelectedVerse === null}
-              title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
-              onClick={() => setNoteVerse(singleSelectedVerse)}
-            >
-              <StickyNote className="mr-1" /> Anotar
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-            <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full sm:w-60" />
-            <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
-              <Copy className="mr-1" /> Copiar
-            </Button>
-            <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
-              <Projector className="mr-1" /> Projetar
-            </Button>
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={singleSelectedVerse === null}
+                title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
+                onClick={() => setNoteVerse(singleSelectedVerse)}
+              >
+                <StickyNote className="mr-1" /> Anotar
+              </Button>
+              <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
+                <Copy className="mr-1" /> Copiar
+              </Button>
+              <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
+                <Projector className="mr-1" /> Projetar
+              </Button>
+            </div>
           </div>
         </div>
       )}
