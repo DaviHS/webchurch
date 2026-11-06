@@ -47,10 +47,15 @@ export function MobileNavigation() {
   const active = findActiveLink(pathname)
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const [isFabOpen, setIsFabOpen] = useState(false)
-  const { can } = usePermissions()
+  const { can, isLoading: permissionsLoading } = usePermissions()
   const quickActions = QUICK_ACTIONS.filter((action) => can(action.permission))
 
   // A Bíblia tem atalho próprio no cabeçalho, então não conta como item do "Mais".
+  // O "Mais" só existe se houver algo liberado fora dos atalhos principais.
+  const hasMore =
+    !permissionsLoading &&
+    NAV_SECTIONS.some((section) => section.items.some((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can)))
+
   const secondaryActive =
     active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url) && !STANDALONE_LINKS.includes(active.link)
 
@@ -123,20 +128,22 @@ export function MobileNavigation() {
             </Link>
           )
         })}
-        <button
-          type="button"
-          onClick={() => setIsMoreOpen(true)}
-          className={cn(
-            "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
-            secondaryActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <MoreHorizontal className="size-5" />
-          <span>Mais</span>
-        </button>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={() => setIsMoreOpen(true)}
+            className={cn(
+              "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
+              secondaryActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MoreHorizontal className="size-5" />
+            <span>Mais</span>
+          </button>
+        )}
       </nav>
 
-      <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen}>
+      <Sheet open={hasMore && isMoreOpen} onOpenChange={setIsMoreOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <SheetHeader className="text-left">
             <SheetTitle>Menu</SheetTitle>

@@ -103,6 +103,9 @@ export function NavMain() {
         })}
 
         {NAV_SECTIONS.map((section) => {
+          const links = section.items.filter((link) => canSee(link, can))
+          // Sem nenhum item liberado, o grupo nem aparece (nem como recolhível vazio).
+          if (links.length === 0) return null
           const sectionActive = active?.section === section
           return (
             <Collapsible key={section.title} asChild defaultOpen className="group/collapsible">
@@ -116,7 +119,7 @@ export function NavMain() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub className="me-0 pe-0">
-                    {section.items.filter((link) => canSee(link, can)).map((link) => (
+                    {links.map((link) => (
                       <SubItem key={link.url} link={link} isActive={active?.link === link} />
                     ))}
                   </SidebarMenuSub>
