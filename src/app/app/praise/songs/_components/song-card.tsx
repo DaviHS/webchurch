@@ -9,6 +9,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { History, Play, Pencil, Trash2, Eye } from "lucide-react";
 import { Spotify, Youtube } from "@/components/icons/brand";
 import { songCategoryLabel } from "@/lib/labels";
+import { youtubeWatchUrl } from "@/lib/youtube-url";
 import type { Song } from "@/types";
 
 interface SongCardProps {
@@ -21,8 +22,14 @@ interface SongCardProps {
   onViewHistory: (song: Song) => void;
 }
 
+function openExternal(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, onPlaySpotify, onViewHistory }: SongCardProps) {
   const canEdit = usePermissions().can("songs.edit");
+  const youtubeLink = song.youtubeUrl ?? (song.youtubeVideoId ? youtubeWatchUrl(song.youtubeVideoId) : undefined);
+  const spotifyLink = song.spotifyUrl ?? (song.spotifyTrackId ? `https://open.spotify.com/track/${song.spotifyTrackId}` : undefined);
   return (
     <Card className="flex h-full flex-col transition-shadow [@media(hover:hover)]:hover:shadow-md">
       <CardContent className="flex flex-1 items-center justify-between gap-2 p-3">
@@ -41,13 +48,29 @@ export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, 
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {youtubeLink && (
+            <Button asChild variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+              <a href={youtubeLink} target="_blank" rel="noopener noreferrer" title="Abrir no YouTube" aria-label={`Abrir ${song.title} no YouTube`}>
+                <Youtube className="text-red-600" />
+              </a>
+            </Button>
+          )}
+          {spotifyLink && (
+            <Button asChild variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+              <a href={spotifyLink} target="_blank" rel="noopener noreferrer" title="Abrir no Spotify" aria-label={`Abrir ${song.title} no Spotify`}>
+                <Spotify className="text-green-600" />
+              </a>
+            </Button>
+          )}
           <RowActionsMenu
             label={`Ações de ${song.title}`}
             actions={[
               { label: "Ver letra", icon: Eye, onSelect: () => onViewLyrics(song) },
               { label: "Histórico", icon: History, onSelect: () => onViewHistory(song) },
-              { label: "Vídeo do YouTube", icon: Youtube, onSelect: () => onPlayYouTube(song), hidden: !song.youtubeUrl },
+              { label: "Vídeo do YouTube", icon: Youtube, onSelect: () => onPlayYouTube(song), hidden: !youtubeLink },
+              { label: "Abrir no YouTube", icon: Youtube, onSelect: () => youtubeLink && openExternal(youtubeLink), hidden: !youtubeLink },
               { label: "Ouvir no Spotify", icon: Spotify, onSelect: () => onPlaySpotify(song), hidden: !song.spotifyTrackId },
+              { label: "Abrir no Spotify", icon: Spotify, onSelect: () => spotifyLink && openExternal(spotifyLink), hidden: !spotifyLink },
               { label: "Editar", icon: Pencil, onSelect: () => onEdit(song), hidden: !canEdit },
               { label: "Excluir", icon: Trash2, onSelect: () => onDelete(song), destructive: true, hidden: !canEdit },
             ]}
