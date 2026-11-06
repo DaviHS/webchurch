@@ -697,61 +697,69 @@ function BibleReader() {
       />
 
       {selected.size > 0 && (
-        <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-3 shadow-lg">
-          <p className="min-w-0 flex-1 text-sm">
-            {selectionLabel ? (
-              <>
-                <span className="font-semibold">{selectionLabel}</span>
-                {comparing && <span className="ml-2 text-muted-foreground">em {selectedVersions[0]} (versão 1)</span>}
-              </>
-            ) : (
-              <span className="text-muted-foreground">Para projetar, selecione versículos em sequência.</span>
-            )}
-          </p>
-          <div className="flex items-center gap-1.5" role="group" aria-label="Marcar com uma cor">
-            {BIBLE_MARK_COLORS.map((color) => (
-              <button
-                key={color.value}
-                type="button"
-                className={cn("size-7 rounded-full border border-foreground/20 disabled:opacity-50", color.swatch)}
-                disabled={setMarksMutation.isPending}
-                onClick={() => applyColor(color.value)}
-                title={`Marcar de ${color.label.toLowerCase()}`}
-                aria-label={`Marcar de ${color.label.toLowerCase()}`}
-              />
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              disabled={setMarksMutation.isPending}
-              onClick={() => applyColor(null)}
-              title="Remover marcação"
-              aria-label="Remover marcação"
-            >
-              <Eraser />
+        <div className="sticky bottom-3 z-10 space-y-3 rounded-lg border bg-background p-3 shadow-lg">
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 text-sm">
+              {selectionLabel ? (
+                <>
+                  <span className="font-semibold">{selectionLabel}</span>
+                  {comparing && <span className="ml-2 text-muted-foreground">em {selectedVersions[0]} (versão 1)</span>}
+                </>
+              ) : (
+                <span className="text-muted-foreground">Para projetar, selecione versículos em sequência.</span>
+              )}
+            </p>
+            <Button type="button" variant="ghost" size="icon-sm" onClick={() => setSelection({ key, verses: new Set() })} aria-label="Limpar seleção">
+              <X />
             </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={singleSelectedVerse === null}
-            title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
-            onClick={() => setNoteVerse(singleSelectedVerse)}
-          >
-            <StickyNote className="mr-1" /> Anotar
-          </Button>
-          <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full sm:w-60" />
-          <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
-            <Copy className="mr-1" /> Copiar
-          </Button>
-          <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
-            <Projector className="mr-1" /> Projetar
-          </Button>
-          <Button type="button" variant="ghost" size="icon-sm" onClick={() => setSelection({ key, verses: new Set() })} aria-label="Limpar seleção">
-            <X />
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5" role="group" aria-label="Marcar com uma cor">
+              {BIBLE_MARK_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  className={cn("size-7 rounded-full border border-foreground/20 disabled:opacity-50", color.swatch)}
+                  disabled={setMarksMutation.isPending}
+                  onClick={() => applyColor(color.value)}
+                  title={`Marcar de ${color.label.toLowerCase()}`}
+                  aria-label={`Marcar de ${color.label.toLowerCase()}`}
+                />
+              ))}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={setMarksMutation.isPending}
+                onClick={() => applyColor(null)}
+                title="Remover marcação"
+                aria-label="Remover marcação"
+              >
+                <Eraser />
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={singleSelectedVerse === null}
+              title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
+              onClick={() => setNoteVerse(singleSelectedVerse)}
+            >
+              <StickyNote className="mr-1" /> Anotar
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+            <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full sm:w-60" />
+            <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
+              <Copy className="mr-1" /> Copiar
+            </Button>
+            <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
+              <Projector className="mr-1" /> Projetar
+            </Button>
+          </div>
         </div>
       )}
     </PageContainer>
