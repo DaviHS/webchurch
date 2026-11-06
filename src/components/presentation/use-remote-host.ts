@@ -14,8 +14,6 @@ import {
 } from "./remote-protocol";
 import type { PresentationController } from "./use-presentation-controller";
 
-const POLL_FAILURES_BEFORE_WARNING = 3;
-
 const clip = (text: string, max: number) => (text.length > max ? text.slice(0, max) : text);
 
 const isSessionGone = (error: unknown) =>
@@ -34,7 +32,6 @@ export function useRemoteHost(controller: PresentationController) {
   const sentOutlineRef = useRef<RemoteOutline | null>(null);
   const publishingRef = useRef(false);
   const dirtyRef = useRef(false);
-  const pollFailuresRef = useRef(0);
 
   const { deck, live, next, mode, broadcastState } = controller;
 
@@ -132,19 +129,13 @@ export function useRemoteHost(controller: PresentationController) {
     await utils.remote.pollCommands
       .fetch({ code, afterId: lastIdRef.current }, { staleTime: 0 })
       .then((result) => {
-        pollFailuresRef.current = 0;
         lastIdRef.current = result.lastId;
         if (result.commands.length > 0) {
           result.commands.forEach((item) => apply(item.command));
           setLastCommandAt(Date.now());
         }
       })
-      .catch(() => {
-        pollFailuresRef.current += 1;
-        if (pollFailuresRef.current === POLL_FAILURES_BEFORE_WARNING) {
-          toast.error("Sem conexão com o servidor: o celular pode não estar controlando a projeção.");
-        }
-      });
+      .catch(() => undefined);
   });
 
   useEffect(() => {
