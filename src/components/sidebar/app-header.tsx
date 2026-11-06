@@ -15,7 +15,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { getBreadcrumbs } from "@/config/navigation"
+import { BIBLE_LINK, getBreadcrumbs } from "@/config/navigation"
 import { logoutAndClearFilters } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
@@ -23,7 +23,9 @@ export const headerIconButton =
   "flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary [&_svg]:size-4"
 
 export function AppHeader() {
-  const [home, ...rest] = getBreadcrumbs(usePathname())
+  const pathname = usePathname()
+  const [home, ...rest] = getBreadcrumbs(pathname)
+  const onBible = pathname === BIBLE_LINK.url || pathname.startsWith(`${BIBLE_LINK.url}/`)
 
   return (
     <header className="sticky top-2 z-20 print:hidden mx-4 my-2 flex h-14 shrink-0 items-center gap-2 rounded-md bg-card/95 px-3 shadow-sm ring-1 ring-border backdrop-blur-md sm:px-4">
@@ -66,6 +68,15 @@ export function AppHeader() {
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-2">
+        <Link
+          href={BIBLE_LINK.url}
+          title={BIBLE_LINK.title}
+          aria-current={onBible ? "page" : undefined}
+          className={cn(headerIconButton, onBible && "border-primary/50 bg-primary/10 text-primary")}
+        >
+          <BIBLE_LINK.icon />
+          <span className="sr-only">{BIBLE_LINK.title}</span>
+        </Link>
         <ThemeToggle className={headerIconButton} />
         <Link href="/" className={cn(headerIconButton, "hidden sm:flex")} title="Site da igreja">
           <Globe />

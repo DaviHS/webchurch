@@ -50,7 +50,9 @@ export function MobileNavigation() {
   const { can } = usePermissions()
   const quickActions = QUICK_ACTIONS.filter((action) => can(action.permission))
 
-  const secondaryActive = active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url)
+  // A Bíblia tem atalho próprio no cabeçalho, então não conta como item do "Mais".
+  const secondaryActive =
+    active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url) && !STANDALONE_LINKS.includes(active.link)
 
   return (
     <div className="md:hidden print:hidden">
@@ -141,16 +143,6 @@ export function MobileNavigation() {
             <SheetDescription className="sr-only">Outras telas do sistema</SheetDescription>
           </SheetHeader>
           <div className="space-y-4 px-4">
-            <div className="grid grid-cols-2 gap-2.5">
-              {STANDALONE_LINKS.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url)).map((link) => (
-                <MoreLink
-                  key={link.url}
-                  link={link}
-                  isActive={active?.link === link}
-                  onNavigate={() => setIsMoreOpen(false)}
-                />
-              ))}
-            </div>
             {NAV_SECTIONS.map((section) => {
               const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can))
               if (links.length === 0) return null
