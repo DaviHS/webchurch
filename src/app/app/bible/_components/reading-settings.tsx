@@ -99,8 +99,6 @@ export function ReadingSettings({ className }: { className?: string }) {
             ))}
           </div>
         </div>
-
-        <p className="text-xs text-muted-foreground">A escolha fica salva neste aparelho. A aparência das letras depende dele.</p>
       </PopoverContent>
     </Popover>
   );
