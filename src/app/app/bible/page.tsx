@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { useBibleVersion } from "@/hooks/use-bible-version";
 import {
-  BIBLE_BOOKS,
   formatChapterTitle,
   getBook,
   neighborChapter,
@@ -618,38 +617,6 @@ function BibleReader() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex gap-2">
-            <Select value={String(location.bookId)} onValueChange={(value) => go({ bookId: Number(value), chapter: 1 })}>
-              <SelectTrigger className="min-w-0 flex-1 sm:w-52 sm:flex-none" aria-label="Livro">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {BIBLE_BOOKS.map((b) => (
-                  <SelectItem key={b.id} value={String(b.id)}>
-                    {b.namePt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={String(location.chapter)} onValueChange={(value) => go({ bookId: location.bookId, chapter: Number(value) })}>
-              <SelectTrigger className="w-28 shrink-0" aria-label="Capítulo">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {Array.from({ length: book.chapters }, (_, i) => i + 1).map((chapter) => (
-                  <SelectItem key={chapter} value={String(chapter)}>
-                    Cap. {chapter}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button asChild variant="outline" size="icon" className="shrink-0">
-              <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
-                <Bookmark />
-              </Link>
-            </Button>
-          </div>
-
           {versions && (
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {comparing ? (
@@ -668,6 +635,11 @@ function BibleReader() {
               )}
               <Button type="button" variant={comparing ? "default" : "outline"} className="shrink-0" aria-pressed={comparing} onClick={toggleCompare}>
                 <Columns2 className="mr-1" /> {comparing ? "Comparando" : "Comparar"}
+              </Button>
+              <Button asChild variant="outline" size="icon" className="shrink-0">
+                <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
+                  <Bookmark />
+                </Link>
               </Button>
             </div>
           )}
