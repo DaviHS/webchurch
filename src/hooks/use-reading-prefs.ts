@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
 export const READING_FONTS = [
   { value: "sans", label: "Padrão", family: "inherit" },
   { value: "serif", label: "Serifada", family: 'Georgia, Cambria, "Times New Roman", serif' },
-  { value: "book", label: "Livro", family: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif' },
+  { value: "book", label: "Livro", family: 'var(--font-book), Georgia, serif' },
 ] as const;
 
 export type ReadingFont = (typeof READING_FONTS)[number]["value"];
