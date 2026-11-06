@@ -100,6 +100,9 @@ export const users = createTable("users", (d) => ({
   status: userStatusEnum("status").notNull().default("pending"),
   approvedAt: d.timestamp("approved_at"),
   lastLogin: d.timestamp("last_login"),
+  bibleVersion: d.varchar("bible_version", { length: 10 }),
+  bibleBook: d.integer("bible_book"),
+  bibleChapter: d.integer("bible_chapter"),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
   resetToken: d.varchar("reset_token", { length: 100 }),
@@ -408,3 +411,20 @@ export const auditLogs = createTable(
 )
 
 export type AuditLog = typeof auditLogs.$inferSelect
+
+export const bibleMarks = createTable(
+  "bible_marks",
+  (d) => ({
+    userId: d.integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    bookId: d.integer("book_id").notNull().references(() => bibleBooks.id),
+    chapter: d.integer("chapter").notNull(),
+    verse: d.integer("verse").notNull(),
+    color: d.varchar("color", { length: 10 }),
+    note: d.text("note"),
+    createdAt: d.timestamp("created_at").notNull().defaultNow(),
+    updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.bookId, t.chapter, t.verse] }), index("bible_marks_user_updated_idx").on(t.userId, t.updatedAt)],
+)
+
+export type BibleMark = typeof bibleMarks.$inferSelect

@@ -2,7 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, ChevronLeft, ChevronRight, Columns2, Copy, ListChecks, Loader2, Plus, Projector, X } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, Bookmark, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Plus, Projector, StickyNote, X } from "lucide-react";
+import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
+import { VerseNoteDialog } from "./_components/verse-note-dialog";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
 import { PageContainer, PageHeader } from "@/components/page-header";
@@ -115,10 +118,13 @@ function VersionSelect({
   );
 }
 
+type VerseMarks = Map<number, { color: string | null; note: string | null }>;
+
 function ChapterColumn({
   version,
   location,
   selected,
+  marks,
   onToggle,
   onCopy,
   onProject,
@@ -128,6 +134,7 @@ function ChapterColumn({
   version: string;
   location: Location;
   selected: Set<number>;
+  marks: VerseMarks;
   onToggle: (verse: number) => void;
 }) {
   const { data, isPending, error } = api.bible.getChapter.useQuery(
@@ -177,10 +184,14 @@ function ChapterColumn({
               }}
               className={cn(
                 "cursor-pointer rounded px-0.5 decoration-primary/60 underline-offset-4 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                markColor(marks.get(v.verse)?.color)?.highlight,
                 selected.has(v.verse) && "bg-primary/15 underline",
               )}
             >
-              <sup className="mr-1 text-xs font-bold text-primary">{v.verse}</sup>
+              <sup className="mr-1 text-xs font-bold text-primary">
+                {v.verse}
+                {marks.get(v.verse)?.note && <StickyNote className="ml-0.5 inline size-3" aria-label="Tem anotação" />}
+              </sup>
               {v.text}{" "}
             </span>
           ))}
@@ -324,20 +335,45 @@ function BibleReader() {
     router.replace(`/app/bible?${query.toString()}`, { scroll: false });
   };
 
+  const utils = api.useUtils();
+  const { data: preferences, isPending: preferencesPending } = api.bible.preferences.useQuery(undefined, {
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  const { mutate: savePreferences } = api.bible.savePreferences.useMutation();
+
+  // Sem passagem na URL: retoma a última leitura do perfil (ou, se faltar, a deste navegador).
   useEffect(() => {
-    if (hasLocation) return;
-    const last = readLastLocation();
+    if (hasLocation || preferencesPending) return;
+    const savedBook = preferences?.bookId ? getBook(preferences.bookId) : undefined;
+    const fromProfile =
+      savedBook && preferences?.chapter && preferences.chapter >= 1 && preferences.chapter <= savedBook.chapters
+        ? { bookId: savedBook.id, chapter: preferences.chapter }
+        : null;
+    const last = fromProfile ?? readLastLocation();
     if (last) {
       router.replace(`/app/bible?b=${last.bookId}&c=${last.chapter}`, { scroll: false });
     }
-  }, [hasLocation, router]);
+  }, [hasLocation, preferencesPending, preferences, router]);
 
   useEffect(() => {
-    if (hasLocation) saveLastLocation({ bookId: location.bookId, chapter: location.chapter });
-  }, [hasLocation, location.bookId, location.chapter]);
+    if (!hasLocation) return;
+    const current = { bookId: location.bookId, chapter: location.chapter };
+    saveLastLocation(current);
+    utils.bible.preferences.setData(undefined, (previous) => ({ version: null, ...previous, bookId: current.bookId, chapter: current.chapter }));
+    // Espera a pessoa parar de virar capítulos antes de gravar no perfil.
+    const timer = setTimeout(() => savePreferences({ location: current }), 1500);
+    return () => clearTimeout(timer);
+  }, [hasLocation, location.bookId, location.chapter, savePreferences, utils]);
 
   const key = `${location.bookId}:${location.chapter}`;
-  const [selection, setSelection] = useState<{ key: string; verses: Set<number> }>({ key, verses: new Set() });
+  // Vindo de "Minhas marcações", o versículo escolhido chega em ?s= e já abre selecionado.
+  const [initialVerse] = useState(() => Number(params.get("s")));
+  const hasInitialVerse = Number.isInteger(initialVerse) && initialVerse >= 1;
+  const [selection, setSelection] = useState<{ key: string; verses: Set<number> }>({
+    key,
+    verses: hasInitialVerse ? new Set([initialVerse]) : new Set(),
+  });
   const selected = selection.key === key ? selection.verses : EMPTY_SELECTION;
   const selectVerses = (target: Location, verses: number[]) =>
     setSelection({ key: `${target.bookId}:${target.chapter}`, verses: new Set(verses) });
@@ -361,7 +397,7 @@ function BibleReader() {
   const allVerses = firstChapter?.verses.map((v) => v.verse) ?? [];
   const wholeChapterSelected = allVerses.length > 0 && allVerses.every((verse) => selected.has(verse));
   const toggleWholeChapter = () => selectVerses(location, wholeChapterSelected ? [] : allVerses);
-  const pendingScroll = useRef<number | null>(null);
+  const pendingScroll = useRef<number | null>(hasInitialVerse ? initialVerse : null);
 
   useEffect(() => {
     const verse = pendingScroll.current;
@@ -438,7 +474,39 @@ function BibleReader() {
     }
   };
 
-  const utils = api.useUtils();
+  const { data: chapterMarks = [] } = api.bible.chapterMarks.useQuery(location, { staleTime: 60_000, placeholderData: (previous) => previous });
+  const marks = useMemo<VerseMarks>(
+    () => new Map(chapterMarks.map((mark) => [mark.verse, { color: mark.color, note: mark.note }])),
+    [chapterMarks],
+  );
+  const notedVerses = chapterMarks.filter((mark) => mark.note);
+
+  const [noteVerse, setNoteVerse] = useState<number | null>(null);
+
+  const setMarksMutation = api.bible.setMarks.useMutation({
+    onSuccess: async (_data, variables) => {
+      await utils.bible.chapterMarks.invalidate();
+      setSelection({ key, verses: new Set() });
+      toast.success(variables.color ? "Versículos marcados" : "Marcação removida");
+    },
+    onError: () => toast.error("Não foi possível salvar a marcação."),
+  });
+
+  const setNoteMutation = api.bible.setNote.useMutation({
+    onSuccess: async (_data, variables) => {
+      await utils.bible.chapterMarks.invalidate();
+      setNoteVerse(null);
+      setSelection({ key, verses: new Set() });
+      toast.success(variables.note ? "Anotação salva" : "Anotação excluída");
+    },
+    onError: () => toast.error("Não foi possível salvar a anotação."),
+  });
+
+  const applyColor = (color: (typeof BIBLE_MARK_COLORS)[number]["value"] | null) =>
+    setMarksMutation.mutate({ ...location, verses: [...selected], color });
+
+  const singleSelectedVerse = selected.size === 1 ? ([...selected][0] ?? null) : null;
+
   const fetchSelectedText = async (version: string) => {
     const data = await utils.bible.getChapter.fetch({ version, ...location });
     return data.verses
@@ -449,7 +517,18 @@ function BibleReader() {
 
   return (
     <PageContainer>
-      <PageHeader title="Bíblia" icon={BookOpen} description="Leia, compare versões e projete no telão." />
+      <PageHeader
+        title="Bíblia"
+        icon={BookOpen}
+        description="Leia, compare versões, marque e anote versículos e projete no telão."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/app/bible/marks">
+              <Bookmark className="mr-1" /> Minhas marcações
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="space-y-3">
         <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
@@ -579,12 +658,43 @@ function BibleReader() {
             version={version}
             location={location}
             selected={selected}
+            marks={marks}
             onToggle={toggleVerse}
             onCopy={comparing && selectionLabel ? () => void copy(version) : undefined}
             onProject={comparing && selectionLabel ? () => project(version) : undefined}
           />
         ))}
       </div>
+
+      {notedVerses.length > 0 && (
+        <section aria-label="Minhas anotações neste capítulo" className="space-y-2 rounded-lg border p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minhas anotações neste capítulo</h3>
+          <ul className="space-y-1">
+            {notedVerses.map((mark) => (
+              <li key={mark.verse}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 rounded px-2 py-2 text-left text-sm hover:bg-accent"
+                  onClick={() => setNoteVerse(mark.verse)}
+                >
+                  <span className="shrink-0 font-semibold">v. {mark.verse}</span>
+                  <span className="line-clamp-2 min-w-0 whitespace-pre-line text-muted-foreground">{mark.note}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <VerseNoteDialog
+        open={noteVerse !== null}
+        onOpenChange={(open) => !open && setNoteVerse(null)}
+        reference={noteVerse !== null ? `${formatChapterTitle(book, location.chapter)}:${noteVerse}` : ""}
+        verseText={firstChapter?.verses.find((v) => v.verse === noteVerse)?.text}
+        initialNote={(noteVerse !== null ? marks.get(noteVerse)?.note : null) ?? ""}
+        isSaving={setNoteMutation.isPending}
+        onSave={(note) => noteVerse !== null && setNoteMutation.mutate({ ...location, verse: noteVerse, note })}
+      />
 
       {selected.size > 0 && (
         <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-3 shadow-lg">
@@ -598,6 +708,40 @@ function BibleReader() {
               <span className="text-muted-foreground">Para projetar, selecione versículos em sequência.</span>
             )}
           </p>
+          <div className="flex items-center gap-1.5" role="group" aria-label="Marcar com uma cor">
+            {BIBLE_MARK_COLORS.map((color) => (
+              <button
+                key={color.value}
+                type="button"
+                className={cn("size-7 rounded-full border border-foreground/20 disabled:opacity-50", color.swatch)}
+                disabled={setMarksMutation.isPending}
+                onClick={() => applyColor(color.value)}
+                title={`Marcar de ${color.label.toLowerCase()}`}
+                aria-label={`Marcar de ${color.label.toLowerCase()}`}
+              />
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={setMarksMutation.isPending}
+              onClick={() => applyColor(null)}
+              title="Remover marcação"
+              aria-label="Remover marcação"
+            >
+              <Eraser />
+            </Button>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={singleSelectedVerse === null}
+            title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
+            onClick={() => setNoteVerse(singleSelectedVerse)}
+          >
+            <StickyNote className="mr-1" /> Anotar
+          </Button>
           <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full sm:w-60" />
           <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
             <Copy className="mr-1" /> Copiar

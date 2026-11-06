@@ -6,10 +6,13 @@ import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
 import { getBook } from "@/lib/bible";
 import { findVersion, loadPassage } from "@/server/bible-passage";
+import { biblePersonalProcedures } from "@/server/api/routers/bible-personal";
 
 const versionCode = z.string().min(1).max(10);
 
 export const bibleRouter = createTRPCRouter({
+  ...biblePersonalProcedures,
+
   versions: protectedProcedure.query(() =>
     db
       .select({ id: bibleVersions.id, code: bibleVersions.code, name: bibleVersions.name, language: bibleVersions.language })
