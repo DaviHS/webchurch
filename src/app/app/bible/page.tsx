@@ -435,6 +435,15 @@ function BibleReader() {
   const book = getBook(location.bookId)!;
   const prev = neighborChapter(location.bookId, location.chapter, -1);
   const next = neighborChapter(location.bookId, location.chapter, 1);
+  const locationTitle = (target: Location) => {
+    const targetBook = getBook(target.bookId);
+    return targetBook ? formatChapterTitle(targetBook, target.chapter) : "";
+  };
+  const goToChapter = (target: Location | null) => {
+    if (!target) return;
+    go(target);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const runs = toRuns([...selected]);
   const singleRun = runs.length === 1 ? runs[0]! : null;
@@ -520,7 +529,6 @@ function BibleReader() {
       <PageHeader
         title="Bíblia"
         icon={BookOpen}
-        description="Leia, compare versões, marque e anote versículos e projete no telão."
         actions={
           <Button asChild variant="outline">
             <Link href="/app/bible/marks">
@@ -567,88 +575,111 @@ function BibleReader() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={String(location.bookId)} onValueChange={(value) => go({ bookId: Number(value), chapter: 1 })}>
-            <SelectTrigger className="w-full sm:w-52" aria-label="Livro">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {BIBLE_BOOKS.map((b) => (
-                <SelectItem key={b.id} value={String(b.id)}>
-                  {b.namePt}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(location.chapter)} onValueChange={(value) => go({ bookId: location.bookId, chapter: Number(value) })}>
-            <SelectTrigger className="w-28" aria-label="Capítulo">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {Array.from({ length: book.chapters }, (_, i) => i + 1).map((chapter) => (
-                <SelectItem key={chapter} value={String(chapter)}>
-                  Cap. {chapter}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button type="button" variant="outline" size="icon" disabled={!prev} onClick={() => prev && go(prev)} aria-label="Capítulo anterior">
-            <ChevronLeft />
-          </Button>
-          <Button type="button" variant="outline" size="icon" disabled={!next} onClick={() => next && go(next)} aria-label="Próximo capítulo">
-            <ChevronRight />
-          </Button>
-          <Button
-            type="button"
-            variant={wholeChapterSelected ? "default" : "outline"}
-            disabled={allVerses.length === 0}
-            aria-pressed={wholeChapterSelected}
-            onClick={toggleWholeChapter}
-          >
-            <ListChecks className="mr-1" /> Capítulo inteiro
-          </Button>
-
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-2 sm:flex-row sm:items-center">
-          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {versions && selectedVersions.map((code, index) => (
-            <div key={index} className="flex min-w-0 items-center gap-1 sm:min-w-64 sm:flex-1">
-              {comparing && (
-                <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{index + 1}</span>
-              )}
-              <VersionSelect
-                value={code}
-                versions={versions}
-                taken={selectedVersions}
-                onChange={(next) => setVersionAt(index, next)}
-                label={index === 0 ? "Versão" : `Versão ${index + 1} da comparação`}
-                className="w-full min-w-0"
-              />
-              {index > 0 && (
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)} aria-label={`Remover ${code} da comparação`}>
-                  <X />
-                </Button>
-              )}
-            </div>
-          ))}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex gap-2">
+            <Select value={String(location.bookId)} onValueChange={(value) => go({ bookId: Number(value), chapter: 1 })}>
+              <SelectTrigger className="min-w-0 flex-1 sm:w-52 sm:flex-none" aria-label="Livro">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {BIBLE_BOOKS.map((b) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.namePt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(location.chapter)} onValueChange={(value) => go({ bookId: location.bookId, chapter: Number(value) })}>
+              <SelectTrigger className="w-28 shrink-0" aria-label="Capítulo">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {Array.from({ length: book.chapters }, (_, i) => i + 1).map((chapter) => (
+                  <SelectItem key={chapter} value={String(chapter)}>
+                    Cap. {chapter}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
           {versions && (
-            <div className="flex items-center gap-2 sm:shrink-0">
-              {comparing && selectedVersions.length < MAX_COLUMNS && (
-                <Button type="button" variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={addVersion}>
-                  <Plus className="mr-1" /> Versão
-                </Button>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {comparing ? (
+                <span className="flex-1 text-sm text-muted-foreground">Comparando {selectedVersions.length} versões</span>
+              ) : (
+                selectedVersions[0] && (
+                  <VersionSelect
+                    value={selectedVersions[0]}
+                    versions={versions}
+                    taken={selectedVersions}
+                    onChange={(next) => setVersionAt(0, next)}
+                    label="Versão"
+                    className="w-full min-w-0 flex-1"
+                  />
+                )
               )}
-              <Button type="button" variant={comparing ? "default" : "outline"} size="sm" className="flex-1 sm:flex-none" aria-pressed={comparing} onClick={toggleCompare}>
+              <Button type="button" variant={comparing ? "default" : "outline"} className="shrink-0" aria-pressed={comparing} onClick={toggleCompare}>
                 <Columns2 className="mr-1" /> {comparing ? "Comparando" : "Comparar"}
               </Button>
             </div>
           )}
         </div>
+
+        {versions && comparing && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-2">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {selectedVersions.map((code, index) => (
+                <div key={index} className="flex min-w-0 items-center gap-1">
+                  <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                  <VersionSelect
+                    value={code}
+                    versions={versions}
+                    taken={selectedVersions}
+                    onChange={(next) => setVersionAt(index, next)}
+                    label={index === 0 ? "Versão" : `Versão ${index + 1} da comparação`}
+                    className="w-full min-w-0"
+                  />
+                  {index > 0 ? (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)} aria-label={`Remover ${code} da comparação`}>
+                      <X />
+                    </Button>
+                  ) : (
+                    <span className="size-9 shrink-0" aria-hidden />
+                  )}
+                </div>
+              ))}
+            </div>
+            {selectedVersions.length < MAX_COLUMNS && (
+              <Button type="button" variant="outline" size="sm" onClick={addVersion}>
+                <Plus className="mr-1" /> Adicionar versão
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      <h2 className="text-xl font-bold">{formatChapterTitle(book, location.chapter)}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 truncate text-xl font-bold">{formatChapterTitle(book, location.chapter)}</h2>
+        <Button
+          type="button"
+          variant={wholeChapterSelected ? "default" : "outline"}
+          size="sm"
+          disabled={allVerses.length === 0}
+          aria-pressed={wholeChapterSelected}
+          onClick={toggleWholeChapter}
+          title="Selecionar o capítulo inteiro"
+        >
+          <ListChecks />
+          <span className="sr-only sm:not-sr-only sm:ml-1">Capítulo inteiro</span>
+        </Button>
+        <Button type="button" variant="outline" size="icon-sm" disabled={!prev} onClick={() => prev && go(prev)} aria-label="Capítulo anterior">
+          <ChevronLeft />
+        </Button>
+        <Button type="button" variant="outline" size="icon-sm" disabled={!next} onClick={() => next && go(next)} aria-label="Próximo capítulo">
+          <ChevronRight />
+        </Button>
+      </div>
 
       <div
         className="grid gap-4"
@@ -686,6 +717,19 @@ function BibleReader() {
             ))}
           </ul>
         </section>
+      )}
+
+      {(prev ?? next) && (
+        <nav aria-label="Navegar entre capítulos" className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" className="justify-start overflow-hidden" disabled={!prev} onClick={() => goToChapter(prev)}>
+            <ChevronLeft className="mr-1 shrink-0" />
+            <span className="truncate">{prev ? locationTitle(prev) : "Início"}</span>
+          </Button>
+          <Button type="button" variant="outline" className="justify-end overflow-hidden" disabled={!next} onClick={() => goToChapter(next)}>
+            <span className="truncate">{next ? locationTitle(next) : "Fim"}</span>
+            <ChevronRight className="ml-1 shrink-0" />
+          </Button>
+        </nav>
       )}
 
       <VerseNoteDialog
