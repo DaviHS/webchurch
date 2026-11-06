@@ -11,7 +11,7 @@ import {
   type ReadingLayout,
 } from "@/hooks/use-reading-prefs";
 import { cn } from "@/lib/utils";
-import { OfflineDownload } from "./offline-download";
+import { OfflineVersions } from "./offline-versions";
 
 const LAYOUTS: { value: ReadingLayout; label: string; icon: typeof List }[] = [
   { value: "flow", label: "Texto corrido", icon: AlignJustify },
@@ -100,7 +100,7 @@ export function ReadingSettings({ className, version }: { className?: string; ve
             ))}
           </div>
         </div>
-        {version && <OfflineDownload version={version} />}
+        <OfflineVersions currentVersion={version} />
       </PopoverContent>
     </Popover>
   );

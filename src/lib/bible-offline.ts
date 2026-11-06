@@ -6,6 +6,10 @@ const MAX_CONSECUTIVE_FAILURES = 8;
 const WORKERS = 4;
 const DOWNLOAD_PREFIX = "bible-offline:";
 const PROMPT_KEY = "bible-offline-prompt-until";
+/** Mesmo nome do cache usado em public/sw.js. */
+const BIBLE_CACHE = "bible-text";
+/** Versões mais usadas: o atalho "baixar as principais" pega as que existirem. */
+export const MAIN_VERSIONS = ["ARA", "NVI", "ACF", "NAA"];
 const PROMPT_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const ALL_CHAPTERS = BIBLE_BOOKS.flatMap((book) =>
@@ -30,6 +34,26 @@ function write(key: string, value: string) {
 
 export const readDownloadedAt = (version: string) => read(DOWNLOAD_PREFIX + version);
 export const markDownloaded = (version: string, value: string) => write(DOWNLOAD_PREFIX + version, value);
+
+export function forgetDownloaded(version: string) {
+  try {
+    localStorage.removeItem(DOWNLOAD_PREFIX + version);
+  } catch {
+    // Sem armazenamento local, não há o que esquecer.
+  }
+}
+
+/** Apaga do aparelho os capítulos guardados de uma versão (os de outras versões ficam). */
+export async function removeDownloaded(version: string): Promise<void> {
+  forgetDownloaded(version);
+  if (typeof caches === "undefined") return;
+  const cache = await caches.open(BIBLE_CACHE);
+  const marker = `"version":"${version}"`;
+  const entries = await cache.keys();
+  await Promise.all(
+    entries.filter((request) => decodeURIComponent(request.url).includes(marker)).map((request) => cache.delete(request)),
+  );
+}
 
 /** Pergunta uma vez e, se a pessoa recusar, só volta daqui a 30 dias. */
 export function shouldAskToDownload(version: string): boolean {
