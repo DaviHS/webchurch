@@ -16,7 +16,8 @@
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "clean": "rimraf .next node_modules",
     "deploy": "git pull && npm ci && npm run build",
-    "youtube:token": "node scripts/get-youtube-token.ts"
+    "youtube:token": "node scripts/get-youtube-token.ts",
+    "bible:headings": "node scripts/import-bible-headings.ts"
   },
   "dependencies": {
     "@daypicker/react": "^10.0.2",

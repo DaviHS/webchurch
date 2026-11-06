@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, StickyNote, X } from "lucide-react";
@@ -95,6 +95,7 @@ function ChapterColumn({
   );
   const [reading] = useReadingPrefs();
   const onePerLine = reading.layout === "lines";
+  const headingAt = new Map(data?.headings.map((heading) => [heading.verse, heading.title]));
 
   return (
     <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-lg border p-4">
@@ -110,8 +111,11 @@ function ChapterColumn({
           style={{ fontFamily: fontFamilyOf(reading.font), fontSize: READING_SIZES[reading.size] }}
         >
           {data.verses.map((v) => (
+            <Fragment key={v.verse}>
+              {headingAt.get(v.verse) && (
+                <span className="block pb-1 pt-3 text-[0.8em] font-semibold text-primary first:pt-0">{headingAt.get(v.verse)}</span>
+              )}
             <span
-              key={v.verse}
               id={`${version}-v${v.verse}`}
               role="button"
               tabIndex={0}
@@ -136,6 +140,7 @@ function ChapterColumn({
               </sup>
               {v.text}{" "}
             </span>
+            </Fragment>
           ))}
         </div>
       )}

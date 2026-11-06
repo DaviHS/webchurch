@@ -372,6 +372,20 @@ export const bibleVerses = createTable(
   (t) => [primaryKey({ columns: [t.versionId, t.bookId, t.chapter, t.verse] })],
 )
 
+/** Títulos de seção de cada tradução (ex.: "A criação"). Só as traduções que os têm aparecem aqui. */
+export const bibleHeadings = createTable(
+  "bible_headings",
+  (d) => ({
+    versionId: d.integer("version_id").notNull().references(() => bibleVersions.id, { onDelete: "cascade" }),
+    bookId: d.integer("book_id").notNull().references(() => bibleBooks.id),
+    chapter: d.integer("chapter").notNull(),
+    /** Versículo em que a seção começa. */
+    verse: d.integer("verse").notNull(),
+    title: d.varchar("title", { length: 200 }).notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.versionId, t.bookId, t.chapter, t.verse] })],
+)
+
 export type BibleVersion = typeof bibleVersions.$inferSelect
 export type BibleBook = typeof bibleBooks.$inferSelect
 export type BibleVerse = typeof bibleVerses.$inferSelect
@@ -429,3 +443,4 @@ export const bibleMarks = createTable(
 )
 
 export type BibleMark = typeof bibleMarks.$inferSelect
+

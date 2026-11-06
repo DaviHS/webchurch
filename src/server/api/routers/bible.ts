@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-import { bibleVerses, bibleVersions } from "@/server/db/schema";
+import { bibleHeadings, bibleVerses, bibleVersions } from "@/server/db/schema";
 import { getBook } from "@/lib/bible";
 import { findVersion, loadPassage } from "@/server/bible-passage";
 import { biblePersonalProcedures } from "@/server/api/routers/bible-personal";
@@ -41,7 +41,18 @@ export const bibleRouter = createTRPCRouter({
         )
         .orderBy(asc(bibleVerses.verse));
       if (verses.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Capítulo não encontrado nesta versão" });
-      return { version, bookId: input.bookId, chapter: input.chapter, verses };
+      const headings = await db
+        .select({ verse: bibleHeadings.verse, title: bibleHeadings.title })
+        .from(bibleHeadings)
+        .where(
+          and(
+            eq(bibleHeadings.versionId, version.id),
+            eq(bibleHeadings.bookId, input.bookId),
+            eq(bibleHeadings.chapter, input.chapter),
+          ),
+        )
+        .orderBy(asc(bibleHeadings.verse));
+      return { version, bookId: input.bookId, chapter: input.chapter, verses, headings };
     }),
 
   getPassage: protectedProcedure
