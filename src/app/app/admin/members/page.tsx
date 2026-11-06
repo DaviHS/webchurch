@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, ChevronLeft, Edit, Eye, Mail, Phone, Plus, UserCheck, Users, UserX } from "lucide-react";
+import { Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, UserCheck, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { formatDate, fullName } from "@/lib/formatters";
 import { mutationFeedback } from "@/lib/mutation-feedback";
+import { downloadJson } from "@/lib/download";
 import { api } from "@/trpc/react";
 import { MemberQuickViewDialog } from "./_components/member-quick-view-dialog";
 import { MemberFormDialog } from "./_components/member-form-dialog";
@@ -52,6 +53,34 @@ export default function MembersPage() {
       onSuccess: () => refetch(),
     })
   );
+
+  const exportMemberMutation = api.privacy.exportMember.useMutation(
+    mutationFeedback({
+      loading: "Preparando os dados...",
+      success: "Arquivo gerado",
+      error: "Erro ao exportar os dados",
+      onSuccess: (data) => downloadJson(`dados-membro-${data.member.id}.json`, data),
+    })
+  );
+
+  const anonymizeMemberMutation = api.privacy.anonymizeMember.useMutation(
+    mutationFeedback({
+      loading: "Excluindo os dados pessoais...",
+      success: "Dados pessoais excluídos",
+      error: "Erro ao excluir os dados pessoais",
+      onSuccess: () => refetch(),
+    })
+  );
+
+  const handleAnonymize = async (member: MemberWithMinistries) => {
+    const confirmed = await confirm({
+      title: "Excluir os dados pessoais",
+      description: `Os dados de ${fullName(member)} (contatos, endereço, datas, anotações e acesso ao sistema) serão apagados e não podem ser recuperados. Ministérios, eventos e lançamentos financeiros continuam, sem identificar a pessoa. Se precisar de uma cópia, exporte os dados antes.`,
+      confirmLabel: "Excluir dados",
+      destructive: true,
+    });
+    if (confirmed) anonymizeMemberMutation.mutate({ id: member.id });
+  };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -184,6 +213,19 @@ export default function MembersPage() {
                           destructive: true,
                           disabled: deactivateMemberMutation.isPending,
                           onSelect: () => void handleDeactivate(m),
+                        },
+                        {
+                          label: "Exportar dados",
+                          icon: Download,
+                          disabled: exportMemberMutation.isPending,
+                          onSelect: () => exportMemberMutation.mutate({ id: m.id }),
+                        },
+                        {
+                          label: "Excluir dados pessoais",
+                          icon: Eraser,
+                          destructive: true,
+                          disabled: anonymizeMemberMutation.isPending,
+                          onSelect: () => void handleAnonymize(m),
                         },
                       ]}
                     />

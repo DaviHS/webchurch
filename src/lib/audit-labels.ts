@@ -7,6 +7,7 @@ export const AUDIT_AREAS: Record<string, string> = {
   access: "Permissões",
   finance: "Finanças",
   auth: "Login e senha",
+  privacy: "Privacidade",
 };
 
 const ACTIONS: Record<string, string> = {
@@ -32,6 +33,8 @@ const ACTIONS: Record<string, string> = {
   "member.create": "Cadastrou membro",
   "member.update": "Editou membro",
   "member.deactivate": "Desativou membro",
+  "privacy.exportMember": "Exportou os dados de um membro",
+  "privacy.anonymizeMember": "Excluiu os dados pessoais de um membro",
 
   "ministry.create": "Criou ministério",
   "ministry.update": "Editou ministério",

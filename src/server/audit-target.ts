@@ -39,6 +39,7 @@ const ID_ENTITY: Record<string, Entity> = {
   "event.removeParticipant": "eventParticipant",
   "member.update": "member",
   "member.deactivate": "member",
+  "privacy.exportMember": "member",
   "ministry.update": "ministry",
   "ministry.deactivate": "ministry",
   "ministry.updateFunction": "function",

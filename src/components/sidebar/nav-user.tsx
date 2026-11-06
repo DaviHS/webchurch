@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, LogOut } from "lucide-react"
+import { ChevronsUpDown, Download, LogOut } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -14,6 +14,10 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import { logoutAndClearFilters } from "@/lib/auth"
 import { getInitials } from "@/lib/formatters"
+import { downloadJson } from "@/lib/download"
+import { toast } from "sonner"
+import { errorMessage, toastError } from "@/lib/toast"
+import { api } from "@/trpc/react"
 
 function UserSummary({ name, email, initials }: { name: string; email: string; initials: string }) {
   return (
@@ -35,6 +39,18 @@ export function NavUser() {
   const displayName = name === "" ? "Usuário" : name
   const email = session?.user.email ?? ""
   const initials = getInitials(displayName)
+  const utils = api.useUtils()
+
+  const exportMyData = async () => {
+    const toastId = toast.loading("Preparando seus dados...")
+    try {
+      const data = await utils.privacy.exportMyData.fetch(undefined, { staleTime: 0 })
+      downloadJson("meus-dados.json", data)
+      toast.success("Arquivo gerado", { id: toastId })
+    } catch (error) {
+      toastError(errorMessage("Erro ao exportar seus dados", error instanceof Error ? error : { message: "" }), { id: toastId })
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -61,6 +77,10 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => void exportMyData()} className="cursor-pointer rounded-sm">
+              <Download className="mr-2 size-4" />
+              Baixar meus dados
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => void logoutAndClearFilters()}
               className="cursor-pointer rounded-sm text-destructive focus:bg-destructive/10 focus:text-destructive"
