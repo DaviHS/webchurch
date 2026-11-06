@@ -7,6 +7,7 @@ import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Erase
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
+import { PassagePickerDialog } from "./_components/passage-picker-dialog";
 import { VerseNoteDialog } from "./_components/verse-note-dialog";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
@@ -546,6 +547,7 @@ function BibleReader() {
   const notedVerses = chapterMarks.filter((mark) => mark.note);
 
   const [noteVerse, setNoteVerse] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const setMarksMutation = api.bible.setMarks.useMutation({
     onSuccess: async (_data, variables) => {
@@ -705,7 +707,18 @@ function BibleReader() {
       </div>
 
       <div className="flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 truncate text-xl font-bold">{formatChapterTitle(book, location.chapter)}</h2>
+        <h2 className="min-w-0 flex-1 text-xl font-bold">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-haspopup="dialog"
+            title="Escolher livro, capítulo e versículo"
+            className="flex max-w-full items-center gap-1 rounded-md hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="truncate">{formatChapterTitle(book, location.chapter)}</span>
+            <ChevronDown className="size-5 shrink-0 text-muted-foreground" />
+          </button>
+        </h2>
         <Button
           type="button"
           variant={wholeChapterSelected ? "default" : "outline"}
@@ -782,6 +795,23 @@ function BibleReader() {
           </Button>
         </nav>
       )}
+
+      <PassagePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        current={location}
+        version={selectedVersions[0]}
+        onPick={(target, verse) => {
+          setPickerOpen(false);
+          go(target);
+          if (verse === null) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } else {
+            selectVerses(target, [verse]);
+            pendingScroll.current = verse;
+          }
+        }}
+      />
 
       <VerseNoteDialog
         open={noteVerse !== null}
