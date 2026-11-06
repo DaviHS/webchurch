@@ -8,6 +8,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
 import { PassagePickerDialog } from "./_components/passage-picker-dialog";
+import { ReadingSettings } from "./_components/reading-settings";
+import { fontFamilyOf, READING_SIZES, useReadingPrefs } from "@/hooks/use-reading-prefs";
 import { VerseNoteDialog } from "./_components/verse-note-dialog";
 import { VersesPerSlideSelect } from "@/components/presentation/control/slide-grid";
 import { toast } from "sonner";
@@ -143,6 +145,8 @@ function ChapterColumn({
     { version, ...location },
     { staleTime: Infinity, refetchOnWindowFocus: false },
   );
+  const [reading] = useReadingPrefs();
+  const onePerLine = reading.layout === "lines";
 
   return (
     <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-lg border p-4">
@@ -169,7 +173,10 @@ function ChapterColumn({
       )}
       {error && <p className="text-sm text-destructive">{error.message}</p>}
       {data && (
-        <p className="leading-relaxed">
+        <div
+          className={cn("leading-relaxed", onePerLine && "space-y-1.5")}
+          style={{ fontFamily: fontFamilyOf(reading.font), fontSize: READING_SIZES[reading.size] }}
+        >
           {data.verses.map((v) => (
             <span
               key={v.verse}
@@ -186,18 +193,19 @@ function ChapterColumn({
               }}
               className={cn(
                 "cursor-pointer rounded px-0.5 decoration-primary/60 underline-offset-4 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                onePerLine && "block px-1 py-0.5",
                 markColor(marks.get(v.verse)?.color)?.highlight,
                 selected.has(v.verse) && "bg-primary/15 underline",
               )}
             >
-              <sup className="mr-1 text-xs font-bold text-primary">
+              <sup className="mr-1 text-[0.7em] font-bold text-primary">
                 {v.verse}
                 {marks.get(v.verse)?.note && <StickyNote className="ml-0.5 inline size-3" aria-label="Tem anotação" />}
               </sup>
               {v.text}{" "}
             </span>
           ))}
-        </p>
+        </div>
       )}
     </section>
   );
@@ -634,8 +642,10 @@ function BibleReader() {
                 )
               )}
               <Button type="button" variant={comparing ? "default" : "outline"} className="shrink-0" aria-pressed={comparing} onClick={toggleCompare}>
-                <Columns2 className="mr-1" /> {comparing ? "Comparando" : "Comparar"}
+                <Columns2 />
+                <span className="sr-only sm:not-sr-only sm:ml-1">{comparing ? "Comparando" : "Comparar"}</span>
               </Button>
+              <ReadingSettings className="shrink-0" />
               <Button asChild variant="outline" size="icon" className="shrink-0">
                 <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
                   <Bookmark />
@@ -678,7 +688,7 @@ function BibleReader() {
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="sticky top-[4.5rem] z-10 -mx-1 flex items-center gap-2 bg-background/95 px-1 py-2 backdrop-blur">
         <h2 className="min-w-0 flex-1 text-xl font-bold">
           <button
             type="button"
