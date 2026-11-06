@@ -526,17 +526,14 @@ function BibleReader() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Bíblia"
-        icon={BookOpen}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/app/bible/marks">
-              <Bookmark className="mr-1" /> Minhas marcações
-            </Link>
-          </Button>
-        }
-      />
+      <div className="relative">
+        <PageHeader title="Bíblia" icon={BookOpen} className="pr-12" />
+        <Button asChild variant="outline" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2">
+          <Link href="/app/bible/marks" title="Minhas marcações" aria-label="Minhas marcações">
+            <Bookmark />
+          </Link>
+        </Button>
+      </div>
 
       <div className="space-y-3">
         <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
