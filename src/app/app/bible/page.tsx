@@ -387,7 +387,7 @@ function BibleReader() {
 
   const [searchText, setSearchText] = useState("");
   const [textQuery, setTextQuery] = useState<string | null>(null);
-  const [perSlide, setPerSlide] = useState<number | null>(null);
+  const [perSlide, setPerSlide] = useState<number | null>(1);
 
   const firstVersion = selectedVersions[0];
   const { data: firstChapter } = api.bible.getChapter.useQuery(
@@ -610,9 +610,10 @@ function BibleReader() {
 
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+        <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap">
           {versions && selectedVersions.map((code, index) => (
-            <div key={index} className="flex w-full items-center gap-1 sm:w-auto">
+            <div key={index} className="flex min-w-0 items-center gap-1 sm:min-w-64 sm:flex-1">
               {comparing && (
                 <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{index + 1}</span>
               )}
@@ -622,7 +623,7 @@ function BibleReader() {
                 taken={selectedVersions}
                 onChange={(next) => setVersionAt(index, next)}
                 label={index === 0 ? "Versão" : `Versão ${index + 1} da comparação`}
-                className="w-full sm:w-72"
+                className="w-full min-w-0"
               />
               {index > 0 && (
                 <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)} aria-label={`Remover ${code} da comparação`}>
@@ -631,15 +632,15 @@ function BibleReader() {
               )}
             </div>
           ))}
+          </div>
           {versions && (
-            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-              <VersesPerSlideSelect value={perSlide} onChange={setPerSlide} className="h-8 w-full text-xs sm:w-52" />
+            <div className="flex items-center gap-2 sm:shrink-0">
               {comparing && selectedVersions.length < MAX_COLUMNS && (
-                <Button type="button" variant="outline" size="sm" onClick={addVersion}>
+                <Button type="button" variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={addVersion}>
                   <Plus className="mr-1" /> Versão
                 </Button>
               )}
-              <Button type="button" variant={comparing ? "default" : "outline"} size="sm" aria-pressed={comparing} onClick={toggleCompare}>
+              <Button type="button" variant={comparing ? "default" : "outline"} size="sm" className="flex-1 sm:flex-none" aria-pressed={comparing} onClick={toggleCompare}>
                 <Columns2 className="mr-1" /> {comparing ? "Comparando" : "Comparar"}
               </Button>
             </div>
@@ -715,8 +716,8 @@ function BibleReader() {
             </Button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center justify-between gap-1.5 sm:justify-start" role="group" aria-label="Marcar com uma cor">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-1 items-center justify-between gap-1.5 sm:flex-none sm:justify-start" role="group" aria-label="Marcar com uma cor">
               {BIBLE_MARK_COLORS.map((color) => (
                 <button
                   key={color.value}
@@ -740,24 +741,27 @@ function BibleReader() {
                 <Eraser />
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:items-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={singleSelectedVerse === null}
-                title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
-                onClick={() => setNoteVerse(singleSelectedVerse)}
-              >
-                <StickyNote className="mr-1" /> Anotar
-              </Button>
-              <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
-                <Copy className="mr-1" /> Copiar
-              </Button>
-              <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
-                <Projector className="mr-1" /> Projetar
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="sm:ml-auto"
+              disabled={singleSelectedVerse === null}
+              title={singleSelectedVerse === null ? "Selecione um único versículo para anotar" : undefined}
+              onClick={() => setNoteVerse(singleSelectedVerse)}
+            >
+              <StickyNote className="mr-1" /> Anotar
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 border-t pt-2">
+            <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()}>
+              <Copy className="mr-1" /> Copiar
+            </Button>
+            <VersesPerSlideSelect compact value={perSlide} onChange={setPerSlide} className="h-8 min-w-0 flex-1 text-xs sm:ml-auto sm:max-w-40" />
+            <Button type="button" size="sm" disabled={!selectionLabel} onClick={() => project()}>
+              <Projector className="mr-1" /> Projetar
+            </Button>
           </div>
         </div>
       )}
