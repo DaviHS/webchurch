@@ -44,6 +44,27 @@ function balanceStanza(lines: string[]): string[] {
   return chunks;
 }
 
+/** Marca o slide de abertura da música: título centralizado e artista embaixo (estilo Holyrics). */
+export const TITLE_MARK = "\u0001";
+
+export const titleSlide = (title: string, artist: string | null) => `${TITLE_MARK}${title}\n${artist ?? ""}`.trimEnd();
+
+export function parseTitleSlide(text: string): { title: string; artist: string } | null {
+  if (!text.startsWith(TITLE_MARK)) return null;
+  const [title = "", ...rest] = text.slice(TITLE_MARK.length).split("\n");
+  return { title, artist: rest.join(" ").trim() };
+}
+
+/** Texto sem a marca, para miniaturas e listas. */
+export function plainSlideText(text: string): string {
+  const title = parseTitleSlide(text);
+  return title ? [title.title, title.artist].filter(Boolean).join(" · ") : text;
+}
+
+/** Quantidade de estrofes da letra (sem contar o slide de título). */
+export const lyricSlideCount = (song: Pick<DeckSong, "slides" | "kind">) =>
+  song.kind === "song" && song.slides.length > 0 ? song.slides.length - 1 : song.slides.length;
+
 export function lyricsToSlides(lyrics: string | null): string[] {
   if (!lyrics) return [];
   return lyrics
@@ -59,13 +80,16 @@ export function lyricsToSlides(lyrics: string | null): string[] {
     .flatMap(balanceStanza);
 }
 
+const withTitleSlide = (source: DeckSongSource, lyrics: string[]) =>
+  lyrics.length === 0 ? lyrics : [titleSlide(source.title, source.artist === "" ? null : source.artist), ...lyrics];
+
 export function toDeckSong(source: DeckSongSource, uid: string, adHoc = false): DeckSong {
   return {
     uid,
     id: source.id,
     title: source.title,
     artist: source.artist === "" ? null : source.artist,
-    slides: lyricsToSlides(source.lyrics),
+    slides: withTitleSlide(source, lyricsToSlides(source.lyrics)),
     adHoc,
     kind: "song",
     slideLabels: null,
@@ -223,5 +247,8 @@ export function slideLabel(deck: Deck, position: Position): string {
   const song = deck.songs[position.song];
   const custom = song?.slideLabels?.[position.slide];
   if (custom) return custom;
+  if (song?.kind === "song" && song.slides.length > 0) {
+    return position.slide === 0 ? "Título" : `Estrofe ${position.slide}/${song.slides.length - 1}`;
+  }
   return `Estrofe ${position.slide + 1}/${song?.slides.length ?? 0}`;
 }

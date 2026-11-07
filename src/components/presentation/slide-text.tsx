@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
+import { parseTitleSlide } from "./deck";
 
 interface SlideTextProps {
   text: string;
@@ -10,6 +11,23 @@ interface SlideTextProps {
 }
 
 export function SlideText({ text, maxHeight = 86, maxFont = 11, className, style }: SlideTextProps) {
+  const opening = parseTitleSlide(text);
+  if (opening) {
+    const titleFont = Math.min(maxFont * 0.8, 92 / (Math.max(1, opening.title.length) * 0.52));
+    return (
+      <div className={cn("flex flex-col items-center justify-center text-center", className)} style={style}>
+        <p className="text-balance font-bold leading-tight" style={{ fontSize: `${titleFont.toFixed(2)}cqmin` }}>
+          {opening.title}
+        </p>
+        {opening.artist && (
+          <p className="mt-[1.5cqh] text-balance font-medium opacity-80" style={{ fontSize: `${(titleFont * 0.5).toFixed(2)}cqmin` }}>
+            {opening.artist}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const lines = text.split("\n");
   const longest = Math.max(1, ...lines.map((line) => line.length));
   const LINE_HEIGHT = 1.25;

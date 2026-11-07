@@ -12,7 +12,7 @@ import { useBibleVersion } from "@/hooks/use-bible-version";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
+import { lyricSlideCount, passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
 import { VersesPerSlideSelect } from "./slide-grid";
 
 interface SetlistProps {
@@ -161,7 +161,7 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onAddPa
                     <span className="block truncate text-xs text-muted-foreground">
                       {song.slides.length === 0
                         ? "Sem letra cadastrada"
-                        : `${song.slides.length} ${song.kind === "bible" ? "slides" : "estrofes"}`}
+                        : `${lyricSlideCount(song)} ${song.kind === "bible" ? "slides" : "estrofes"}`}
                       {song.artist ? ` · ${song.artist}` : ""}
                     </span>
                   </span>

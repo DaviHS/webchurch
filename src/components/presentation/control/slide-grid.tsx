@@ -5,7 +5,7 @@ import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type DeckSong, type PassageSource, type Position } from "../deck";
+import { plainSlideText, samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type DeckSong, type PassageSource, type Position } from "../deck";
 
 interface SlideGridProps {
   deck: Deck;
@@ -152,7 +152,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
                 {isNext && <span className="ml-2 rounded bg-sky-600 px-1 text-white">PRÓXIMA</span>}
               </span>
               <span className={song.kind === "bible" ? undefined : "whitespace-pre-line"}>
-                {song.kind === "bible" ? text.replace(/\n/g, " ") : text}
+                {song.kind === "bible" ? text.replace(/\n/g, " ") : plainSlideText(text)}
               </span>
             </button>
           );

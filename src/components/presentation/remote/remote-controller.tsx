@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { ProjectorMode } from "../protocol";
+import { plainSlideText } from "../deck";
 import {
   REMOTE_POLL_MS,
   REMOTE_STALE_SECONDS,
@@ -249,7 +250,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                       <span className="block text-xs text-muted-foreground">
                         {item.slides.length === 0
                           ? "Sem letra"
-                          : `${item.slides.length} ${item.kind === "bible" ? "slides" : "estrofes"}`}
+                          : `${item.kind === "bible" ? item.slides.length : Math.max(0, item.slides.length - 1)} ${item.kind === "bible" ? "slides" : "estrofes"}`}
                       </span>
                     </span>
                     {isLive && <span className="shrink-0 rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
@@ -313,7 +314,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                       )}
                     >
                       <span className="font-bold text-muted-foreground">{slide.label}</span>
-                      <span className="line-clamp-3 whitespace-pre-line">{slide.text}</span>
+                      <span className="line-clamp-3 whitespace-pre-line">{plainSlideText(slide.text)}</span>
                     </button>
                   );
                 })}
