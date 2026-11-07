@@ -35,9 +35,16 @@ export const BIBLE_LINK: NavLink = { title: "Bíblia", url: "/app/bible", icon: 
 
 export const PLAN_LINK: NavLink = { title: "Plano de leitura", url: "/app/bible/plan", icon: BookOpenCheck };
 
-export const STANDALONE_LINKS: NavLink[] = [BIBLE_LINK, PLAN_LINK];
+export const STANDALONE_LINKS: NavLink[] = [];
+
+const READ_LINK: NavLink = { title: "Leitura", url: BIBLE_LINK.url, icon: BookOpen };
+
+/** Grupo da Bíblia no menu. Sem internet só "Leitura" continua disponível (veja nav-main). */
+export const BIBLE_SECTION: NavSection = { title: "Bíblia", icon: BookOpen, items: [READ_LINK, PLAN_LINK] };
+export const BIBLE_OFFLINE_SECTION: NavSection = { ...BIBLE_SECTION, items: [READ_LINK] };
 
 export const NAV_SECTIONS: NavSection[] = [
+  BIBLE_SECTION,
   {
     title: "Louvor",
     icon: Music,

@@ -5,14 +5,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { usePermissions } from "@/hooks/use-permissions"
 import { useOnline } from "@/hooks/use-online"
-import { BookOpen, MoreHorizontal, Plus } from "lucide-react"
+import { MoreHorizontal, Plus } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import {
   ALL_LINKS,
   MOBILE_PRIMARY_URLS,
   NAV_SECTIONS,
-  PLAN_LINK,
-  type NavSection,
   STANDALONE_LINKS,
   QUICK_ACTIONS,
   canSee,
@@ -21,9 +19,6 @@ import {
 } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useNavBadge } from "./nav-main"
-
-/** O plano de leitura entra no "Mais", junto das outras telas. */
-const MENU_SECTIONS: NavSection[] = [{ title: "Bíblia", icon: BookOpen, items: [PLAN_LINK] }, ...NAV_SECTIONS]
 
 const PRIMARY = ALL_LINKS.filter((link) => MOBILE_PRIMARY_URLS.includes(link.url))
 
@@ -57,11 +52,10 @@ export function MobileNavigation() {
   const { can, isLoading: permissionsLoading } = usePermissions()
   const quickActions = online ? QUICK_ACTIONS.filter((action) => can(action.permission)) : []
 
-  // A Bíblia tem atalho próprio no cabeçalho, então não conta como item do "Mais".
   // O "Mais" só existe se houver algo liberado fora dos atalhos principais.
   const hasMore =
     !permissionsLoading &&
-    MENU_SECTIONS.some((section) => section.items.some((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can)))
+    NAV_SECTIONS.some((section) => section.items.some((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can)))
 
   const secondaryActive =
     active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url) && !STANDALONE_LINKS.includes(active.link)
@@ -160,7 +154,7 @@ export function MobileNavigation() {
             <SheetDescription className="sr-only">Outras telas do sistema</SheetDescription>
           </SheetHeader>
           <div className="space-y-4 px-4">
-            {MENU_SECTIONS.map((section) => {
+            {NAV_SECTIONS.map((section) => {
               const links = section.items.filter((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can))
               if (links.length === 0) return null
               return (

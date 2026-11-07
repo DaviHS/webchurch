@@ -26,7 +26,12 @@ export default authProxy((request) => {
     return NextResponse.redirect(new URL(HOME, nextUrl));
   }
 
-  if (pathname === ENTRY) return NextResponse.redirect(new URL(LANDING, nextUrl));
+  // Abrir o sistema já logado (endereço digitado, favorito, ícone) cai na Bíblia. Navegar dentro do app,
+  // inclusive logo depois do login, usa "same-origin" e continua indo para o início.
+  const openedFromOutside = request.headers.get("sec-fetch-site") === "none";
+  if (pathname === ENTRY || (pathname === HOME && openedFromOutside)) {
+    return NextResponse.redirect(new URL(LANDING, nextUrl));
+  }
 
   return NextResponse.next();
 });
