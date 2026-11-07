@@ -8,7 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Gestão de membros, ministérios, louvor e finanças da Igreja Central.",
     lang: "pt-BR",
     dir: "ltr",
-    start_url: "/app",
+    // /entrada leva à Bíblia quando já há login (veja src/proxy.ts); no primeiro login o destino é o início.
+    start_url: "/entrada",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

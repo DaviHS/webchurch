@@ -4,6 +4,9 @@ import { authProxy } from "@/server/auth";
 const SIGN_IN = "/sign-in";
 const CHANGE_PASSWORD = "/change-password";
 const HOME = "/app";
+/** Porta de entrada do app instalado: quem já está logado cai na Bíblia; quem não está, entra e vai para o início. */
+const ENTRY = "/entrada";
+const LANDING = "/app/bible";
 
 export default authProxy((request) => {
   const { nextUrl, auth: session } = request;
@@ -11,7 +14,7 @@ export default authProxy((request) => {
 
   if (!session?.user) {
     const signIn = new URL(SIGN_IN, nextUrl);
-    if (pathname !== CHANGE_PASSWORD) signIn.searchParams.set("callbackUrl", `${pathname}${search}`);
+    if (pathname !== CHANGE_PASSWORD && pathname !== ENTRY) signIn.searchParams.set("callbackUrl", `${pathname}${search}`);
     return NextResponse.redirect(signIn);
   }
 
@@ -23,9 +26,11 @@ export default authProxy((request) => {
     return NextResponse.redirect(new URL(HOME, nextUrl));
   }
 
+  if (pathname === ENTRY) return NextResponse.redirect(new URL(LANDING, nextUrl));
+
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: ["/app/:path*", "/change-password", "/presentation/control/:path*", "/presentation/remote/:path*"],
+  matcher: ["/app/:path*", "/entrada", "/change-password", "/presentation/control/:path*", "/presentation/remote/:path*"],
 };
