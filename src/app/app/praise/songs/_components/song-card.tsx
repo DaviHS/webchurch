@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { RowActionsMenu } from "@/components/row-actions-menu";
 import { usePermissions } from "@/hooks/use-permissions";
 import { History, Play, Pencil, Trash2, Eye } from "lucide-react";
 import { Spotify, Youtube } from "@/components/icons/brand";
-import { songCategoryLabel } from "@/lib/labels";
 import { youtubeWatchUrl } from "@/lib/youtube-url";
 import type { Song } from "@/types";
 
@@ -26,7 +24,7 @@ function openExternal(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, onPlaySpotify, onViewHistory }: SongCardProps) {
+export function SongCard({ song, onEdit, onDelete, onViewLyrics, onViewHistory }: SongCardProps) {
   const canEdit = usePermissions().can("songs.edit");
   const youtubeLink = song.youtubeUrl ?? (song.youtubeVideoId ? youtubeWatchUrl(song.youtubeVideoId) : undefined);
   const spotifyLink = song.spotifyUrl ?? (song.spotifyTrackId ? `https://open.spotify.com/track/${song.spotifyTrackId}` : undefined);
@@ -39,26 +37,21 @@ export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, 
           </h3>
           <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
             <span className="truncate">{song.artist || "Artista não informado"}</span>
-            {song.category && (
-              <Badge variant="outline" className="shrink-0">
-                {songCategoryLabel(song.category)}
-              </Badge>
-            )}
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
           {youtubeLink && (
-            <Button asChild variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+            <Button asChild variant="ghost" size="icon-sm" className="size-8">
               <a href={youtubeLink} target="_blank" rel="noopener noreferrer" title="Abrir no YouTube" aria-label={`Abrir ${song.title} no YouTube`}>
-                <Youtube className="text-red-600" />
+                <Youtube className="size-5" />
               </a>
             </Button>
           )}
           {spotifyLink && (
-            <Button asChild variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+            <Button asChild variant="ghost" size="icon-sm" className="size-8">
               <a href={spotifyLink} target="_blank" rel="noopener noreferrer" title="Abrir no Spotify" aria-label={`Abrir ${song.title} no Spotify`}>
-                <Spotify className="text-green-600" />
+                <Spotify className="size-5" />
               </a>
             </Button>
           )}
@@ -67,9 +60,7 @@ export function SongCard({ song, onEdit, onDelete, onViewLyrics, onPlayYouTube, 
             actions={[
               { label: "Ver letra", icon: Eye, onSelect: () => onViewLyrics(song) },
               { label: "Histórico", icon: History, onSelect: () => onViewHistory(song) },
-              { label: "Vídeo do YouTube", icon: Youtube, onSelect: () => onPlayYouTube(song), hidden: !youtubeLink },
               { label: "Abrir no YouTube", icon: Youtube, onSelect: () => youtubeLink && openExternal(youtubeLink), hidden: !youtubeLink },
-              { label: "Ouvir no Spotify", icon: Spotify, onSelect: () => onPlaySpotify(song), hidden: !song.spotifyTrackId },
               { label: "Abrir no Spotify", icon: Spotify, onSelect: () => spotifyLink && openExternal(spotifyLink), hidden: !spotifyLink },
               { label: "Editar", icon: Pencil, onSelect: () => onEdit(song), hidden: !canEdit },
               { label: "Excluir", icon: Trash2, onSelect: () => onDelete(song), destructive: true, hidden: !canEdit },

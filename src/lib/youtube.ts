@@ -85,6 +85,39 @@ export interface PlaylistSyncResult {
 
 const PLAYLIST_ID_TTL_MS = 60_000;
 
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const words = (value: string) => normalizeText(value).split(" ").filter((word) => word.length > 1);
+
+/** Escolhe o resultado mais parecido com a música; prefere versão oficial/áudio e evita covers e playbacks. */
+export function pickBestVideo(items: youtube_v3.Schema$SearchResult[], title: string, artist?: string | null): string | null {
+  const titleWords = words(title);
+  const artistWords = artist ? words(artist) : [];
+  let best: { id: string; score: number } | null = null;
+
+  for (const item of items) {
+    const id = item.id?.videoId;
+    if (!id) continue;
+    const haystack = normalizeText(`${item.snippet?.title ?? ""} ${item.snippet?.channelTitle ?? ""}`);
+    const has = (word: string) => haystack.split(" ").includes(word);
+    const titleHit = titleWords.length ? titleWords.filter(has).length / titleWords.length : 0;
+    // O título precisa aparecer quase todo: evita pegar outra música do mesmo artista.
+    if (titleHit < 0.7) continue;
+    const artistHit = artistWords.length ? artistWords.filter(has).length / artistWords.length : 0;
+    let score = titleHit * 10 + artistHit * 5;
+    if (/(oficial|official|clipe|ao vivo|live|audio)/.test(haystack)) score += 1;
+    if (/(playback|karaoke|cover|instrumental|letra|lyrics|legendado)/.test(haystack)) score -= 3;
+    if (!best || score > best.score) best = { id, score };
+  }
+  return best?.id ?? null;
+}
+
 class YouTubeService {
   private client: youtube_v3.Youtube | null = null;
   private authBrokenUntil = 0;
@@ -146,17 +179,20 @@ class YouTubeService {
     return extractYouTubeVideoId(url);
   }
 
+  /**
+   * Procura o vídeo da música. Olha vários resultados (não só o primeiro) e fica com o que mais
+   * combina com título e artista; sem achar com os dois, tenta de novo só com o título.
+   */
   async searchVideo(title: string, artist?: string | null): Promise<string | null> {
-    const response = await this.call((client) =>
-      client.search.list({
-        part: ["id"],
-        q: artist ? `${title} ${artist}` : title,
-        type: ["video"],
-        videoEmbeddable: "true",
-        maxResults: 1,
-      })
-    );
-    return response.data.items?.[0]?.id?.videoId ?? null;
+    const queries = artist ? [`${title} ${artist}`, title] : [title];
+    for (const q of queries) {
+      const response = await this.call((client) =>
+        client.search.list({ part: ["snippet"], q, type: ["video"], videoCategoryId: "10", maxResults: 8 })
+      );
+      const best = pickBestVideo(response.data.items ?? [], title, artist);
+      if (best) return best;
+    }
+    return null;
   }
 
   async getVideoDurations(videoIds: readonly string[]): Promise<Map<string, number>> {

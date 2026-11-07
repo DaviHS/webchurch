@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spotify } from "@/components/icons/brand";
@@ -50,36 +50,35 @@ export function SpotifyStatus() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border bg-card px-3 py-2 text-sm">
-      <span className="flex items-center gap-2">
-        <Spotify className="h-4 w-4 text-green-600" />
-        <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
-        Spotify conectado
-      </span>
-      {status.playlist && (
+    <div className="flex max-w-full items-center gap-1.5 rounded-full border bg-card py-1 pl-2.5 pr-1.5 text-xs">
+      <Spotify className="size-4 shrink-0" />
+      <span className="size-1.5 shrink-0 rounded-full bg-success" aria-label="Spotify conectado" role="img" />
+      {status.playlist ? (
         <a
           href={status.playlist.url}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-10 min-w-0 items-center gap-1 break-words text-muted-foreground hover:text-foreground hover:underline sm:min-h-0"
+          title="Abrir a playlist no Spotify"
+          className="min-w-0 truncate text-muted-foreground hover:text-foreground hover:underline"
         >
-          {status.playlist.name} · {status.playlist.total} faixas
-          <ExternalLink className="size-3.5 shrink-0" />
+          {status.playlist.total} faixas
         </a>
+      ) : (
+        <span className="text-muted-foreground">Spotify</span>
       )}
       {canEdit && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="w-full sm:ml-auto sm:w-auto"
-          onClick={() => syncMutation.mutate()}
-          disabled={syncMutation.isPending}
-          title="Vincula as músicas sem faixa e adiciona à playlist as que ficaram de fora"
-        >
-          {syncMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-          Sincronizar playlist
-        </Button>
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        className="size-6"
+        onClick={() => syncMutation.mutate()}
+        disabled={syncMutation.isPending}
+        title="Sincronizar a playlist"
+        aria-label="Sincronizar a playlist do Spotify"
+      >
+        {syncMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+      </Button>
       )}
     </div>
   );

@@ -181,8 +181,10 @@ export default function SongsPage() {
         }
       />
 
-      <YouTubeStatus />
-      <SpotifyStatus />
+      <div className="flex flex-wrap items-center gap-2">
+        <YouTubeStatus />
+        <SpotifyStatus />
+      </div>
 
       <Card>
         <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">

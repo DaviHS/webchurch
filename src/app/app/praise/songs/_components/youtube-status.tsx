@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Youtube } from "@/components/icons/brand";
@@ -48,34 +48,33 @@ export function YouTubeStatus() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border bg-card px-3 py-2 text-sm">
-      <span className="flex items-center gap-2">
-        <Youtube className="h-4 w-4 text-red-600" />
-        <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
-        YouTube conectado
-      </span>
-      {status.playlist && (
+    <div className="flex max-w-full items-center gap-1.5 rounded-full border bg-card py-1 pl-2.5 pr-1.5 text-xs">
+      <Youtube className="size-4 shrink-0" />
+      <span className="size-1.5 shrink-0 rounded-full bg-success" aria-label="YouTube conectado" role="img" />
+      {status.playlist ? (
         <a
           href={status.playlist.url}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-10 min-w-0 items-center gap-1 break-words text-muted-foreground hover:text-foreground hover:underline sm:min-h-0"
+          title="Abrir a playlist no YouTube"
+          className="min-w-0 truncate text-muted-foreground hover:text-foreground hover:underline"
         >
-          {status.playlist.title} · {status.playlist.itemCount} vídeos
-          <ExternalLink className="size-3.5 shrink-0" />
+          {status.playlist.itemCount} vídeos
         </a>
+      ) : (
+        <span className="text-muted-foreground">YouTube</span>
       )}
       <Button
         type="button"
-        size="sm"
-        variant="outline"
-        className="w-full sm:ml-auto sm:w-auto"
+        size="icon-sm"
+        variant="ghost"
+        className="size-6"
         onClick={() => syncPlaylistMutation.mutate()}
         disabled={syncPlaylistMutation.isPending}
-        title="Adiciona à playlist os vídeos das músicas que ficaram de fora"
+        title="Sincronizar a playlist"
+        aria-label="Sincronizar a playlist do YouTube"
       >
         {syncPlaylistMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-        Sincronizar playlist
       </Button>
     </div>
   );
