@@ -7,7 +7,7 @@ import { PageContainer, PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { api } from "@/trpc/react";
 import { subDays } from "date-fns";
-import { Music, Calendar, Users, BarChart3, Home, CalendarClock } from "lucide-react";
+import { Music, Calendar, BarChart3, Home, CalendarClock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { RankBadge } from "./praise/_components/rank-badge";
@@ -17,11 +17,11 @@ export default function DashboardPage() {
 
   const { data: songsStats, isLoading: isLoadingSongs } = api.song.list.useQuery({ limit: 1 });
   const { data: eventsStats, isLoading: isLoadingEvents } = api.event.list.useQuery({ limit: 1 });
-  const [lastWeek] = useState(() => {
+  const [lastYear] = useState(() => {
     const endDate = new Date();
-    return { startDate: subDays(endDate, 7), endDate };
+    return { startDate: subDays(endDate, 365), endDate };
   });
-  const { data: recentSongs, isLoading: isLoadingRanking } = api.report.getSongRanking.useQuery(lastWeek);
+  const { data: recentSongs, isLoading: isLoadingRanking } = api.report.getSongRanking.useQuery(lastYear);
 
   return (
     <PageContainer>
@@ -31,7 +31,7 @@ export default function DashboardPage() {
         description={session?.user?.name ? `Bem-vindo, ${session.user.name}!` : "Bem-vindo!"}
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         <StatCard
           title="Músicas"
           value={songsStats?.total ?? 0}
@@ -49,18 +49,17 @@ export default function DashboardPage() {
           isLoading={isLoadingEvents}
         />
         <StatCard
-          title="Músicas recentes"
+          title="Músicas tocadas"
           value={recentSongs?.length ?? 0}
-          description="Últimos 7 dias"
+          description="Último ano"
           icon={BarChart3}
           isLoading={isLoadingRanking}
         />
-        <StatCard title="Equipe" value="-" description="Integrantes" icon={Users} href="/app/admin/members" />
       </div>
 
       <Card>
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Músicas mais tocadas (última semana)</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Músicas mais tocadas (último ano)</CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
           {isLoadingRanking ? (
@@ -83,7 +82,7 @@ export default function DashboardPage() {
               ))}
             </ol>
           ) : (
-            <EmptyState icon={Music} title="Nenhuma música tocada na última semana" />
+            <EmptyState icon={Music} title="Nenhuma música tocada no último ano" />
           )}
         </CardContent>
       </Card>
