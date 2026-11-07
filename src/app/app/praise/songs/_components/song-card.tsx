@@ -41,20 +41,6 @@ export function SongCard({ song, onEdit, onDelete, onViewLyrics, onViewHistory }
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          {youtubeLink && (
-            <Button asChild variant="ghost" size="icon-sm" className="size-8">
-              <a href={youtubeLink} target="_blank" rel="noopener noreferrer" title="Abrir no YouTube" aria-label={`Abrir ${song.title} no YouTube`}>
-                <Youtube className="size-5" />
-              </a>
-            </Button>
-          )}
-          {spotifyLink && (
-            <Button asChild variant="ghost" size="icon-sm" className="size-8">
-              <a href={spotifyLink} target="_blank" rel="noopener noreferrer" title="Abrir no Spotify" aria-label={`Abrir ${song.title} no Spotify`}>
-                <Spotify className="size-5" />
-              </a>
-            </Button>
-          )}
           <RowActionsMenu
             label={`Ações de ${song.title}`}
             actions={[
