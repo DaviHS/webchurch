@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/sidebar"
 import { HOME_LINK, NAV_SECTIONS, STANDALONE_LINKS, canSee, findActiveLink, type NavLink } from "@/config/navigation"
 import { usePermissions } from "@/hooks/use-permissions"
+import { useOnline } from "@/hooks/use-online"
+import { BIBLE_LINK } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 
@@ -72,6 +74,10 @@ export function NavMain() {
   const homeActive = active?.link === HOME_LINK
   const closeOnNavigate = useCloseOnNavigate()
   const { can } = usePermissions()
+  const online = useOnline()
+
+  // Sem internet só a Bíblia funciona (fica guardada no aparelho); o resto levaria a telas quebradas.
+  const standalone = online ? STANDALONE_LINKS : [BIBLE_LINK]
 
   return (
     <SidebarGroup className="p-0">
@@ -79,6 +85,7 @@ export function NavMain() {
         Menu principal
       </SidebarGroupLabel>
       <SidebarMenu className="gap-1">
+        {online && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip={HOME_LINK.title} isActive={homeActive} className={topLevelButton}>
             <Link href={HOME_LINK.url} aria-current={homeActive ? "page" : undefined} onClick={closeOnNavigate}>
@@ -87,8 +94,9 @@ export function NavMain() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
+        )}
 
-        {STANDALONE_LINKS.map((link) => {
+        {standalone.map((link) => {
           const isActive = active?.link === link
           return (
             <SidebarMenuItem key={link.url}>
@@ -102,7 +110,7 @@ export function NavMain() {
           )
         })}
 
-        {NAV_SECTIONS.map((section) => {
+        {(online ? NAV_SECTIONS : []).map((section) => {
           const links = section.items.filter((link) => canSee(link, can))
           // Sem nenhum item liberado, o grupo nem aparece (nem como recolhível vazio).
           if (links.length === 0) return null

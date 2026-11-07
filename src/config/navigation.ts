@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  BookOpenCheck,
   Calendar,
   DollarSign,
   History,
@@ -32,7 +33,9 @@ export const HOME_LINK: NavLink = { title: "Início", url: "/app", icon: Home };
 
 export const BIBLE_LINK: NavLink = { title: "Bíblia", url: "/app/bible", icon: BookOpen };
 
-export const STANDALONE_LINKS: NavLink[] = [BIBLE_LINK];
+export const PLAN_LINK: NavLink = { title: "Plano de leitura", url: "/app/bible/plan", icon: BookOpenCheck };
+
+export const STANDALONE_LINKS: NavLink[] = [BIBLE_LINK, PLAN_LINK];
 
 export const NAV_SECTIONS: NavSection[] = [
   {
