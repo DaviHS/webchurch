@@ -509,7 +509,7 @@ function BibleReader() {
     const data = await utils.bible.getChapter.fetch({ version, ...location });
     return data.verses
       .filter((v) => selected.has(v.verse))
-      .map((v) => `${v.verse} ${v.text}`)
+      .map((v) => `${v.verse}. ${v.text}`)
       .join("\n");
   };
 
