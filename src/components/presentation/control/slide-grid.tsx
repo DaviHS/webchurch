@@ -152,7 +152,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
                 {isNext && <span className="ml-2 rounded bg-sky-600 px-1 text-white">PRÓXIMA</span>}
               </span>
               <span className={song.kind === "bible" ? undefined : "whitespace-pre-line"}>
-                {song.kind === "bible" ? text.replace(/\n/g, " ") : plainSlideText(text)}
+                {song.kind === "bible" ? plainSlideText(text).replace(/\n/g, " ") : plainSlideText(text)}
               </span>
             </button>
           );

@@ -55,10 +55,19 @@ export function parseTitleSlide(text: string): { title: string; artist: string }
   return { title, artist: rest.join(" ").trim() };
 }
 
-/** Texto sem a marca, para miniaturas e listas. */
+/** Separa o texto do slide bíblico da referência (ex.: "João 3:16 · ARA") mostrada embaixo. */
+export const REFERENCE_MARK = "\u0002";
+
+export function splitReference(text: string): { body: string; reference: string | null } {
+  const index = text.indexOf(REFERENCE_MARK);
+  if (index < 0) return { body: text, reference: null };
+  return { body: text.slice(0, index), reference: text.slice(index + REFERENCE_MARK.length) };
+}
+
+/** Texto sem as marcas, para miniaturas e listas. */
 export function plainSlideText(text: string): string {
   const title = parseTitleSlide(text);
-  return title ? [title.title, title.artist].filter(Boolean).join(" · ") : text;
+  return title ? [title.title, title.artist].filter(Boolean).join(" · ") : splitReference(text).body;
 }
 
 /** Quantidade de estrofes da letra (sem contar o slide de título). */
@@ -154,27 +163,31 @@ export function passageToDeckSong(passage: PassageSource, uid: string, versesPer
     }
   }
 
+  const labels = groups.map((group) => {
+    const first = group[0]?.verse ?? 0;
+    const last = group[group.length - 1]?.verse ?? first;
+    return `${passage.bookChapter}:${first === last ? first : `${first}-${last}`}`;
+  });
+
   return {
     uid,
     id: 0,
     title: `${passage.title} · ${passage.version.code}`,
     artist: passage.version.name,
-    slides: groups.map((group) =>
-      wrapText(
-        group.map((v) => (showNumbers ? `${superscript(v.verse)} ${v.text}` : v.text)).join(" "),
-        BIBLE_LINE_WIDTH,
-      ),
+    // Embaixo de cada slide vai a referência com a tradução, para o público saber onde se lê e em qual versão.
+    slides: groups.map(
+      (group, index) =>
+        wrapText(
+          group.map((v) => (showNumbers ? `${superscript(v.verse)} ${v.text}` : v.text)).join(" "),
+          BIBLE_LINE_WIDTH,
+        ) + `${REFERENCE_MARK}${labels[index]} · ${passage.version.code}`,
     ),
     adHoc: true,
     kind: "bible",
     source: passage,
     versesPerSlide,
     slideFirstVerse: groups.map((group) => group[0]?.verse ?? 0),
-    slideLabels: groups.map((group) => {
-      const first = group[0]?.verse ?? 0;
-      const last = group[group.length - 1]?.verse ?? first;
-      return `${passage.bookChapter}:${first === last ? first : `${first}-${last}`}`;
-    }),
+    slideLabels: labels,
   };
 }
 

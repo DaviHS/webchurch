@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { parseTitleSlide } from "./deck";
+import { parseTitleSlide, splitReference } from "./deck";
 
 interface SlideTextProps {
   text: string;
@@ -28,22 +28,34 @@ export function SlideText({ text, maxHeight = 86, maxFont = 11, className, style
     );
   }
 
-  const lines = text.split("\n");
+  const { body, reference } = splitReference(text);
+  const lines = body.split("\n");
   const longest = Math.max(1, ...lines.map((line) => line.length));
   const LINE_HEIGHT = 1.25;
-  const byHeight = maxHeight / (lines.length * LINE_HEIGHT);
+  // Com referência embaixo, o texto cede um pouco de altura para ela.
+  const byHeight = (reference ? maxHeight * 0.82 : maxHeight) / (lines.length * LINE_HEIGHT);
   const byWidth = 92 / (longest * 0.52);
 
-  return (
+  const paragraph = (
     <p
-      className={cn("whitespace-pre-line text-center font-semibold text-balance", className)}
+      className={cn("whitespace-pre-line text-center font-semibold text-balance", !reference && className)}
       style={{
         fontSize: `min(${byHeight.toFixed(2)}cqh, ${byWidth.toFixed(2)}cqw, ${maxFont}cqh)`,
         lineHeight: LINE_HEIGHT,
-        ...style,
+        ...(reference ? undefined : style),
       }}
     >
-      {text}
+      {body}
     </p>
+  );
+  if (!reference) return paragraph;
+
+  return (
+    <div className={cn("flex flex-col items-center", className)} style={style}>
+      {paragraph}
+      <p className="mt-[2cqh] text-center font-medium opacity-75" style={{ fontSize: `min(${(maxFont * 0.45).toFixed(2)}cqh, 4cqw)` }}>
+        {reference}
+      </p>
+    </div>
   );
 }
