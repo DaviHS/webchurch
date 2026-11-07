@@ -8,6 +8,13 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
     console.error(error);
   }, [error]);
 
+  // Dá tempo de ler a mensagem e volta sozinho para o início (menos se já estiver nele, para não repetir o erro).
+  useEffect(() => {
+    if (window.location.pathname === "/app") return;
+    const timer = setTimeout(() => { window.location.href = "/app"; }, 12_000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <html lang="pt-BR">
       <body

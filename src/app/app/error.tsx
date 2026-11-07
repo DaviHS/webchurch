@@ -16,6 +16,7 @@ export default function AppError({ error, retry }: { error: unknown; retry: () =
       description="Não foi possível carregar esta tela. Tente de novo; se continuar, avise o setor de desenvolvimento."
       code={errorCode(error)}
       onRetry={retry}
+      redirectAfter={12}
     />
   );
 }

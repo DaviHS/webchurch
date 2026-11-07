@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 interface ErrorStateProps {
@@ -12,9 +13,27 @@ interface ErrorStateProps {
   code?: string;
   onRetry?: () => void;
   homeHref?: string;
+  /** Segundos até voltar sozinho para o início (para dar tempo de ler a mensagem). Sem valor, não volta. */
+  redirectAfter?: number;
 }
 
-export function ErrorState({ icon, title, description, code, onRetry, homeHref = "/app" }: ErrorStateProps) {
+export function ErrorState({ icon, title, description, code, onRetry, homeHref = "/app", redirectAfter }: ErrorStateProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  // Na própria tela inicial não adianta voltar: seria um laço de erro.
+  const redirects = redirectAfter !== undefined && pathname !== homeHref;
+  const [left, setLeft] = useState(redirectAfter ?? 0);
+
+  useEffect(() => {
+    if (!redirects) return;
+    const timer = setInterval(() => setLeft((value) => value - 1), 1000);
+    return () => clearInterval(timer);
+  }, [redirects]);
+
+  useEffect(() => {
+    if (redirects && left <= 0) router.replace(homeHref);
+  }, [redirects, left, router, homeHref]);
+
   return (
     <div className="mx-auto flex min-h-[60svh] w-full max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-7">{icon}</div>
@@ -28,6 +47,9 @@ export function ErrorState({ icon, title, description, code, onRetry, homeHref =
           <Link href={homeHref}>Ir para o início</Link>
         </Button>
       </div>
+      {redirects && left > 0 && (
+        <p className="text-xs text-muted-foreground">Voltando para o início em {left}s…</p>
+      )}
       {code && <p className="text-xs text-muted-foreground">Código do erro: {code}</p>}
     </div>
   );
