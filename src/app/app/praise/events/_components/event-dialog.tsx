@@ -11,7 +11,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
-import type { EventFormData } from "@/validators/event";
+import type { EventFormData, EventFormInput } from "@/validators/event";
 import type { EventData } from "@/types";
 import { EventForm } from "./event-form";
 
@@ -23,9 +23,11 @@ interface EventDialogProps {
   onSubmit: (data: EventFormData) => void;
   initialData?: EventData | null;
   isLoading?: boolean;
+  /** Valores sugeridos para um evento novo. */
+  defaults?: Partial<EventFormInput>;
 }
 
-export function EventDialog({ open, onOpenChange, onSubmit, initialData, isLoading = false }: EventDialogProps) {
+export function EventDialog({ open, onOpenChange, onSubmit, initialData, isLoading = false, defaults }: EventDialogProps) {
   const isEditing = Boolean(initialData);
 
   return (
@@ -40,7 +42,7 @@ export function EventDialog({ open, onOpenChange, onSubmit, initialData, isLoadi
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <ResponsiveDialogBody className="pb-4">
-          <EventForm key={initialData?.id ?? "new"} id={EVENT_FORM_ID} onSubmit={onSubmit} initialData={initialData} />
+          <EventForm key={initialData?.id ?? "new"} id={EVENT_FORM_ID} onSubmit={onSubmit} initialData={initialData} defaults={defaults} />
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <ResponsiveDialogClose asChild>

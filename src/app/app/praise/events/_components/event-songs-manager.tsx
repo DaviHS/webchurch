@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Music, Plus, Trash2, User } from "lucide-react";
+import { useRef, useState } from "react";
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
+import { ArrowDown, ArrowUp, GripVertical, Loader2, Music, Plus, Trash2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +14,11 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { SearchInput } from "@/components/search-input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { usePermissions } from "@/hooks/use-permissions";
-import { fullName } from "@/lib/formatters";
+import { differenceInCalendarDays } from "date-fns";
+import { formatDateRelative, fullName } from "@/lib/formatters";
 import { songCategoryLabel } from "@/lib/labels";
 import { mutationFeedback } from "@/lib/mutation-feedback";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { EventSong, RouterOutputs } from "@/types";
 import { CollapsibleAddPanel } from "./collapsible-add-panel";
@@ -29,10 +31,32 @@ const NO_LEADER = "none";
 interface EventSongsManagerProps {
   eventId: number;
   songs: EventSong[];
-  onUpdate: () => void;
+  /** Pode devolver uma promessa: a ação só termina (e o bloqueio da tela só sai) quando a lista nova chegar. */
+  onUpdate: () => unknown;
 }
 
-function SongSummary({ title, artist, category }: { title: string; artist: string | null; category: string | null }) {
+/** "Última vez: há 7 dias", em destaque quando foi nas últimas duas semanas (para evitar repetir o repertório). */
+function LastPlayedHint({ date }: { date: Date | undefined }) {
+  if (!date) return null;
+  const recent = differenceInCalendarDays(new Date(), date) <= 14;
+  return (
+    <span className={recent ? "w-full truncate text-xs font-medium text-warning" : "w-full truncate text-xs text-muted-foreground"}>
+      Última vez: {formatDateRelative(date)}
+    </span>
+  );
+}
+
+function SongSummary({
+  title,
+  artist,
+  category,
+  lastPlayed,
+}: {
+  title: string;
+  artist: string | null;
+  category: string | null;
+  lastPlayed?: Date;
+}) {
   return (
     <>
       <span className="block w-full truncate font-medium">{title}</span>
@@ -44,6 +68,7 @@ function SongSummary({ title, artist, category }: { title: string; artist: strin
           </Badge>
         )}
       </span>
+      <LastPlayedHint date={lastPlayed} />
     </>
   );
 }
@@ -56,6 +81,9 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const [leaderId, setLeaderId] = useState(NO_LEADER);
   const [notes, setNotes] = useState("");
   const [songSearch, setSongSearch] = useState("");
+  // Ordem mostrada enquanto a gravação não termina, para o item não "voltar" antes de a lista nova chegar.
+  const [optimisticIds, setOptimisticIds] = useState<number[] | null>(null);
+  const reordering = useRef(false);
 
   const debouncedSongSearch = useDebounce(songSearch, 300);
   const { data: songsData, isLoading: isLoadingSongs } = api.song.list.useQuery({
@@ -70,6 +98,15 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     (song) => !songs.some((eventSong) => eventSong.songId === song.id)
   );
   const sortedSongs = [...songs].sort((a, b) => a.order - b.order);
+  const byId = new Map(sortedSongs.map((item) => [item.id, item]));
+  const displaySongs = optimisticIds ? optimisticIds.flatMap((id) => byId.get(id) ?? []) : sortedSongs;
+
+  const candidateIds = availableSongs.map((song) => song.id);
+  const { data: lastPlayedData } = api.report.lastPlayed.useQuery(
+    { songIds: candidateIds },
+    { enabled: candidateIds.length > 0, staleTime: 60_000 },
+  );
+  const lastPlayedById = new Map((lastPlayedData ?? []).map((item) => [item.songId, item.lastPlayed]));
 
   const resetForm = () => {
     setSelectedSong(null);
@@ -97,20 +134,9 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     })
   );
 
-  const updateSongOrderMutation = api.event.updateSongOrder.useMutation();
-
-  const moveSongMutation = useMutation({
-    mutationFn: ({ current, target }: { current: { id: number; order: number }; target: { id: number; order: number } }) =>
-      Promise.all([
-        updateSongOrderMutation.mutateAsync({ eventSongId: current.id, newOrder: current.order }),
-        updateSongOrderMutation.mutateAsync({ eventSongId: target.id, newOrder: target.order }),
-      ]),
-    ...mutationFeedback({
-      success: "Ordem atualizada com sucesso",
-      error: "Erro ao atualizar ordem",
-      onSuccess: onUpdate,
-    }),
-  });
+  const reorderMutation = api.event.reorderSongs.useMutation(
+    mutationFeedback({ error: "Erro ao atualizar ordem", onSuccess: onUpdate }),
+  );
 
   const handleAddSong = () => {
     if (!selectedSong) return;
@@ -134,19 +160,40 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     if (confirmed) removeSongMutation.mutate(song.id);
   };
 
+  const applyOrder = (orderedIds: number[]) => {
+    // A trava vem antes do estado: dois toques rápidos seguidos não disparam duas gravações.
+    if (reordering.current) return;
+    reordering.current = true;
+    setOptimisticIds(orderedIds);
+    reorderMutation.mutate(
+      { eventId, orderedIds },
+      {
+        onSettled: () => {
+          reordering.current = false;
+          setOptimisticIds(null);
+        },
+      },
+    );
+  };
+
   const handleMoveSong = (songIndex: number, direction: "up" | "down") => {
     const newIndex = direction === "up" ? songIndex - 1 : songIndex + 1;
-    const current = sortedSongs[songIndex];
-    const target = sortedSongs[newIndex];
-    if (!current || !target) return;
+    if (!displaySongs[songIndex] || !displaySongs[newIndex]) return;
+    const orderedIds = displaySongs.map((item) => item.id);
+    const moved = orderedIds[songIndex]!;
+    orderedIds[songIndex] = orderedIds[newIndex]!;
+    orderedIds[newIndex] = moved;
+    applyOrder(orderedIds);
+  };
 
-    const [currentOrder, targetOrder] =
-      current.order === target.order ? [newIndex + 1, songIndex + 1] : [target.order, current.order];
-
-    moveSongMutation.mutate({
-      current: { id: current.id, order: currentOrder },
-      target: { id: target.id, order: targetOrder },
-    });
+  const handleDragEnd = (result: DropResult) => {
+    const target = result.destination;
+    if (!target || target.index === result.source.index) return;
+    const orderedIds = displaySongs.map((item) => item.id);
+    const [moved] = orderedIds.splice(result.source.index, 1);
+    if (moved === undefined) return;
+    orderedIds.splice(target.index, 0, moved);
+    applyOrder(orderedIds);
   };
 
   const handleSelectSong = (song: SongOption) => {
@@ -156,13 +203,138 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold">
+            <Music className="size-5" />
+            Repertório ({songs.length} {songs.length === 1 ? "música" : "músicas"})
+          </h3>
+
+          {sortedSongs.length === 0 ? (
+            <EmptyState
+              icon={Music}
+              title="Nenhuma música adicionada"
+              description={canEdit ? "Adicione músicas usando o botão abaixo." : "O repertório ainda não foi montado."}
+              className="py-8"
+            />
+          ) : (
+            <div className="relative" aria-busy={optimisticIds !== null}>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="event-songs">
+                {(droppable) => (
+                  <ul ref={droppable.innerRef} {...droppable.droppableProps} className="space-y-2">
+                    {displaySongs.map((song, index) => (
+                      <Draggable key={song.id} draggableId={String(song.id)} index={index} isDragDisabled={!canEdit || reorderMutation.isPending || optimisticIds !== null}>
+                        {(draggable, snapshot) => (
+                          <li
+                            ref={draggable.innerRef}
+                            {...draggable.draggableProps}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg border bg-card p-2 sm:gap-3 sm:p-3",
+                              snapshot.isDragging && "shadow-lg ring-2 ring-primary/40",
+                            )}
+                          >
+                            {canEdit && (
+                              <>
+                                {/* No celular: setas (mais seguras no toque). No computador: alça para arrastar. */}
+                                <div className="flex shrink-0 flex-col gap-1 sm:hidden">
+                                  <Button
+                                    variant="outline"
+                                    size="icon-sm"
+                                    onClick={() => handleMoveSong(index, "up")}
+                                    title="Mover para cima"
+                                    aria-label="Mover para cima"
+                                    disabled={index === 0 || reorderMutation.isPending}
+                                  >
+                                    <ArrowUp />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="icon-sm"
+                                    onClick={() => handleMoveSong(index, "down")}
+                                    title="Mover para baixo"
+                                    aria-label="Mover para baixo"
+                                    disabled={index === displaySongs.length - 1 || reorderMutation.isPending}
+                                  >
+                                    <ArrowDown />
+                                  </Button>
+                                </div>
+                                <div
+                                  {...draggable.dragHandleProps}
+                                  className="hidden shrink-0 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing sm:block"
+                                  title="Arraste para reordenar"
+                                  aria-label="Arraste para reordenar"
+                                >
+                                  <GripVertical className="size-5" />
+                                </div>
+                              </>
+                            )}
+
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                              {index + 1}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">{song.song?.title ?? "Música não encontrada"}</p>
+                              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                <span className="truncate">{song.song?.artist ?? "Artista desconhecido"}</span>
+                                {song.song?.category && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {songCategoryLabel(song.song.category)}
+                                  </Badge>
+                                )}
+                              </div>
+                              {song.leader && (
+                                <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                                  <User className="size-3 shrink-0" />
+                                  <span className="truncate">Líder: {fullName(song.leader)}</span>
+                                </p>
+                              )}
+                              {song.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{song.notes}</p>}
+                            </div>
+
+                            {canEdit && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleRemoveSong(song)}
+                                disabled={removeSongMutation.isPending}
+                                className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                title="Remover música"
+                                aria-label="Remover música"
+                              >
+                                <Trash2 />
+                              </Button>
+                            )}
+                          </li>
+                        )}
+                      </Draggable>
+                    ))}
+                    {droppable.placeholder}
+                  </ul>
+                )}
+              </Droppable>
+            </DragDropContext>
+            {optimisticIds !== null && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60" role="status">
+                <span className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm shadow-sm">
+                  <Loader2 className="size-4 animate-spin" />
+                  Salvando a ordem…
+                </span>
+              </div>
+            )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {canEdit && (
         <CollapsibleAddPanel title="Adicionar música">
           <div className="space-y-2">
             <Label>Música</Label>
             {selectedSong ? (
               <SelectedPick onClear={() => setSelectedSong(null)} clearLabel="Trocar música">
-                <SongSummary title={selectedSong.title} artist={selectedSong.artist} category={selectedSong.category} />
+                <SongSummary title={selectedSong.title} artist={selectedSong.artist} category={selectedSong.category} lastPlayed={lastPlayedById.get(selectedSong.id)} />
               </SelectedPick>
             ) : (
               <>
@@ -179,7 +351,9 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                   getKey={(song) => song.id}
                   onSelect={handleSelectSong}
                   emptyMessage={songSearch ? "Nenhuma música encontrada" : "Nenhuma música disponível"}
-                  renderItem={(song) => <SongSummary title={song.title} artist={song.artist} category={song.category} />}
+                  renderItem={(song) => (
+                    <SongSummary title={song.title} artist={song.artist} category={song.category} lastPlayed={lastPlayedById.get(song.id)} />
+                  )}
                 />
               </>
             )}
@@ -226,92 +400,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
           </div>
         </CollapsibleAddPanel>
       )}
-
-      <Card>
-        <CardContent className="p-4">
-          <h3 className="mb-4 flex items-center gap-2 font-semibold">
-            <Music className="size-5" />
-            Repertório ({songs.length} músicas)
-          </h3>
-
-          {sortedSongs.length === 0 ? (
-            <EmptyState
-              icon={Music}
-              title="Nenhuma música adicionada"
-              description={canEdit ? "Adicione músicas usando o formulário acima." : "O repertório ainda não foi montado."}
-              className="py-8"
-            />
-          ) : (
-            <ul className="space-y-2">
-              {sortedSongs.map((song, index) => (
-                <li key={song.id} className="flex items-center gap-2 rounded-lg border p-2 sm:gap-3 sm:p-3">
-                  {canEdit && (
-                    <div className="flex shrink-0 flex-col gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => handleMoveSong(index, "up")}
-                        title="Mover para cima"
-                        aria-label="Mover para cima"
-                        disabled={index === 0 || moveSongMutation.isPending}
-                      >
-                        <ArrowUp />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => handleMoveSong(index, "down")}
-                        title="Mover para baixo"
-                        aria-label="Mover para baixo"
-                        disabled={index === sortedSongs.length - 1 || moveSongMutation.isPending}
-                      >
-                        <ArrowDown />
-                      </Button>
-                    </div>
-                  )}
-
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                    {song.order}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{song.song?.title ?? "Música não encontrada"}</p>
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                      <span className="truncate">{song.song?.artist ?? "Artista desconhecido"}</span>
-                      {song.song?.category && (
-                        <Badge variant="outline" className="text-xs">
-                          {songCategoryLabel(song.song.category)}
-                        </Badge>
-                      )}
-                    </div>
-                    {song.leader && (
-                      <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                        <User className="size-3 shrink-0" />
-                        <span className="truncate">Líder: {fullName(song.leader)}</span>
-                      </p>
-                    )}
-                    {song.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{song.notes}</p>}
-                  </div>
-
-                  {canEdit && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleRemoveSong(song)}
-                      disabled={removeSongMutation.isPending}
-                      className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      title="Remover música"
-                      aria-label="Remover música"
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

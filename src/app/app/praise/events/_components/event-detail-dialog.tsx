@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Clock, Copy, Info, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, Calendar, Clock, Copy, Info, Printer, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { toastError } from "@/lib/toast";
 import { eventTypeBadge, eventTypeLabel } from "@/lib/labels";
 import { api } from "@/trpc/react";
 import type { EventData, EventWithDetails } from "@/types";
+import { PrintRepertoireDialog } from "./print-repertoire-dialog";
 import { EventParticipantsManager } from "./event-participants-manager";
 import { EventSongsManager } from "./event-songs-manager";
 import { EventPassagesManager } from "./event-passages-manager";
@@ -48,6 +49,7 @@ function InfoField({ label, icon: Icon, children }: { label: string; icon?: Luci
 
 export function EventDetailDialog({ event, open, onOpenChange, isLoading = false }: EventDetailDialogProps) {
   const [activeTab, setActiveTab] = useState("info");
+  const [printOpen, setPrintOpen] = useState(false);
   const utils = api.useUtils();
 
   const songs = "songs" in event ? event.songs : [];
@@ -73,9 +75,8 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
     }
   };
 
-  const handleUpdate = () => {
-    void utils.event.getById.invalidate(event.id);
-  };
+  // Devolve a promessa para quem chamou poder esperar a lista atualizada (e atualiza também as contagens dos cards).
+  const handleUpdate = () => Promise.all([utils.event.getById.invalidate(event.id), utils.event.list.invalidate()]);
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
@@ -112,7 +113,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                 Informações, repertório e participantes do evento
               </ResponsiveDialogDescription>
             </div>
-            {!isLoading && (
+            {!isLoading && songs.length + passages.length > 0 && (
               <Button asChild className="w-full shrink-0 sm:w-auto">
                 <Link href={`/presentation/control?event=${event.id}`}>
                   <Projector />
@@ -130,18 +131,25 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 px-4 pt-3 sm:px-6">
-              <TabsList className="grid h-11 w-full grid-cols-3 sm:h-9">
+              <TabsList className="grid h-11 w-full grid-cols-4 sm:h-9">
                 <TabsTrigger value="info" className="h-full gap-1 px-1 text-xs sm:px-3 sm:text-sm">
                   <Info className="hidden size-4 sm:block" />
                   Informações
                 </TabsTrigger>
                 <TabsTrigger value="songs" className="h-full gap-1 px-1 text-xs sm:px-3 sm:text-sm">
                   <Music className="hidden size-4 sm:block" />
-                  Repertório
+                  Músicas
+                  {songs.length > 0 && <span className="text-muted-foreground">{songs.length}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="passages" className="h-full gap-1 px-1 text-xs sm:px-3 sm:text-sm">
+                  <BookOpen className="hidden size-4 sm:block" />
+                  Leituras
+                  {passages.length > 0 && <span className="text-muted-foreground">{passages.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="participants" className="h-full gap-1 px-1 text-xs sm:px-3 sm:text-sm">
                   <Users className="hidden size-4 sm:block" />
-                  Participantes
+                  Equipe
+                  {participants.length > 0 && <span className="text-muted-foreground">{participants.length}</span>}
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -209,34 +217,23 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                   </Card>
                 )}
 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Estatísticas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="rounded-lg border p-3 text-center">
-                        <Music className="mx-auto mb-2 size-6 text-primary" />
-                        <div className="text-2xl font-bold">{songs.length}</div>
-                        <div className="text-sm text-muted-foreground">Músicas</div>
-                      </div>
-                      <div className="rounded-lg border p-3 text-center">
-                        <Users className="mx-auto mb-2 size-6 text-primary" />
-                        <div className="text-2xl font-bold">{participants.length}</div>
-                        <div className="text-sm text-muted-foreground">Participantes</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               <TabsContent value="songs" className="mt-0 space-y-4">
                 {songs.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => void copyRepertoire()}>
-                    <Copy className="mr-1" /> Copiar repertório
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => void copyRepertoire()}>
+                      <Copy className="mr-1" /> Copiar repertório
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setPrintOpen(true)}>
+                      <Printer className="mr-1" /> Imprimir
+                    </Button>
+                  </div>
                 )}
                 <EventSongsManager eventId={event.id} songs={songs} onUpdate={handleUpdate} />
+              </TabsContent>
+
+              <TabsContent value="passages" className="mt-0">
                 <EventPassagesManager eventId={event.id} passages={passages} onUpdate={handleUpdate} />
               </TabsContent>
 
@@ -247,6 +244,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
           </Tabs>
         )}
       </ResponsiveDialogContent>
+      <PrintRepertoireDialog eventId={event.id} open={printOpen} onOpenChange={setPrintOpen} />
     </ResponsiveDialog>
   );
 }
