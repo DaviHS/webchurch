@@ -10,7 +10,8 @@ import {
   songs,
   members,
 } from "@/server/db/schema";
-import { eq, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
+import { endOfDay, startOfDay } from "date-fns";
+import { asc, eq, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { loadPassage } from "@/server/bible-passage";
 import { eventSchema, eventUpdateSchema, eventTypes, type EventType } from "@/validators/event";
@@ -249,7 +250,18 @@ export const eventRouter = createTRPCRouter({
   }),
 
   removeSong: editEvents.input(z.number()).mutation(async ({ input }) => {
-    await db.delete(eventSongs).where(eq(eventSongs.id, input));
+    const [removed] = await db.delete(eventSongs).where(eq(eventSongs.id, input)).returning({ eventId: eventSongs.eventId });
+    if (!removed) return { success: true };
+
+    // As demais músicas sobem para fechar o buraco: a ordem volta a ser 1, 2, 3...
+    const remaining = await db
+      .select({ id: eventSongs.id, order: eventSongs.order })
+      .from(eventSongs)
+      .where(eq(eventSongs.eventId, removed.eventId))
+      .orderBy(asc(eventSongs.order), asc(eventSongs.id));
+    const changes = remaining.flatMap((row, index) => (row.order === index + 1 ? [] : [{ id: row.id, order: index + 1 }]));
+    const [first, ...rest] = changes.map(({ id, order }) => db.update(eventSongs).set({ order }).where(eq(eventSongs.id, id)));
+    if (first) await db.batch([first, ...rest]);
     return { success: true };
   }),
 
@@ -413,6 +425,65 @@ export const eventRouter = createTRPCRouter({
 
       return newEvent;
     }),
+
+  /**
+   * Copia um evento (músicas e passagens) para o próximo mesmo dia da semana livre: um culto de domingo vai para o
+   * próximo domingo, a partir de hoje, que ainda não tenha um evento do mesmo tipo.
+   */
+  duplicate: editEvents.input(z.number()).mutation(async ({ input }) => {
+    const [source] = await db.select().from(events).where(eq(events.id, input));
+    if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Evento não encontrado" });
+
+    const nextDate = new Date(source.date);
+    nextDate.setDate(nextDate.getDate() + 7);
+    const today = startOfDay(new Date());
+    for (let attempt = 0; attempt < 104; attempt++) {
+      if (nextDate >= today) {
+        const sameDay = await db
+          .select({ id: events.id })
+          .from(events)
+          .where(and(eq(events.type, source.type), gte(events.date, startOfDay(nextDate)), lte(events.date, endOfDay(nextDate))))
+          .limit(1);
+        if (sameDay.length === 0) break;
+      }
+      nextDate.setDate(nextDate.getDate() + 7);
+    }
+    const [copy] = await db
+      .insert(events)
+      .values({
+        title: source.title,
+        description: source.description,
+        type: source.type,
+        date: nextDate,
+        startTime: source.startTime,
+        endTime: source.endTime,
+        location: source.location,
+        preacher: null,
+        bibleVerse: null,
+      })
+      .returning();
+    if (!copy) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Falha ao duplicar o evento" });
+
+    const sourceSongs = await db.select().from(eventSongs).where(eq(eventSongs.eventId, source.id)).orderBy(asc(eventSongs.order));
+    if (sourceSongs.length > 0) {
+      await db.insert(eventSongs).values(
+        sourceSongs.map((song) => ({ eventId: copy.id, songId: song.songId, order: song.order, leaderId: song.leaderId, notes: song.notes })),
+      );
+    }
+    const sourcePassages = await db.select().from(eventPassages).where(eq(eventPassages.eventId, source.id));
+    if (sourcePassages.length > 0) {
+      await db.insert(eventPassages).values(
+        sourcePassages.map((passage) => ({
+          eventId: copy.id,
+          reference: passage.reference,
+          versionCode: passage.versionCode,
+          placement: passage.placement,
+          order: passage.order,
+        })),
+      );
+    }
+    return copy;
+  }),
 
   updateSongOrder: editEvents
     .input(z.object({

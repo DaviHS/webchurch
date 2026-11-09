@@ -29,6 +29,7 @@ const ACTIONS: Record<string, string> = {
   "event.removeParticipant": "Removeu participante do evento",
   "event.createTemplate": "Criou modelo de evento",
   "event.createFromTemplate": "Criou evento a partir de modelo",
+  "event.duplicate": "Duplicou evento",
 
   "member.create": "Cadastrou membro",
   "member.update": "Editou membro",

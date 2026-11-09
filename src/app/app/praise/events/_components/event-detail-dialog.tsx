@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Clock, Info, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, Calendar, Clock, Copy, Info, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatTime } from "@/lib/formatters";
+import { fullName } from "@/lib/formatters/person";
+import { toast } from "sonner";
+import { toastError } from "@/lib/toast";
 import { eventTypeBadge, eventTypeLabel } from "@/lib/labels";
 import { api } from "@/trpc/react";
 import type { EventData, EventWithDetails } from "@/types";
@@ -51,6 +54,24 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
   const passages = "passages" in event ? event.passages : [];
   const participants = "participants" in event ? event.participants : [];
   const hasMessage = Boolean(event.preacher) || Boolean(event.bibleVerse);
+
+  // Repertório em texto, pronto para colar no WhatsApp (negrito com asteriscos).
+  const copyRepertoire = async () => {
+    const lines = [...songs]
+      .sort((a, b) => a.order - b.order)
+      .map((item, index) => {
+        const title = item.song?.title ?? "Música removida";
+        const artist = item.song?.artist ? ` – ${item.song.artist}` : "";
+        const leader = item.leader ? ` (${fullName(item.leader)})` : "";
+        return `${index + 1}. ${title}${artist}${leader}`;
+      });
+    try {
+      await navigator.clipboard.writeText([`*${event.title} – ${formatDate(event.date)}*`, ...lines].join("\n"));
+      toast.success("Repertório copiado");
+    } catch {
+      toastError("Não foi possível copiar.");
+    }
+  };
 
   const handleUpdate = () => {
     void utils.event.getById.invalidate(event.id);
@@ -210,6 +231,11 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
               </TabsContent>
 
               <TabsContent value="songs" className="mt-0 space-y-4">
+                {songs.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => void copyRepertoire()}>
+                    <Copy className="mr-1" /> Copiar repertório
+                  </Button>
+                )}
                 <EventSongsManager eventId={event.id} songs={songs} onUpdate={handleUpdate} />
                 <EventPassagesManager eventId={event.id} passages={passages} onUpdate={handleUpdate} />
               </TabsContent>

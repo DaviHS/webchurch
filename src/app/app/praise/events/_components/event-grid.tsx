@@ -7,13 +7,14 @@ interface EventGridProps {
   onEdit: (event: EventData) => void;
   onDelete: (event: EventData) => void;
   onViewDetails: (event: EventData) => void;
+  onDuplicate: (event: EventData) => void;
   isLoading?: boolean;
 }
 
 const SKELETON_COUNT = 8;
 const GRID_CLASS = "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
-export function EventGrid({ events, onEdit, onDelete, onViewDetails, isLoading }: EventGridProps) {
+export function EventGrid({ events, onEdit, onDelete, onViewDetails, onDuplicate, isLoading }: EventGridProps) {
   if (isLoading) {
     return (
       <div className={GRID_CLASS} aria-busy="true">
@@ -32,7 +33,7 @@ export function EventGrid({ events, onEdit, onDelete, onViewDetails, isLoading }
   return (
     <div className={GRID_CLASS}>
       {events.map((event) => (
-        <EventCard key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} onViewDetails={onViewDetails} />
+        <EventCard key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} onViewDetails={onViewDetails} onDuplicate={onDuplicate} />
       ))}
     </div>
   );

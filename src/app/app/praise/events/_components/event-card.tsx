@@ -1,7 +1,7 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
-import { Calendar, Edit, Info, MapPin, Projector, Trash2 } from "lucide-react";
+import { Calendar, Copy, Edit, Info, MapPin, Projector, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { RowActionsMenu } from "@/components/row-actions-menu";
@@ -15,9 +15,10 @@ interface EventCardProps {
   onEdit: (event: EventData) => void;
   onDelete: (event: EventData) => void;
   onViewDetails: (event: EventData) => void;
+  onDuplicate: (event: EventData) => void;
 }
 
-export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardProps) {
+export function EventCard({ event, onEdit, onDelete, onViewDetails, onDuplicate }: EventCardProps) {
   const canEdit = usePermissions().can("events.edit");
   const handleKeyDown = (keyboardEvent: KeyboardEvent<HTMLDivElement>) => {
     if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
@@ -50,6 +51,7 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails }: EventCardP
               { label: "Editar", icon: Edit, onSelect: () => onEdit(event), hidden: !canEdit },
               { label: "Apresentar", icon: Projector, href: `/presentation/control?event=${event.id}` },
               { label: "Detalhes", icon: Info, onSelect: () => onViewDetails(event) },
+              { label: "Duplicar para o próximo dia livre", icon: Copy, onSelect: () => onDuplicate(event), hidden: !canEdit },
               { label: "Excluir", icon: Trash2, onSelect: () => onDelete(event), destructive: true, hidden: !canEdit },
             ]}
           />

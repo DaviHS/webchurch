@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDate } from "@/lib/formatters";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
 import { Calendar, Plus, SearchX } from "lucide-react";
@@ -34,7 +36,7 @@ export default function EventsPage() {
   const debouncedSearch = useDebounce(search, 300);
   const isFiltered = debouncedSearch !== "" || (type !== "" && type !== "any");
 
-  const { data, isLoading, refetch } = api.event.list.useQuery({
+  const { data, isLoading, isError, error: listError, refetch } = api.event.list.useQuery({
     type: type && type !== "any" ? type : undefined,
     search: debouncedSearch || undefined,
     page,
@@ -71,6 +73,14 @@ export default function EventsPage() {
     mutationFeedback({
       success: "Evento excluído com sucesso",
       error: "Erro ao excluir evento",
+      onSuccess: () => refetch(),
+    })
+  );
+
+  const duplicateEventMutation = api.event.duplicate.useMutation(
+    mutationFeedback({
+      success: (copy) => `Evento duplicado para ${formatDate(copy.date)}. Ajuste a data se precisar.`,
+      error: "Erro ao duplicar o evento",
       onSuccess: () => refetch(),
     })
   );
@@ -153,7 +163,9 @@ export default function EventsPage() {
         </CardHeader>
 
         <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-          {!isLoading && events.length === 0 ? (
+          {isError && !data ? (
+            <ErrorDisplay title="Não foi possível carregar os eventos" message={listError.message} onRetry={() => void refetch()} className="mt-0" />
+          ) : !isLoading && events.length === 0 ? (
             isFiltered ? (
               <EmptyState
                 icon={SearchX}
@@ -182,6 +194,7 @@ export default function EventsPage() {
                 onEdit={eventDialog.openEdit}
                 onDelete={handleDelete}
                 onViewDetails={setSelectedEvent}
+                onDuplicate={(event) => duplicateEventMutation.mutate(event.id)}
                 isLoading={isLoading}
               />
 
