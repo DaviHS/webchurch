@@ -19,7 +19,7 @@ export function useSongMutations(options?: UseSongMutationsOptions) {
   const utils = api.useUtils();
   const confirm = useConfirm();
 
-  const refresh = () => Promise.all([utils.song.list.invalidate(), utils.song.getYouTubeStatus.invalidate(),
+  const refresh = () => Promise.all([utils.song.list.invalidate(), utils.song.facets.invalidate(), utils.song.getYouTubeStatus.invalidate(),
     utils.song.getSpotifyStatus.invalidate(),
   ]);
 

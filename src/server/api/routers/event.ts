@@ -14,6 +14,42 @@ import { endOfDay, startOfDay } from "date-fns";
 import { asc, eq, getTableColumns, lt, ne, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { loadPassage } from "@/server/bible-passage";
+import { spotifyService } from "@/lib/spotify";
+import { deleteSetting, getSetting, setSetting } from "@/server/settings";
+
+/**
+ * Mantém a playlist do Spotify do evento igual ao repertório: chamada depois de adicionar, remover ou reordenar músicas.
+ * Sem playlist criada, não faz nada. Se o Spotify falhar, o repertório já foi salvo: só registra o erro.
+ */
+async function syncEventPlaylist(eventId: number): Promise<void> {
+  try {
+    const playlist = await savedPlaylist(eventId);
+    if (!playlist || !spotifyService.isConfigured()) return;
+    const rows = await db
+      .select({ trackId: songs.spotifyTrackId })
+      .from(eventSongs)
+      .innerJoin(songs, eq(eventSongs.songId, songs.id))
+      .where(eq(eventSongs.eventId, eventId))
+      .orderBy(asc(eventSongs.order), asc(eventSongs.id));
+    await spotifyService.replacePlaylistTracks(playlist.id, rows.flatMap((row) => (row.trackId ? [row.trackId] : [])));
+  } catch (error) {
+    console.error("[spotify] não foi possível atualizar a playlist do evento:", error instanceof Error ? error.message : error);
+  }
+}
+
+/** A playlist do Spotify de cada evento fica guardada nas configurações (sem coluna nova na tabela de eventos). */
+const playlistKey = (eventId: number) => `event_spotify_playlist:${eventId}`;
+
+async function savedPlaylist(eventId: number): Promise<{ id: string; url: string } | null> {
+  const raw = await getSetting(playlistKey(eventId));
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as { id?: string; url?: string };
+    return data.id && data.url ? { id: data.id, url: data.url } : null;
+  } catch {
+    return null;
+  }
+}
 import { eventSchema, eventUpdateSchema, eventTypes, type EventType } from "@/validators/event";
 
 const eventSongInputSchema = z.object({
@@ -84,6 +120,7 @@ export const eventRouter = createTRPCRouter({
             // Com uma tabela só, o Drizzle escreve "id" sem o nome da tabela, o que apontaria para event_songs.id.
             // Por isso o texto fixo "events"."id".
             songCount: sql<number>`(select count(*)::int from event_songs where event_songs.event_id = "events"."id")`,
+            noLyricsCount: sql<number>`(select count(*)::int from event_songs es join songs s on s.id = es.song_id where es.event_id = "events"."id" and coalesce(length(trim(s.lyrics)), 0) = 0)`,
             passageCount: sql<number>`(select count(*)::int from event_passages where event_passages.event_id = "events"."id")`,
           })
           .from(events)
@@ -230,6 +267,7 @@ export const eventRouter = createTRPCRouter({
       db.delete(eventParticipants).where(eq(eventParticipants.eventId, input)),
       db.delete(events).where(eq(events.id, input)),
     ]);
+    await deleteSetting(playlistKey(input));
     return { success: true };
   }),
 
@@ -238,6 +276,7 @@ export const eventRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const cleanedData = cleanEmptyStrings(input);
       const [eventSong] = await db.insert(eventSongs).values(cleanedData).returning();
+      await syncEventPlaylist(input.eventId);
       return eventSong;
     }),
 
@@ -252,6 +291,7 @@ export const eventRouter = createTRPCRouter({
           .where(and(eq(eventSongs.id, id), eq(eventSongs.eventId, input.eventId))),
       );
       if (first) await db.batch([first, ...rest]);
+      await syncEventPlaylist(input.eventId);
       return { success: true };
     }),
 
@@ -268,6 +308,7 @@ export const eventRouter = createTRPCRouter({
       }
       const order = current.reduce((max, item) => Math.max(max, item.order), 0) + 1;
       const [added] = await db.insert(eventSongs).values({ eventId: input.eventId, songId: input.songId, order }).returning();
+      await syncEventPlaylist(input.eventId);
       return added;
     }),
 
@@ -317,6 +358,7 @@ export const eventRouter = createTRPCRouter({
     const changes = remaining.flatMap((row, index) => (row.order === index + 1 ? [] : [{ id: row.id, order: index + 1 }]));
     const [first, ...rest] = changes.map(({ id, order }) => db.update(eventSongs).set({ order }).where(eq(eventSongs.id, id)));
     if (first) await db.batch([first, ...rest]);
+    await syncEventPlaylist(removed.eventId);
     return { success: true };
   }),
 
@@ -332,6 +374,60 @@ export const eventRouter = createTRPCRouter({
     await db.delete(eventParticipants).where(eq(eventParticipants.id, input));
     return { success: true };
   }),
+
+  /** A playlist do Spotify já criada para o evento, se houver. */
+  spotifyPlaylist: protectedProcedure.input(z.number()).query(({ input }) => savedPlaylist(input)),
+
+  /** Exclui a playlist do Spotify criada para o evento. */
+  deleteSpotifyPlaylist: editEvents.input(z.number()).mutation(async ({ input: eventId }) => {
+    const playlist = await savedPlaylist(eventId);
+    if (!playlist) return { deleted: false };
+    try {
+      await spotifyService.deletePlaylist(playlist.id);
+    } catch (error) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: error instanceof Error ? error.message : "Não foi possível excluir a playlist no Spotify.",
+      });
+    }
+    await deleteSetting(playlistKey(eventId));
+    return { deleted: true };
+  }),
+
+  /** Cria no Spotify uma playlist com o repertório do evento, na ordem do culto. Músicas sem faixa ficam de fora. */
+  createSpotifyPlaylist: editEvents
+    .input(z.object({ eventId: z.number(), name: z.string().trim().min(1).max(100) }))
+    .mutation(async ({ input }) => {
+      if (!spotifyService.isConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A integração com o Spotify não está configurada." });
+      }
+      if (await savedPlaylist(input.eventId)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Este evento já tem uma playlist. Exclua a atual para criar outra." });
+      }
+      const rows = await db
+        .select({ title: songs.title, artist: songs.artist, trackId: songs.spotifyTrackId })
+        .from(eventSongs)
+        .innerJoin(songs, eq(eventSongs.songId, songs.id))
+        .where(eq(eventSongs.eventId, input.eventId))
+        .orderBy(asc(eventSongs.order));
+      if (rows.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Este evento não tem músicas." });
+
+      const trackIds = rows.flatMap((row) => (row.trackId ? [row.trackId] : []));
+      const missing = rows.filter((row) => !row.trackId).map((row) => (row.artist ? `${row.title} (${row.artist})` : row.title));
+      if (trackIds.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Nenhuma música deste repertório tem faixa vinculada ao Spotify." });
+      }
+      try {
+        const playlist = await spotifyService.createPlaylist(input.name, "Repertório gerado pelo sistema da igreja.", trackIds);
+        await setSetting(playlistKey(input.eventId), JSON.stringify({ id: playlist.id, url: playlist.url }));
+        return { url: playlist.url, added: playlist.added, missing };
+      } catch (error) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: error instanceof Error ? error.message : "Não foi possível criar a playlist no Spotify.",
+        });
+      }
+    }),
 
   exportRepertoire: protectedProcedure
     .input(z.number())
@@ -554,6 +650,7 @@ export const eventRouter = createTRPCRouter({
         .where(eq(eventSongs.id, eventSongId))
         .returning();
 
+      if (updatedSong) await syncEventPlaylist(updatedSong.eventId);
       return updatedSong;
     }),
 });

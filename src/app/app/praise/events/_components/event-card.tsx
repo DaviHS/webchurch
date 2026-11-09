@@ -68,7 +68,10 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails, onDuplicate,
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Music className="size-3.5 shrink-0" />
             {hasContent ? (
-              contentSummary(event.songCount, event.passageCount)
+              <>
+                {contentSummary(event.songCount, event.passageCount)}
+                {event.noLyricsCount > 0 && <span className="font-medium text-warning"> · {event.noLyricsCount} sem letra</span>}
+              </>
             ) : isPast ? (
               "Sem repertório"
             ) : (

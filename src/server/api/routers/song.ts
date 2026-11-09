@@ -4,13 +4,16 @@ import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { songs, eventSongs } from "@/server/db/schema";
 import { songSchema, songCategories, type SongCategory } from "@/validators/song";
-import { eq, ne, asc, desc, and, or, sql, count, inArray, isNotNull, type SQL } from "drizzle-orm";
+import { eq, ne, asc, desc, and, or, sql, count, inArray, isNotNull, isNull, getTableColumns, type SQL } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { songKey } from "@/lib/song-key";
+import { findLyrics } from "@/lib/lyrics-search";
 import { youtubeService, YouTubeIntegrationError } from "@/lib/youtube";
 import { youtubeWatchUrl } from "@/lib/youtube-url";
 import { spotifyService, SpotifyIntegrationError } from "@/lib/spotify";
 import { getSetting, SETTING_SPOTIFY_PLAYLIST_ID } from "@/server/settings";
+
+const YOUTUBE_RESOLVE_LIMIT = 30;
 
 const emptyToNull = (value: string | null | undefined) =>
   value === undefined ? undefined : value === null || value.trim() === "" ? null : value;
@@ -76,7 +79,7 @@ async function isVideoUsedElsewhere(videoId: string, exceptSongId?: number): Pro
   const [row] = await db
     .select({ count: count() })
     .from(songs)
-    .where(and(eq(songs.youtubeVideoId, videoId), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
+    .where(and(eq(songs.youtubeVideoId, videoId), eq(songs.skipPlaylist, false), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
   return (row?.count ?? 0) > 0;
 }
 
@@ -141,7 +144,7 @@ async function isTrackUsedElsewhere(trackId: string, exceptSongId?: number): Pro
   const [row] = await db
     .select({ count: count() })
     .from(songs)
-    .where(and(eq(songs.spotifyTrackId, trackId), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
+    .where(and(eq(songs.spotifyTrackId, trackId), eq(songs.skipPlaylist, false), exceptSongId ? ne(songs.id, exceptSongId) : undefined));
   return (row?.count ?? 0) > 0;
 }
 
@@ -168,6 +171,9 @@ const SPOTIFY_RESOLVE_LIMIT = 40;
 
 const editSongs = can("songs.edit");
 
+const NO_YOUTUBE = sql`(${songs.youtubeUrl} is null or trim(${songs.youtubeUrl}) = '') and ${songs.youtubeVideoId} is null`;
+const NO_SPOTIFY = sql`(${songs.spotifyUrl} is null or trim(${songs.spotifyUrl}) = '') and ${songs.spotifyTrackId} is null`;
+
 export const songRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
@@ -179,36 +185,62 @@ export const songRouter = createTRPCRouter({
           .transform((v) =>
             songCategories.includes(v as SongCategory) ? (v as SongCategory) : undefined
           ),
+        sort: z.enum(["recent", "title", "mostPlayed", "leastPlayed"]).default("recent"),
+        /** Só músicas sem letra (não dá para apresentar). */
+        noLyrics: z.boolean().optional(),
+        /** Só músicas sem link do YouTube ou sem link do Spotify. */
+        missingLink: z.enum(["youtube", "spotify"]).optional(),
         page: z.number().min(1).default(1),
+        /** Usado pela lista com "carregar mais": é o número da próxima página. */
+        cursor: z.number().min(1).optional(),
         limit: z.number().min(1).max(100).default(50),
       })
     )
     .query(async ({ input }) => {
-      const { search, category, page, limit } = input;
+      const { search, category, sort, noLyrics, missingLink, limit } = input;
+      const page = input.cursor ?? input.page;
       const offset = (page - 1) * limit;
 
       const whereConditions: SQL[] = [];
 
       if (search && search.trim() !== "") {
-        const searchLower = `%${search.trim().toLowerCase()}%`;
+        // Sem acento e sem diferença de maiúsculas, também dentro da letra: "coracao" acha "Coração".
+        const pattern = `%${search.trim().toLowerCase()}%`;
         const searchCondition = or(
-          sql`LOWER(${songs.title}) LIKE ${searchLower}`,
-          sql`LOWER(${songs.artist}) LIKE ${searchLower}`
+          sql`unaccent(lower(${songs.title})) like unaccent(${pattern})`,
+          sql`unaccent(lower(coalesce(${songs.artist}, ''))) like unaccent(${pattern})`,
+          sql`unaccent(lower(coalesce(${songs.lyrics}, ''))) like unaccent(${pattern})`
         );
         if (searchCondition) whereConditions.push(searchCondition);
       }
 
-      if (category) {
-        whereConditions.push(eq(songs.category, category));
-      }
+      if (category) whereConditions.push(eq(songs.category, category));
+      if (noLyrics) whereConditions.push(sql`coalesce(length(trim(${songs.lyrics})), 0) = 0`);
+
+      if (missingLink === "youtube") whereConditions.push(NO_YOUTUBE);
+      if (missingLink === "spotify") whereConditions.push(NO_SPOTIFY);
 
       const where = whereConditions.length ? and(...whereConditions) : undefined;
 
+      // Com uma tabela só o Drizzle omite o nome da tabela; por isso "songs"."id" escrito por extenso nas subconsultas.
+      const playCount = sql<number>`(select count(*)::int from event_songs es join events e on e.id = es.event_id where es.song_id = "songs"."id" and e.type <> 'template' and e.date <= now())`;
+      const lastPlayed = sql<string | null>`(select max(e.date) from event_songs es join events e on e.id = es.event_id where es.song_id = "songs"."id" and e.type <> 'template' and e.date <= now())`;
+      const titleOrder = sql`unaccent(lower(${songs.title}))`;
+
+      const orderBy =
+        sort === "title"
+          ? [asc(titleOrder), asc(songs.id)]
+          : sort === "mostPlayed"
+            ? [desc(playCount), asc(titleOrder)]
+            : sort === "leastPlayed"
+              ? [asc(playCount), asc(titleOrder)]
+              : [desc(songs.createdAt), desc(songs.id)];
+
       const [data, total] = await Promise.all([
-        db.select()
+        db.select({ ...getTableColumns(songs), playCount, lastPlayed })
           .from(songs)
           .where(where)
-          .orderBy(desc(songs.createdAt), desc(songs.id))
+          .orderBy(...orderBy)
           .limit(limit)
           .offset(offset),
         db.select({ count: count() })
@@ -217,14 +249,47 @@ export const songRouter = createTRPCRouter({
       ]);
 
       const totalCount = total[0]?.count ?? 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
       return {
-        songs: data,
+        songs: data.map((row) => ({ ...row, lastPlayed: row.lastPlayed ? new Date(row.lastPlayed) : null })),
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        totalPages,
         currentPage: page,
+        nextCursor: page < totalPages ? page + 1 : undefined,
       };
     }),
+
+  /** O que existe no catálogo, para mostrar só os filtros que servem (categorias e se há músicas sem letra). */
+  facets: protectedProcedure.query(async () => {
+    const [categories, [noLyrics], [noYoutube], [noSpotify]] = await Promise.all([
+      db.selectDistinct({ category: songs.category }).from(songs),
+      db.select({ count: count() }).from(songs).where(sql`coalesce(length(trim(${songs.lyrics})), 0) = 0`),
+      db.select({ count: count() }).from(songs).where(NO_YOUTUBE),
+      db.select({ count: count() }).from(songs).where(NO_SPOTIFY),
+    ]);
+    return {
+      categories: categories.map((row) => row.category),
+      noLyricsCount: noLyrics?.count ?? 0,
+      noYoutubeCount: noYoutube?.count ?? 0,
+      noSpotifyCount: noSpotify?.count ?? 0,
+    };
+  }),
+
+  /** Busca automática da letra (LRCLIB) pelo título e artista. Devolve até 5 opções, a mais parecida primeiro. */
+  findLyrics: protectedProcedure
+    .input(z.object({ title: z.string().min(1).max(200), artist: z.string().max(200).optional() }))
+    .mutation(async ({ input }) => findLyrics(input.title, input.artist ?? "")),
+
+  /** Como o Spotify escreve o artista da faixa vinculada (para sugerir a grafia na edição da música). */
+  spotifyTrack: protectedProcedure.input(z.string().min(1).max(40)).query(async ({ input }) => {
+    if (!spotifyService.isConfigured()) return null;
+    try {
+      return await spotifyService.getTrack(input);
+    } catch {
+      return null;
+    }
+  }),
 
   getById: protectedProcedure.input(z.number()).query(async ({ input }) => {
     const song = await db
@@ -314,8 +379,8 @@ export const songRouter = createTRPCRouter({
 
     const [duration] = await Promise.all([
       input.duration ? Promise.resolve(input.duration) : durationFromVideo(youtube.youtubeVideoId, warnings),
-      syncPlaylistVideo(null, youtube.youtubeVideoId, undefined, warnings),
-      syncSpotifyTrack(null, spotify.spotifyTrackId, undefined, warnings),
+      syncPlaylistVideo(null, input.skipPlaylist ? null : youtube.youtubeVideoId, undefined, warnings),
+      syncSpotifyTrack(null, input.skipPlaylist ? null : spotify.spotifyTrackId, undefined, warnings),
     ]);
 
     const [song] = await db
@@ -361,6 +426,7 @@ export const songRouter = createTRPCRouter({
         lyrics: emptyToNull(data.lyrics),
         key: emptyToNull(data.key),
         duration: data.duration,
+        skipPlaylist: data.skipPlaylist,
       };
 
       const youtubeChanged =
@@ -373,18 +439,26 @@ export const songRouter = createTRPCRouter({
       const updateYouTube = async () => {
         const youtube = await resolveYouTube(data.youtubeUrl, title, artist, warnings);
         Object.assign(updateData, youtube);
-        await syncPlaylistVideo(currentSong.youtubeVideoId, youtube.youtubeVideoId, currentSong.id, warnings);
       };
 
       const updateSpotify = async () => {
         const spotify = await resolveSpotify(data.spotifyUrl, title, artist, warnings);
         Object.assign(updateData, spotify);
-        await syncSpotifyTrack(currentSong.spotifyTrackId, spotify.spotifyTrackId, currentSong.id, warnings);
       };
 
       await Promise.all([
         youtubeChanged ? updateYouTube() : Promise.resolve(),
         spotifyChanged ? updateSpotify() : Promise.resolve(),
+      ]);
+
+      // Playlist: só entra quem não está marcado como "fora da playlist". Trocar o link, ou marcar/desmarcar, ajusta as duas listas.
+      const wasInPlaylist = !currentSong.skipPlaylist;
+      const willBeInPlaylist = !(data.skipPlaylist ?? currentSong.skipPlaylist);
+      const finalVideoId = "youtubeVideoId" in updateData ? (updateData.youtubeVideoId ?? null) : currentSong.youtubeVideoId;
+      const finalTrackId = "spotifyTrackId" in updateData ? (updateData.spotifyTrackId ?? null) : currentSong.spotifyTrackId;
+      await Promise.all([
+        syncPlaylistVideo(wasInPlaylist ? currentSong.youtubeVideoId : null, willBeInPlaylist ? finalVideoId : null, currentSong.id, warnings),
+        syncSpotifyTrack(wasInPlaylist ? currentSong.spotifyTrackId : null, willBeInPlaylist ? finalTrackId : null, currentSong.id, warnings),
       ]);
 
       const effectiveDuration = data.duration ?? currentSong.duration;
@@ -419,13 +493,13 @@ export const songRouter = createTRPCRouter({
     const [deleted] = await db
       .delete(songs)
       .where(eq(songs.id, input))
-      .returning({ youtubeVideoId: songs.youtubeVideoId, spotifyTrackId: songs.spotifyTrackId });
+      .returning({ youtubeVideoId: songs.youtubeVideoId, spotifyTrackId: songs.spotifyTrackId, skipPlaylist: songs.skipPlaylist });
 
     const warnings: string[] = [];
-    if (deleted?.youtubeVideoId) {
+    if (deleted?.youtubeVideoId && !deleted.skipPlaylist) {
       await syncPlaylistVideo(deleted.youtubeVideoId, null, input, warnings);
     }
-    if (deleted?.spotifyTrackId) {
+    if (deleted?.spotifyTrackId && !deleted.skipPlaylist) {
       await syncSpotifyTrack(deleted.spotifyTrackId, null, input, warnings);
     }
     return { success: true, warnings };
@@ -436,15 +510,48 @@ export const songRouter = createTRPCRouter({
     .query(({ input }) => youtubeService.getStatus({ force: input?.force ?? false })),
 
   syncYouTubePlaylist: editSongs.mutation(async () => {
+    // 1) Músicas sem vídeo: busca no YouTube pelo título e artista (cada busca gasta cota, então há um limite por vez).
+    let resolved = 0;
+    let notFound = 0;
+    let unresolvedLeft = 0;
+    if (youtubeService.isConfigured()) {
+      const unlinked = await db
+        .select({ id: songs.id, title: songs.title, artist: songs.artist })
+        .from(songs)
+        .where(and(isNull(songs.youtubeVideoId), isNull(songs.youtubeUrl), eq(songs.skipPlaylist, false)))
+        .orderBy(sql`random()`)
+        .limit(YOUTUBE_RESOLVE_LIMIT + 1);
+      const toResolve = unlinked.slice(0, YOUTUBE_RESOLVE_LIMIT);
+      unresolvedLeft = unlinked.length - toResolve.length;
+      for (const song of toResolve) {
+        try {
+          const videoId = await youtubeService.searchVideo(song.title, song.artist);
+          if (!videoId) {
+            notFound += 1;
+            continue;
+          }
+          await db
+            .update(songs)
+            .set({ youtubeUrl: youtubeWatchUrl(videoId), youtubeVideoId: videoId, updatedAt: new Date() })
+            .where(eq(songs.id, song.id));
+          resolved += 1;
+        } catch {
+          // Cota esgotada ou falha da API: segue com o que já foi achado e sincroniza a playlist.
+          unresolvedLeft += toResolve.length - resolved - notFound;
+          break;
+        }
+      }
+    }
+
     const rows = await db
-      .select({ id: songs.id, videoId: songs.youtubeVideoId, duration: songs.duration })
+      .select({ id: songs.id, videoId: songs.youtubeVideoId, duration: songs.duration, skipPlaylist: songs.skipPlaylist })
       .from(songs)
       .where(isNotNull(songs.youtubeVideoId));
 
     const withVideo = rows.flatMap((row) => (row.videoId ? [{ ...row, videoId: row.videoId }] : []));
 
     try {
-      const playlist = await youtubeService.syncPlaylist(withVideo.map((row) => row.videoId));
+      const playlist = await youtubeService.syncPlaylist(withVideo.filter((row) => !row.skipPlaylist).map((row) => row.videoId));
 
       const missingDuration = withVideo.filter((row) => !row.duration);
       const durations = await youtubeService.getVideoDurations(missingDuration.map((row) => row.videoId));
@@ -455,7 +562,7 @@ export const songRouter = createTRPCRouter({
       const [first, ...rest] = updates;
       if (first) await db.batch([first, ...rest]);
 
-      return { ...playlist, durationsFilled: updates.length };
+      return { ...playlist, durationsFilled: updates.length, resolved, notFound, unresolvedLeft };
     } catch (error) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -500,7 +607,7 @@ export const songRouter = createTRPCRouter({
       const linked = await db
         .select({ trackId: songs.spotifyTrackId })
         .from(songs)
-        .where(isNotNull(songs.spotifyTrackId));
+        .where(and(isNotNull(songs.spotifyTrackId), eq(songs.skipPlaylist, false)));
       const added = await spotifyService.addTracks(
         playlistId,
         linked.flatMap((row) => (row.trackId ? [row.trackId] : []))

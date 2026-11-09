@@ -124,6 +124,8 @@ export const songs = createTable("songs", (d) => ({
 
   spotifyUrl: d.varchar("spotify_url", { length: 255 }),
   spotifyTrackId: d.varchar("spotify_track_id", { length: 50 }),
+  // Música que só guarda a referência (link): não entra nas playlists do YouTube e do Spotify.
+  skipPlaylist: d.boolean("skip_playlist").notNull().default(false),
 
   isActive: d.boolean("is_active").notNull().default(true),
   createdAt: d.timestamp("created_at").notNull().defaultNow(),

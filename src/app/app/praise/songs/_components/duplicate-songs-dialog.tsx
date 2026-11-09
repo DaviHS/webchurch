@@ -82,7 +82,7 @@ export function DuplicateSongsDialog({ open, onOpenChange }: { open: boolean; on
       error: "Erro ao mesclar",
       onSuccess: async ({ warnings }) => {
         for (const warning of warnings) toast.warning(warning, { duration: 10_000 });
-        await Promise.all([utils.song.duplicateGroups.invalidate(), utils.song.list.invalidate()]);
+        await Promise.all([utils.song.duplicateGroups.invalidate(), utils.song.list.invalidate(), utils.song.facets.invalidate()]);
       },
     }),
   );

@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { formatDate } from "@/lib/formatters";
 import { api } from "@/trpc/react";
 import type { Song } from "@/types";
-import { AddToEventDialog } from "./add-to-event-dialog";
+import { AddToEventDialog } from "../../_components/add-to-event-dialog";
 
 interface ForgottenListProps {
   startDate: Date | undefined;

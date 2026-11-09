@@ -2,8 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Clock, Copy, Info, Printer, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, Calendar, Clock, Copy, ExternalLink, Info, Printer, Trash2, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Spotify } from "@/components/icons/brand";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -51,10 +54,40 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
   const [activeTab, setActiveTab] = useState("info");
   const [printOpen, setPrintOpen] = useState(false);
   const utils = api.useUtils();
+  const canEdit = usePermissions().can("events.edit");
+  const confirm = useConfirm();
+  const [missingSongs, setMissingSongs] = useState<string[]>([]);
+  const playlistQuery = api.event.spotifyPlaylist.useQuery(event.id, { enabled: open });
+  const playlist = playlistQuery.data ?? null;
+  const createPlaylist = api.event.createSpotifyPlaylist.useMutation({
+    onSuccess: async (result) => {
+      setMissingSongs(result.missing);
+      await utils.event.spotifyPlaylist.invalidate(event.id);
+    },
+    onError: (error) => toastError(error.message),
+  });
+  const deletePlaylist = api.event.deleteSpotifyPlaylist.useMutation({
+    onSuccess: async () => {
+      setMissingSongs([]);
+      await utils.event.spotifyPlaylist.invalidate(event.id);
+      toast.success("Playlist excluída");
+    },
+    onError: (error) => toastError(error.message),
+  });
+  const handleDeletePlaylist = async () => {
+    const ok = await confirm({
+      title: "Excluir a playlist do Spotify?",
+      description: "A playlist some do Spotify da igreja. O repertório do evento não é alterado, e dá para criar outra depois.",
+      confirmLabel: "Excluir playlist",
+      destructive: true,
+    });
+    if (ok) deletePlaylist.mutate(event.id);
+  };
 
   const songs = "songs" in event ? event.songs : [];
   const passages = "passages" in event ? event.passages : [];
   const participants = "participants" in event ? event.participants : [];
+  const withoutLyrics = songs.filter((item) => item.song && !item.song.lyrics?.trim()).map((item) => item.song?.title ?? "");
   const hasMessage = Boolean(event.preacher) || Boolean(event.bibleVerse);
 
   // Repertório em texto, pronto para colar no WhatsApp (negrito com asteriscos).
@@ -228,6 +261,56 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                     <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setPrintOpen(true)}>
                       <Printer className="mr-1" /> Imprimir
                     </Button>
+                    {canEdit && !playlist && !playlistQuery.isLoading && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        disabled={createPlaylist.isPending}
+                        onClick={() => createPlaylist.mutate({ eventId: event.id, name: `${event.title} – ${formatDate(event.date)}` })}
+                      >
+                        {createPlaylist.isPending ? <Loader2 className="mr-1 animate-spin" /> : <Spotify className="mr-1" />}
+                        Criar playlist no Spotify
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {withoutLyrics.length > 0 && (
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm" role="status">
+                    <p className="font-medium">
+                      {withoutLyrics.length === 1 ? "1 música está sem letra" : `${withoutLyrics.length} músicas estão sem letra`}: {withoutLyrics.join(", ")}.
+                    </p>
+                    <p className="text-muted-foreground">Na apresentação elas passam sem slides. Cadastre a letra na tela de Músicas.</p>
+                  </div>
+                )}
+                {playlist && (
+                  <div className="space-y-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm">
+                    <p className="font-medium">Este repertório tem uma playlist no Spotify.</p>
+                    <div className="flex flex-wrap items-center gap-x-4">
+                      <a
+                        href={playlist.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-10 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        <ExternalLink className="size-4" /> Abrir no Spotify
+                      </a>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePlaylist()}
+                          disabled={deletePlaylist.isPending}
+                          className="inline-flex min-h-10 items-center gap-1 font-medium text-destructive underline-offset-4 hover:underline disabled:opacity-50"
+                        >
+                          {deletePlaylist.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                          Excluir playlist
+                        </button>
+                      )}
+                    </div>
+                    {missingSongs.length > 0 && (
+                      <p className="text-muted-foreground">Ficaram de fora (sem faixa no Spotify): {missingSongs.join(", ")}.</p>
+                    )}
                   </div>
                 )}
                 <EventSongsManager eventId={event.id} songs={songs} onUpdate={handleUpdate} />

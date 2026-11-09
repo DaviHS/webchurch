@@ -52,6 +52,7 @@ export function NextEventCard({ event, onViewDetails }: { event: EventData; onVi
               <li key={item.id} className="flex gap-2">
                 <span className="w-5 shrink-0 text-right tabular-nums text-muted-foreground">{index + 1}.</span>
                 <span className="min-w-0 truncate">{item.song?.title ?? "Música removida"}</span>
+                {item.song && !item.song.lyrics?.trim() && <span className="shrink-0 text-xs font-medium text-warning">sem letra</span>}
               </li>
             ))}
             {event.songCount > PREVIEW && (

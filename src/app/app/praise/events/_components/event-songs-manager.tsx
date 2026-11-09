@@ -283,6 +283,11 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                                     {songCategoryLabel(song.song.category)}
                                   </Badge>
                                 )}
+                                {song.song && !song.song.lyrics?.trim() && (
+                                  <Badge variant="warning" className="text-xs">
+                                    Sem letra
+                                  </Badge>
+                                )}
                               </div>
                               {song.leader && (
                                 <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">

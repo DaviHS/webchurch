@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spotify } from "@/components/icons/brand";
 import { api } from "@/trpc/react";
@@ -29,7 +28,7 @@ export function SpotifyStatus() {
         return parts.length === 0 ? "Tudo em dia: playlist completa" : parts.join(" · ");
       },
       error: "Erro ao sincronizar a playlist do Spotify",
-      onSuccess: () => Promise.all([utils.song.getSpotifyStatus.invalidate(), utils.song.list.invalidate()]),
+      onSuccess: () => Promise.all([utils.song.getSpotifyStatus.invalidate(), utils.song.list.invalidate(), utils.song.facets.invalidate()]),
     })
   );
 
@@ -37,15 +36,13 @@ export function SpotifyStatus() {
 
   if (!status.ok) {
     return (
-      <Alert className="border-warning/50 bg-warning/10">
-        <AlertTriangle className="h-4 w-4 !text-warning" />
-        <AlertTitle>Spotify fora do ar</AlertTitle>
-        <AlertDescription>
-          <p>
-            Avise o setor de desenvolvimento para verificar a integração. Enquanto isso, as músicas continuam sendo salvas, e os links continuam sendo preenchidos, só não entram na playlist.
-          </p>
-        </AlertDescription>
-      </Alert>
+      <div
+        className="flex max-w-full items-center gap-1.5 rounded-full border border-warning/50 bg-warning/10 px-2.5 py-1 text-xs"
+        title="Avise o setor de desenvolvimento para verificar a integração. As músicas continuam sendo salvas e os links preenchidos, só não entram na playlist."
+      >
+        <AlertTriangle className="size-4 shrink-0 text-warning" />
+        <span className="truncate">Spotify fora do ar</span>
+      </div>
     );
   }
 

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { CalendarPlus, Filter, Music, Projector } from "lucide-react";
 import { api } from "@/trpc/react";
-import { AddToEventDialog } from "./add-to-event-dialog";
+import { AddToEventDialog } from "../../_components/add-to-event-dialog";
 import { formatDate } from "@/lib/formatters";
 import { MiniStat } from "../../_components/mini-stat";
 import { SongExecutionList } from "../../_components/song-execution-list";

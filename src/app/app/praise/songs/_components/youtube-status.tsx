@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Youtube } from "@/components/icons/brand";
 import { api } from "@/trpc/react";
@@ -19,6 +18,9 @@ export function YouTubeStatus() {
       loading: "Sincronizando a playlist do YouTube...",
       success: (result) => {
         const parts = [
+          result.resolved > 0 ? `${result.resolved} link(s) do YouTube encontrado(s)` : null,
+          result.notFound > 0 ? `${result.notFound} sem resultado no YouTube` : null,
+          result.unresolvedLeft > 0 ? `${result.unresolvedLeft} sem link ainda: clique de novo para continuar` : null,
           result.added > 0 ? `${result.added} vídeo(s) adicionado(s) à playlist` : null,
           result.durationsFilled > 0 ? `${result.durationsFilled} duração(ões) preenchida(s)` : null,
           result.failed > 0 ? `${result.failed} vídeo(s) indisponível(is)` : null,
@@ -27,7 +29,7 @@ export function YouTubeStatus() {
         return parts.length === 0 ? "Tudo em dia: playlist completa e durações preenchidas" : parts.join(" · ");
       },
       error: "Erro ao sincronizar a playlist",
-      onSuccess: () => Promise.all([utils.song.getYouTubeStatus.invalidate(), utils.song.list.invalidate()]),
+      onSuccess: () => Promise.all([utils.song.getYouTubeStatus.invalidate(), utils.song.list.invalidate(), utils.song.facets.invalidate()]),
     })
   );
 
@@ -35,15 +37,13 @@ export function YouTubeStatus() {
 
   if (!status.ok) {
     return (
-      <Alert className="border-warning/50 bg-warning/10">
-        <AlertTriangle className="h-4 w-4 !text-warning" />
-        <AlertTitle>YouTube fora do ar</AlertTitle>
-        <AlertDescription>
-          <p>
-            Avise o setor de desenvolvimento para verificar a integração. Enquanto isso, as músicas continuam sendo salvas, só não entram na playlist.
-          </p>
-        </AlertDescription>
-      </Alert>
+      <div
+        className="flex max-w-full items-center gap-1.5 rounded-full border border-warning/50 bg-warning/10 px-2.5 py-1 text-xs"
+        title="Avise o setor de desenvolvimento para verificar a integração. As músicas continuam sendo salvas, só não entram na playlist."
+      >
+        <AlertTriangle className="size-4 shrink-0 text-warning" />
+        <span className="truncate">YouTube fora do ar</span>
+      </div>
     );
   }
 

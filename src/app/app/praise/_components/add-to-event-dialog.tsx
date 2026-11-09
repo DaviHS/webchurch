@@ -33,7 +33,7 @@ interface AddToEventDialogProps {
 export function AddToEventDialog({ song, open, onOpenChange }: AddToEventDialogProps) {
   const utils = api.useUtils();
   const [today] = useState(() => startOfDay(new Date()));
-  const { data, isLoading } = api.event.list.useQuery({ startDate: today, limit: 20 }, { enabled: open, staleTime: 30_000 });
+  const { data, isLoading } = api.event.list.useQuery({ scope: "upcoming", today, limit: 20 }, { enabled: open, staleTime: 30_000 });
 
   const upcoming = [...(data?.events ?? [])]
     .filter((event) => event.type !== "template")
