@@ -10,14 +10,16 @@ interface StatCardProps {
   description?: React.ReactNode
   icon: LucideIcon
   href?: string
+  /** Em vez de abrir outra página, faz alguma coisa ao tocar (ex.: abrir uma janela). */
+  onClick?: () => void
   isLoading?: boolean
   valueClassName?: string
   iconClassName?: string
 }
 
-export function StatCard({ title, value, description, icon: Icon, href, isLoading, valueClassName, iconClassName }: StatCardProps) {
+export function StatCard({ title, value, description, icon: Icon, href, isLoading, valueClassName, iconClassName, onClick }: StatCardProps) {
   const content = (
-    <Card className={cn("h-full transition-colors", href && "hover:border-primary/40 hover:bg-accent/40")}>
+    <Card className={cn("h-full transition-colors", (href ?? onClick) && "hover:border-primary/40 hover:bg-accent/40")}>
       <CardContent className="flex items-start justify-between gap-3 p-4 sm:p-5">
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -32,6 +34,14 @@ export function StatCard({ title, value, description, icon: Icon, href, isLoadin
       </CardContent>
     </Card>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="block w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {content}
+      </button>
+    )
+  }
 
   return href ? (
     <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

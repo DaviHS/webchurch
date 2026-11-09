@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, UserCheck, Users, UserX } from "lucide-react";
+import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, UserCheck, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { PageContainer, PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { SearchInput } from "@/components/search-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaginationBar } from "@/components/pagination-bar";
 import { RowActionsMenu } from "@/components/row-actions-menu";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -27,9 +28,12 @@ import type { MemberWithMinistries } from "./_components/types";
 
 const PAGE_SIZE = 20;
 
+const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [birthMonth, setBirthMonth] = useState<number | undefined>(undefined);
   const debouncedSearch = useDebounce(search, 500);
 
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -42,6 +46,7 @@ export default function MembersPage() {
     page,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
+    birthMonth,
   }, { placeholderData: (previous) => previous });
 
   const { data: pendingCount } = api.user.getPendingCount.useQuery();
@@ -145,13 +150,35 @@ export default function MembersPage() {
         }
       />
 
-      <SearchInput
-        value={search}
-        onChange={handleSearchChange}
-        placeholder="Buscar por nome ou email..."
-        isLoading={search !== debouncedSearch}
-        className="sm:max-w-md"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput
+          value={search}
+          onChange={handleSearchChange}
+          placeholder="Buscar por nome ou email..."
+          isLoading={search !== debouncedSearch}
+          className="sm:max-w-md"
+        />
+        <Select
+          value={birthMonth ? String(birthMonth) : "all"}
+          onValueChange={(value) => {
+            setBirthMonth(value === "all" ? undefined : Number(value));
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-52" aria-label="Aniversariantes do mês">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Aniversário: todos os meses</SelectItem>
+            {MONTHS.map((name, index) => (
+              <SelectItem key={name} value={String(index + 1)}>
+                {name}
+                {index === new Date().getMonth() ? " (este mês)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {isLoading ? (
         <LoadingState message="Carregando membros..." />
@@ -159,13 +186,15 @@ export default function MembersPage() {
         <EmptyState
           icon={Users}
           title={
-            debouncedSearch
+            birthMonth
+              ? `Ninguém faz aniversário em ${MONTHS[birthMonth - 1]}`
+              : debouncedSearch
               ? "Nenhum membro encontrado"
               : page > 1
                 ? "Nenhum membro nesta página"
                 : "Nenhum membro cadastrado"
           }
-          description={debouncedSearch ? "Tente buscar por outro nome ou email." : undefined}
+          description={debouncedSearch && !birthMonth ? "Tente buscar por outro nome ou email." : undefined}
           action={
             page > 1 ? (
               <Button variant="outline" onClick={() => setPage(1)}>
@@ -247,6 +276,12 @@ export default function MembersPage() {
                       )}
                     </div>
                     <div className="space-y-1">
+                      {birthMonth && m.birthDate && (
+                        <p className="flex items-center gap-1.5 font-medium text-primary">
+                          <Cake className="size-4 shrink-0" />
+                          <span>Aniversário: dia {Number(m.birthDate.slice(8, 10))}</span>
+                        </p>
+                      )}
                       {m.memberSince && (
                         <p className="flex items-center gap-1.5">
                           <Calendar className="size-4 shrink-0" />

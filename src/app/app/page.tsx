@@ -6,14 +6,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
 import { Music, Calendar, BarChart3, Home, CalendarClock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { BirthdaysStatCard } from "./_components/birthdays-card";
+import { usePermissions } from "@/hooks/use-permissions";
 import { RankBadge } from "./praise/_components/rank-badge";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const canSeeBirthdays = usePermissions().can("members.manage");
 
   const { data: songsStats, isLoading: isLoadingSongs } = api.song.list.useQuery({ limit: 1 });
   const { data: eventsStats, isLoading: isLoadingEvents } = api.event.list.useQuery({ limit: 1 });
@@ -31,7 +35,7 @@ export default function DashboardPage() {
         description={session?.user?.name ? `Bem-vindo, ${session.user.name}!` : "Bem-vindo!"}
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4", canSeeBirthdays ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
         <StatCard
           title="Músicas"
           value={songsStats?.total ?? 0}
@@ -55,6 +59,7 @@ export default function DashboardPage() {
           icon={BarChart3}
           isLoading={isLoadingRanking}
         />
+        <BirthdaysStatCard />
       </div>
 
       <Card>

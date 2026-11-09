@@ -25,6 +25,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { cleanEmptyStrings, emptyStringsToNull } from "@/lib/formatters";
+import { birthdayThisMonth } from "@/lib/birthdays";
 
 type MinistryInput = { ministryId: number; functionId?: number | null };
 
@@ -87,10 +88,12 @@ export const memberRouter = createTRPCRouter({
         status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
         gender: z.enum(["male", "female"]).optional().nullable(),
         hasAccess: z.enum(["true", "false"]).optional().nullable(),
+        /** Só quem faz aniversário neste mês (1 a 12); a lista passa a ser ordenada pelo dia. */
+        birthMonth: z.number().int().min(1).max(12).optional().nullable(),
       })
     )
     .query(async ({ input }) => {
-      const { page, limit, search, status, gender, hasAccess } = input;
+      const { page, limit, search, status, gender, hasAccess, birthMonth } = input;
       const offset = (page - 1) * limit;
 
       const conditions: SQL[] = [eq(members.status, status ?? "active")];
@@ -111,6 +114,10 @@ export const memberRouter = createTRPCRouter({
         if (searchConditions) conditions.push(searchConditions);
       }
 
+      if (birthMonth) {
+        conditions.push(sql`extract(month from ${members.birthDate}) = ${birthMonth}`);
+      }
+
       if (hasAccess === "true") {
         conditions.push(isNotNull(users.id));
       } else if (hasAccess === "false") {
@@ -125,7 +132,12 @@ export const memberRouter = createTRPCRouter({
         .from(members)
         .leftJoin(users, eq(members.id, users.memberId))
         .where(and(...conditions))
-        .orderBy(asc(members.firstName), asc(members.lastName), asc(members.id))
+        .orderBy(
+          ...(birthMonth ? [asc(sql`extract(day from ${members.birthDate})`)] : []),
+          asc(members.firstName),
+          asc(members.lastName),
+          asc(members.id),
+        )
         .limit(limit)
         .offset(offset);
 
@@ -178,6 +190,30 @@ export const memberRouter = createTRPCRouter({
           ? (({ passwordHash: _ph, resetToken: _rt, resetTokenExpires: _rte, ...safeUser }) => safeUser)(r.user)
           : null,
       }));
+    }),
+
+  /** Aniversariantes do mês de hoje (membros ativos), por dia. */
+  birthdaysOfMonth: manageMembers
+    .input(z.object({ today: z.string().regex(/^d{4}-d{2}-d{2}$/) }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          id: members.id,
+          firstName: members.firstName,
+          lastName: members.lastName,
+          birthDate: members.birthDate,
+          whatsapp: members.whatsapp,
+          phone: members.phone,
+        })
+        .from(members)
+        .where(and(eq(members.isActive, true), isNotNull(members.birthDate)));
+
+      return rows
+        .flatMap((row) => {
+          const birthday = row.birthDate ? birthdayThisMonth(row.birthDate, input.today) : null;
+          return birthday ? [{ id: row.id, firstName: row.firstName, lastName: row.lastName, whatsapp: row.whatsapp ?? row.phone, ...birthday }] : [];
+        })
+        .sort((a, b) => a.day - b.day || a.firstName.localeCompare(b.firstName, "pt-BR"));
     }),
 
   getById: protectedProcedure
