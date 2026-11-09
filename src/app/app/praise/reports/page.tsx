@@ -1,5 +1,7 @@
 "use client";
 
+import { ReportForgotten } from "./_components/report-forgotten";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, TrendingUp } from "lucide-react";
@@ -59,9 +61,14 @@ export default function ReportsPage() {
   const endDate = dateRange.to ? endOfDay(dateRange.to) : undefined;
   const isDateRangeValid = startDate !== undefined && endDate !== undefined;
 
-  const { data: report, isLoading } = api.report.getSongRanking.useQuery(
+  const { data: report, isLoading, isError, error: reportError, refetch } = api.report.getSongRanking.useQuery(
     { startDate, endDate, songIds: selectedSongs.length > 0 ? selectedSongs.map(s => s.id) : undefined },
     { enabled: isDateRangeValid, staleTime: 0, refetchOnWindowFocus: false }
+  );
+
+  const { data: comparison } = api.report.comparePeriods.useQuery(
+    { startDate: startDate!, endDate: endDate!, songIds: selectedSongs.length > 0 ? selectedSongs.map((s) => s.id) : undefined },
+    { enabled: isDateRangeValid, staleTime: 60_000, refetchOnWindowFocus: false },
   );
 
   const { data: songExecutions, isLoading: isLoadingExecutions } =
@@ -166,8 +173,12 @@ export default function ReportsPage() {
         isDateRangeValid={isDateRangeValid}
       />
 
+      {isError && !report && (
+        <ErrorDisplay title="Não foi possível carregar o relatório" message={reportError.message} onRetry={() => void refetch()} className="mt-0" />
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} />
+        <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} comparison={comparison} />
 
         <ReportRanking
           report={report}
@@ -175,6 +186,8 @@ export default function ReportsPage() {
           isDateRangeValid={isDateRangeValid}
           onSongClick={handleOpenSongDetail}
         />
+
+        <ReportForgotten />
 
         <ReportChart
           report={report}

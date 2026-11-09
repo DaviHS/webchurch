@@ -58,6 +58,47 @@ export const reportRouter = createTRPCRouter({
       return result;
     }),
 
+  /** Execuções no período e no período anterior de mesma duração, para comparar. */
+  comparePeriods: protectedProcedure
+    .input(z.object({ startDate: z.date(), endDate: z.date(), songIds: z.array(z.number()).optional() }))
+    .query(async ({ input }) => {
+      const length = input.endDate.getTime() - input.startDate.getTime();
+      const previousEnd = new Date(input.startDate.getTime() - 1);
+      const previousStart = new Date(previousEnd.getTime() - length);
+
+      const total = async (from: Date, to: Date) => {
+        const conditions = [gte(events.date, from), lte(events.date, to), notTemplate];
+        if (input.songIds && input.songIds.length > 0) conditions.push(inArray(eventSongs.songId, input.songIds));
+        const [row] = await db
+          .select({ total: count(eventSongs.id) })
+          .from(eventSongs)
+          .innerJoin(events, eq(eventSongs.eventId, events.id))
+          .where(and(...conditions));
+        return row?.total ?? 0;
+      };
+
+      const [current, previous] = await Promise.all([total(input.startDate, input.endDate), total(previousStart, previousEnd)]);
+      return { current, previous, previousStart, previousEnd };
+    }),
+
+  /** Músicas que não tocam há N dias (ou nunca tocaram), das mais antigas para as mais recentes. */
+  forgottenSongs: protectedProcedure
+    .input(z.object({ days: z.number().int().min(7).max(1000) }))
+    .query(async ({ input }) => {
+      const limit = subDays(new Date(), input.days);
+      const lastPlayed = sql<Date | null>`max(case when ${events.type} <> 'template' and ${events.date} <= now() then ${events.date} end)`;
+      const rows = await db
+        .select({ id: songs.id, title: songs.title, artist: songs.artist, lastPlayed })
+        .from(songs)
+        .leftJoin(eventSongs, eq(eventSongs.songId, songs.id))
+        .leftJoin(events, eq(eventSongs.eventId, events.id))
+        .groupBy(songs.id, songs.title, songs.artist)
+        .having(sql`${lastPlayed} is null or ${lastPlayed} < ${limit.toISOString()}::timestamp`)
+        .orderBy(sql`${lastPlayed} asc nulls first`, songs.title)
+        .limit(50);
+      return rows.map((row) => ({ ...row, lastPlayed: row.lastPlayed ? new Date(row.lastPlayed) : null }));
+    }),
+
   getSongExecutions: protectedProcedure
     .input(z.object({
       songId: z.number(),
