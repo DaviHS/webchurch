@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowDown, ArrowUp, GripVertical, Loader2, Music, Plus, Trash2, User } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Music, Plus, Trash2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,9 +81,10 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const [leaderId, setLeaderId] = useState(NO_LEADER);
   const [notes, setNotes] = useState("");
   const [songSearch, setSongSearch] = useState("");
-  // Ordem mostrada enquanto a gravação não termina, para o item não "voltar" antes de a lista nova chegar.
+  // A ordem nova aparece na hora, como se já tivesse sido gravada; a gravação segue em segundo plano.
   const [optimisticIds, setOptimisticIds] = useState<number[] | null>(null);
-  const reordering = useRef(false);
+  const latestOrder = useRef<number[] | null>(null);
+  const saving = useRef(false);
 
   const debouncedSongSearch = useDebounce(songSearch, 300);
   const { data: songsData, isLoading: isLoadingSongs } = api.song.list.useQuery({
@@ -99,7 +100,10 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   );
   const sortedSongs = [...songs].sort((a, b) => a.order - b.order);
   const byId = new Map(sortedSongs.map((item) => [item.id, item]));
-  const displaySongs = optimisticIds ? optimisticIds.flatMap((id) => byId.get(id) ?? []) : sortedSongs;
+  // Músicas que chegaram do servidor depois da troca (adicionadas agora) vão para o fim.
+  const displaySongs = optimisticIds
+    ? [...optimisticIds.flatMap((id) => byId.get(id) ?? []), ...sortedSongs.filter((item) => !optimisticIds.includes(item.id))]
+    : sortedSongs;
 
   const candidateIds = availableSongs.map((song) => song.id);
   const { data: lastPlayedData } = api.report.lastPlayed.useQuery(
@@ -135,7 +139,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   );
 
   const reorderMutation = api.event.reorderSongs.useMutation(
-    mutationFeedback({ error: "Erro ao atualizar ordem", onSuccess: onUpdate }),
+    mutationFeedback({ error: "Erro ao atualizar ordem. A ordem voltou ao que estava salvo." }),
   );
 
   const handleAddSong = () => {
@@ -160,20 +164,33 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     if (confirmed) removeSongMutation.mutate(song.id);
   };
 
+  // Grava em segundo plano. Se a pessoa mexer de novo durante a gravação, só a ordem mais recente é enviada em seguida.
+  const flushOrder = async () => {
+    if (saving.current) return;
+    saving.current = true;
+    try {
+      while (latestOrder.current) {
+        const orderedIds = latestOrder.current;
+        await reorderMutation.mutateAsync({ eventId, orderedIds });
+        if (latestOrder.current === orderedIds) {
+          latestOrder.current = null;
+          await onUpdate();
+        }
+      }
+    } catch {
+      // O aviso de erro já foi mostrado; volta para a ordem que está salva.
+      latestOrder.current = null;
+      await onUpdate();
+    } finally {
+      saving.current = false;
+      if (latestOrder.current === null) setOptimisticIds(null);
+    }
+  };
+
   const applyOrder = (orderedIds: number[]) => {
-    // A trava vem antes do estado: dois toques rápidos seguidos não disparam duas gravações.
-    if (reordering.current) return;
-    reordering.current = true;
+    latestOrder.current = orderedIds;
     setOptimisticIds(orderedIds);
-    reorderMutation.mutate(
-      { eventId, orderedIds },
-      {
-        onSettled: () => {
-          reordering.current = false;
-          setOptimisticIds(null);
-        },
-      },
-    );
+    void flushOrder();
   };
 
   const handleMoveSong = (songIndex: number, direction: "up" | "down") => {
@@ -218,13 +235,13 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
               className="py-8"
             />
           ) : (
-            <div className="relative" aria-busy={optimisticIds !== null}>
+            <div>
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="event-songs">
                 {(droppable) => (
                   <ul ref={droppable.innerRef} {...droppable.droppableProps} className="space-y-2">
                     {displaySongs.map((song, index) => (
-                      <Draggable key={song.id} draggableId={String(song.id)} index={index} isDragDisabled={!canEdit || reorderMutation.isPending || optimisticIds !== null}>
+                      <Draggable key={song.id} draggableId={String(song.id)} index={index} isDragDisabled={!canEdit}>
                         {(draggable, snapshot) => (
                           <li
                             ref={draggable.innerRef}
@@ -244,7 +261,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                                     onClick={() => handleMoveSong(index, "up")}
                                     title="Mover para cima"
                                     aria-label="Mover para cima"
-                                    disabled={index === 0 || reorderMutation.isPending}
+                                    disabled={index === 0}
                                   >
                                     <ArrowUp />
                                   </Button>
@@ -254,7 +271,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                                     onClick={() => handleMoveSong(index, "down")}
                                     title="Mover para baixo"
                                     aria-label="Mover para baixo"
-                                    disabled={index === displaySongs.length - 1 || reorderMutation.isPending}
+                                    disabled={index === displaySongs.length - 1}
                                   >
                                     <ArrowDown />
                                   </Button>
@@ -320,14 +337,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                 )}
               </Droppable>
             </DragDropContext>
-            {optimisticIds !== null && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60" role="status">
-                <span className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm shadow-sm">
-                  <Loader2 className="size-4 animate-spin" />
-                  Salvando a ordem…
-                </span>
-              </div>
-            )}
             </div>
           )}
         </CardContent>
