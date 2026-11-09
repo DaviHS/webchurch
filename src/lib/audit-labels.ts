@@ -21,6 +21,7 @@ const ACTIONS: Record<string, string> = {
   "event.update": "Editou evento",
   "event.delete": "Excluiu evento",
   "event.addSong": "Adicionou música ao evento",
+  "event.addSongToEnd": "Adicionou música ao fim do repertório do evento",
   "event.removeSong": "Removeu música do evento",
   "event.updateSongOrder": "Alterou a ordem ou os dados de uma música do evento",
   "event.addPassage": "Adicionou passagem bíblica ao evento",

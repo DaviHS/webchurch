@@ -46,6 +46,7 @@ export const reportRouter = createTRPCRouter({
           title: songs.title,
           artist: songs.artist,
           count: executions,
+          lastPlayed: sql<Date>`max(${events.date})`.mapWith((value: string | Date) => new Date(value)),
         })
         .from(eventSongs)
         .innerJoin(events, eq(eventSongs.eventId, events.id))
@@ -81,22 +82,30 @@ export const reportRouter = createTRPCRouter({
       return { current, previous, previousStart, previousEnd };
     }),
 
-  /** Músicas que não tocam há N dias (ou nunca tocaram), das mais antigas para as mais recentes. */
+  /**
+   * Músicas que não tocaram nenhuma vez no período escolhido (o mesmo filtro do relatório), das que estão há mais
+   * tempo sem tocar para as mais recentes; as que nunca tocaram vêm numa lista à parte.
+   */
   forgottenSongs: protectedProcedure
-    .input(z.object({ days: z.number().int().min(7).max(1000) }))
+    .input(z.object({ startDate: z.date(), endDate: z.date(), songIds: z.array(z.number()).optional() }))
     .query(async ({ input }) => {
-      const limit = subDays(new Date(), input.days);
       const lastPlayed = sql<Date | null>`max(case when ${events.type} <> 'template' and ${events.date} <= now() then ${events.date} end)`;
+      const inPeriod = sql<number>`count(${eventSongs.id}) filter (where ${events.type} <> 'template' and ${events.date} >= ${input.startDate.toISOString()}::timestamp and ${events.date} <= ${input.endDate.toISOString()}::timestamp)`;
       const rows = await db
         .select({ id: songs.id, title: songs.title, artist: songs.artist, lastPlayed })
         .from(songs)
         .leftJoin(eventSongs, eq(eventSongs.songId, songs.id))
         .leftJoin(events, eq(eventSongs.eventId, events.id))
+        .where(input.songIds && input.songIds.length > 0 ? inArray(songs.id, input.songIds) : undefined)
         .groupBy(songs.id, songs.title, songs.artist)
-        .having(sql`${lastPlayed} is null or ${lastPlayed} < ${limit.toISOString()}::timestamp`)
-        .orderBy(sql`${lastPlayed} asc nulls first`, songs.title)
-        .limit(50);
-      return rows.map((row) => ({ ...row, lastPlayed: row.lastPlayed ? new Date(row.lastPlayed) : null }));
+        .having(sql`${inPeriod} = 0`)
+        .orderBy(sql`${lastPlayed} asc nulls last`, songs.title);
+      const all = rows.map((row) => ({ ...row, lastPlayed: row.lastPlayed ? new Date(row.lastPlayed) : null }));
+      // Duas listas separadas: assim as nunca tocadas não ficam escondidas atrás das muito antigas.
+      return {
+        forgotten: all.filter((song) => song.lastPlayed !== null),
+        neverPlayed: all.filter((song) => song.lastPlayed === null),
+      };
     }),
 
   getSongExecutions: protectedProcedure

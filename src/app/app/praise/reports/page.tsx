@@ -1,6 +1,5 @@
 "use client";
 
-import { ReportForgotten } from "./_components/report-forgotten";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,8 +7,8 @@ import { Download, TrendingUp } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api } from "@/trpc/react";
-import { subDays, startOfDay, endOfDay } from "date-fns";
-import { formatDateRange } from "@/lib/formatters";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { formatDate, formatDateRange } from "@/lib/formatters";
 import { ReportFilters } from "./_components/report-filters";
 import { ReportStatsCard } from "./_components/report-stats-card";
 import { ReportRanking } from "./_components/report-ranking";
@@ -17,7 +16,7 @@ import { ReportChart } from "./_components/report-chart";
 import { SongDetailDialog } from "./_components/song-detail-dialog";
 import type { Song, DateRange } from "@/types";
 
-const DEFAULT_TIME_RANGE = "30";
+const DEFAULT_TIME_RANGE = "90";
 const EMPTY_RANGE: DateRange = { from: undefined, to: undefined };
 
 function getPresetRange(days: string): DateRange {
@@ -114,18 +113,19 @@ export default function ReportsPage() {
 
   const handleExportCsv = () => {
     if (!report) return;
-    const headers = ["Posição", "Música", "Artista", "Execuções"];
+    const headers = ["Posição", "Música", "Artista", "Execuções", "Última vez"];
     const csvContent = [
       headers.join(","),
       ...report.map((item, index) =>
-        [index + 1, toCsvField(item.title), toCsvField(item.artist ?? ""), item.count].join(",")
-      )
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
+        [index + 1, toCsvField(item.title), toCsvField(item.artist ?? ""), item.count, formatDate(item.lastPlayed)].join(","),
+      ),
+    ].join("\r\n");
+    // O BOM no começo faz o Excel abrir o arquivo em UTF-8, com os acentos corretos.
+    const blob = new Blob([String.fromCharCode(0xfeff), csvContent], { type: "text/csv;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `relatorio-musicas-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `relatorio-musicas-${startDate ? format(startDate, "yyyy-MM-dd") : "inicio"}_${endDate ? format(endDate, "yyyy-MM-dd") : "fim"}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -148,9 +148,15 @@ export default function ReportsPage() {
         icon={TrendingUp}
         description="Análise das músicas mais executadas."
         actions={
-          <Button onClick={handleExportCsv} disabled={!report?.length} variant="outline" className="w-full sm:w-auto">
+          <Button
+            onClick={handleExportCsv}
+            disabled={!report?.length}
+            variant="outline"
+            size="icon"
+            title="Exportar CSV"
+            aria-label="Exportar CSV"
+          >
             <Download />
-            Exportar CSV
           </Button>
         }
       />
@@ -171,30 +177,37 @@ export default function ReportsPage() {
         isLoadingSongs={songsLoading}
         onClearFilters={handleClearFilters}
         isDateRangeValid={isDateRangeValid}
+        isFiltered={timeRange !== DEFAULT_TIME_RANGE || selectedSongs.length > 0}
       />
 
       {isError && !report && (
         <ErrorDisplay title="Não foi possível carregar o relatório" message={reportError.message} onRetry={() => void refetch()} className="mt-0" />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} comparison={comparison} />
+      <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-2">
+        <div className="lg:col-span-2">
+          <ReportStatsCard stats={stats} isLoading={showLoading} periodText={isDateRangeValid ? getPeriodText() : ""} comparison={comparison} />
+        </div>
 
         <ReportRanking
           report={report}
           isLoading={showLoading}
           isDateRangeValid={isDateRangeValid}
           onSongClick={handleOpenSongDetail}
+          startDate={startDate}
+          endDate={endDate}
+          songIds={selectedSongs.length > 0 ? selectedSongs.map((song) => song.id) : undefined}
+          onWiden={timeRange === "365" ? undefined : () => handleTimeRangeChange("365")}
         />
 
-        <ReportForgotten />
-
-        <ReportChart
-          report={report}
-          isLoading={showLoading}
-          isDateRangeValid={isDateRangeValid}
-          onBarClick={handleOpenSongDetail}
-        />
+        <div className="hidden lg:block">
+          <ReportChart
+            report={report}
+            isLoading={showLoading}
+            isDateRangeValid={isDateRangeValid}
+            onBarClick={handleOpenSongDetail}
+          />
+        </div>
       </div>
 
       <SongDetailDialog

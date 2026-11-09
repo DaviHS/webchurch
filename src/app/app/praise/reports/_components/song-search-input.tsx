@@ -20,6 +20,8 @@ interface SongSearchInputProps {
   allSongs: Song[];
   isLoading: boolean;
   placeholder?: string;
+  /** Resultados na própria página (dentro de uma folha), em vez de uma lista flutuante. */
+  inline?: boolean;
 }
 
 export function SongSearchInput({
@@ -34,6 +36,7 @@ export function SongSearchInput({
   allSongs,
   isLoading,
   placeholder = "Digite o nome da música...",
+  inline = false,
 }: SongSearchInputProps) {
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +62,7 @@ export function SongSearchInput({
   };
 
   return (
-    <div className="relative z-50 space-y-2" ref={searchRef}>
+    <div className={cn("space-y-2", !inline && "relative z-50")} ref={searchRef}>
       {selectedSongs.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedSongs.map((song) => (
@@ -101,7 +104,12 @@ export function SongSearchInput({
       </div>
 
       {showResults && searchTerm && (
-        <div className="absolute z-9999 mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover shadow-2xl sm:max-h-56">
+        <div
+          className={cn(
+            "mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover",
+            inline ? "max-h-[45dvh]" : "absolute z-9999 shadow-2xl sm:max-h-56",
+          )}
+        >
           <div className="p-1">
             {isLoading ? (
               <div className="py-3 text-center text-sm text-muted-foreground">Carregando...</div>

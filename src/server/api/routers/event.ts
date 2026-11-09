@@ -216,6 +216,22 @@ export const eventRouter = createTRPCRouter({
       return eventSong;
     }),
 
+  /** Coloca uma música no fim do repertório do evento (usado pelos relatórios, sem precisar abrir o evento). */
+  addSongToEnd: editEvents
+    .input(z.object({ eventId: z.number(), songId: z.number() }))
+    .mutation(async ({ input }) => {
+      const current = await db
+        .select({ songId: eventSongs.songId, order: eventSongs.order })
+        .from(eventSongs)
+        .where(eq(eventSongs.eventId, input.eventId));
+      if (current.some((item) => item.songId === input.songId)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Esta música já está no repertório do evento." });
+      }
+      const order = current.reduce((max, item) => Math.max(max, item.order), 0) + 1;
+      const [added] = await db.insert(eventSongs).values({ eventId: input.eventId, songId: input.songId, order }).returning();
+      return added;
+    }),
+
   addPassage: editEvents
     .input(
       z.object({

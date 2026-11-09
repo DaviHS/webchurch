@@ -1,3 +1,5 @@
+import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -10,7 +12,9 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
-import { Filter, Music } from "lucide-react";
+import { CalendarPlus, Filter, Music, Projector } from "lucide-react";
+import { api } from "@/trpc/react";
+import { AddToEventDialog } from "./add-to-event-dialog";
 import { formatDate } from "@/lib/formatters";
 import { MiniStat } from "../../_components/mini-stat";
 import { SongExecutionList } from "../../_components/song-execution-list";
@@ -26,7 +30,15 @@ interface SongDetailDialogProps {
 }
 
 export function SongDetailDialog({ open, onOpenChange, song, executions, isLoading, onFilterBySong }: SongDetailDialogProps) {
+  const [adding, setAdding] = useState(false);
   const latestExecution = executions?.[0];
+
+  // Sem execuções no período: mostra as últimas vezes em que tocou, em qualquer época.
+  const noneInPeriod = !isLoading && executions?.length === 0;
+  const { data: recent, isLoading: isLoadingRecent } = api.report.getRecentExecutions.useQuery(
+    { songId: song?.id ?? 0, limit: 5 },
+    { enabled: open && song !== null && noneInPeriod },
+  );
 
   const handleFilterBySong = () => {
     if (!song) return;
@@ -73,10 +85,28 @@ export function SongDetailDialog({ open, onOpenChange, song, executions, isLoadi
                 </div>
               )}
 
-              <SongExecutionList
-                executions={executions ?? []}
-                emptyDescription="Esta música não foi tocada no período selecionado."
-              />
+              {noneInPeriod ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Não foi tocada no período selecionado.</p>
+                  {isLoadingRecent ? (
+                    <Skeleton className="h-14 w-full" />
+                  ) : (
+                    <>
+                      {recent && recent.length > 0 && <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Últimas vezes</p>}
+                      <SongExecutionList
+                        executions={recent ?? []}
+                        highlightLatest
+                        emptyDescription="Esta música nunca foi tocada em um evento."
+                      />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <SongExecutionList
+                  executions={executions ?? []}
+                  emptyDescription="Esta música não foi tocada no período selecionado."
+                />
+              )}
             </>
           )}
         </ResponsiveDialogBody>
@@ -86,6 +116,20 @@ export function SongDetailDialog({ open, onOpenChange, song, executions, isLoadi
             <Button variant="outline">Fechar</Button>
           </ResponsiveDialogClose>
           {song && (
+            <Button variant="outline" onClick={() => setAdding(true)}>
+              <CalendarPlus />
+              Adicionar a um evento
+            </Button>
+          )}
+          {song && (
+            <Button variant="outline" asChild>
+              <Link href={`/presentation/control?song=${song.id}`}>
+                <Projector />
+                Apresentar
+              </Link>
+            </Button>
+          )}
+          {song && (
             <Button onClick={handleFilterBySong}>
               <Filter />
               Filtrar por esta música
@@ -93,6 +137,7 @@ export function SongDetailDialog({ open, onOpenChange, song, executions, isLoadi
           )}
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
+      <AddToEventDialog song={song} open={adding} onOpenChange={setAdding} />
     </ResponsiveDialog>
   );
 }

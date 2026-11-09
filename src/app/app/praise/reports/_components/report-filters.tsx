@@ -1,13 +1,31 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { AlertTriangle, Music, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { AlertTriangle, Filter, X } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
+import { cn } from "@/lib/utils";
 import { SongSearchInput } from "./song-search-input";
 import type { Song, DateRange } from "@/types";
+
+export const PERIODS = [
+  { value: "7", label: "7 dias" },
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "3 meses" },
+  { value: "180", label: "6 meses" },
+  { value: "365", label: "12 meses" },
+  { value: "custom", label: "Personalizado" },
+];
 
 interface ReportFiltersProps {
   timeRange: string;
@@ -25,8 +43,11 @@ interface ReportFiltersProps {
   isLoadingSongs: boolean;
   onClearFilters: () => void;
   isDateRangeValid: boolean;
+  /** Há algo diferente do padrão (outro período ou músicas escolhidas). */
+  isFiltered: boolean;
 }
 
+/** Período em chips (um toque) e filtro por música numa folha, para o resultado aparecer logo na primeira tela. */
 export function ReportFilters({
   timeRange,
   onTimeRangeChange,
@@ -43,56 +64,84 @@ export function ReportFilters({
   isLoadingSongs,
   onClearFilters,
   isDateRangeValid,
+  isFiltered,
 }: ReportFiltersProps) {
+  const [songsOpen, setSongsOpen] = useState(false);
+
   return (
-    <Card className="relative overflow-visible">
-      <CardHeader className="p-4">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Filter className="size-4 shrink-0 text-primary" />
-          Filtros
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="report-period" className="text-xs font-medium sm:text-sm">
-              Período
-            </Label>
-            <Select value={timeRange} onValueChange={onTimeRangeChange}>
-              <SelectTrigger id="report-period" className="h-10 sm:h-9">
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 dias</SelectItem>
-                <SelectItem value="15">15 dias</SelectItem>
-                <SelectItem value="30">30 dias</SelectItem>
-                <SelectItem value="60">60 dias</SelectItem>
-                <SelectItem value="90">90 dias</SelectItem>
-                <SelectItem value="180">6 meses</SelectItem>
-                <SelectItem value="365">12 meses</SelectItem>
-                <SelectItem value="custom">Personalizado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-2">
+      <div
+        role="radiogroup"
+        aria-label="Período"
+        className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+      >
+        {PERIODS.map((period) => {
+          const active = timeRange === period.value;
+          return (
+            <button
+              key={period.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onTimeRangeChange(period.value)}
+              className={cn(
+                "min-h-10 shrink-0 snap-start rounded-full border px-4 text-sm font-medium transition-colors",
+                active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-accent",
+              )}
+            >
+              {period.label}
+            </button>
+          );
+        })}
+      </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium sm:text-sm">
-              {timeRange === "custom" ? "Período personalizado" : "Visualização"}
-            </Label>
-            <DateRangePicker
-              value={dateRange}
-              onChange={onDateRangeChange}
-              placeholder={timeRange === "custom" ? "Selecione as datas" : "Período definido"}
-              disabled={timeRange !== "custom"}
-              closeOnSelect={false}
-            />
-          </div>
+      {timeRange === "custom" && (
+        <div className="space-y-1.5">
+          <DateRangePicker value={dateRange} onChange={onDateRangeChange} placeholder="Selecione as datas" closeOnSelect={false} />
+          {!isDateRangeValid && (
+            <p className="flex items-center gap-1.5 text-xs text-warning">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              Selecione a data inicial e a final para consultar.
+            </p>
+          )}
+        </div>
+      )}
 
-          <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label htmlFor="report-song-search" className="text-xs font-medium sm:text-sm">
-              Músicas
-            </Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setSongsOpen(true)}>
+          <Music />
+          {selectedSongs.length > 0 ? `Músicas (${selectedSongs.length})` : "Filtrar por música"}
+        </Button>
+        {selectedSongs.map((song) => (
+          <Badge key={song.id} variant="secondary" className="max-w-full gap-1 py-0 pl-2.5 pr-0 text-xs font-medium">
+            <span className="min-w-0 truncate">{song.title}</span>
+            <button
+              type="button"
+              onClick={() => onSongRemove(song.id)}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Remover "${song.title}"`}
+            >
+              <X className="size-3.5" />
+            </button>
+          </Badge>
+        ))}
+        {isFiltered && (
+          <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+            <X />
+            Limpar
+          </Button>
+        )}
+      </div>
+
+      <ResponsiveDialog open={songsOpen} onOpenChange={setSongsOpen}>
+        <ResponsiveDialogContent size="md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Filtrar por música</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>Escolha uma ou mais músicas para ver só o histórico delas.</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogBody className="pb-4">
             <SongSearchInput
+              inline
               id="report-song-search"
               searchTerm={searchTerm}
               onSearchChange={onSearchChange}
@@ -104,21 +153,14 @@ export function ReportFilters({
               allSongs={allSongs}
               isLoading={isLoadingSongs}
             />
-          </div>
-        </div>
-
-        <Button variant="outline" onClick={onClearFilters} className="w-full sm:w-auto">
-          <X />
-          Limpar filtros
-        </Button>
-
-        {timeRange === "custom" && !isDateRangeValid && (
-          <p className="flex items-center gap-1.5 text-xs text-warning">
-            <AlertTriangle className="size-3.5 shrink-0" />
-            Selecione a data inicial e a final para consultar.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          </ResponsiveDialogBody>
+          <ResponsiveDialogFooter>
+            <Button type="button" onClick={() => setSongsOpen(false)}>
+              Pronto
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+    </div>
   );
 }
