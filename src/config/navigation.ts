@@ -43,6 +43,9 @@ const READ_LINK: NavLink = { title: "Leitura", url: BIBLE_LINK.url, icon: BookOp
 export const BIBLE_SECTION: NavSection = { title: "Bíblia", icon: BookOpen, items: [READ_LINK, PLAN_LINK] };
 export const BIBLE_OFFLINE_SECTION: NavSection = { ...BIBLE_SECTION, items: [READ_LINK] };
 
+/** Finanças fica fora do menu por enquanto. Para voltar a mostrar, troque para true. A página continua existindo (só some do menu). */
+const SHOW_FINANCE = false;
+
 export const NAV_SECTIONS: NavSection[] = [
   BIBLE_SECTION,
   {
@@ -61,7 +64,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Membros", url: "/app/admin/members", icon: Users, permission: "members.manage" },
       { title: "Aprovações", url: "/app/admin/members/pending", icon: UserCheck, badge: "pendingUsers", permission: "users.manage" },
       { title: "Ministérios e Funções", url: "/app/admin/ministries", icon: Workflow, permission: "ministries.manage" },
-      { title: "Finanças", url: "/app/admin/finance", icon: DollarSign, permission: "finance.access" },
+      ...(SHOW_FINANCE ? [{ title: "Finanças", url: "/app/admin/finance", icon: DollarSign, permission: "finance.access" } satisfies NavLink] : []),
       { title: "Histórico", url: "/app/admin/audit", icon: History, permission: "audit.view" },
     ],
   },
