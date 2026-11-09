@@ -1,25 +1,30 @@
 import { RegisterForm } from "./_components/register-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { User2Icon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+    <div className="flex min-h-dvh items-center justify-center px-4 pb-8 pt-16 sm:py-16">
       <div className="w-full max-w-md">
         <Card className="w-full">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-              <User2Icon className="h-8 w-8 text-primary-foreground" />
-            </div>
+            <Image
+              src="/icons/icon-192.png"
+              alt="Igreja Central"
+              width={48}
+              height={48}
+              unoptimized
+              className="mx-auto mb-2 size-12 rounded-md shadow-xs ring-1 ring-border/40"
+            />
             <CardTitle className="text-2xl font-bold">Criar conta</CardTitle>
             <CardDescription>
-              Preencha seus dados para criar sua conta
+              Preencha os seus dados. Depois de enviar, a liderança da igreja analisa e libera o seu acesso.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <RegisterForm />
-            
+
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Já tem uma conta?{" "}
