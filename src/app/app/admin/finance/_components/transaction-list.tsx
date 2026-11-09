@@ -77,7 +77,7 @@ export function TransactionList({ transactions, onEdit, onDelete, isLoading, has
         })}
       </ul>
 
-      <div className="hidden overflow-hidden rounded-lg border md:block">
+      <div className="hidden overflow-hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>

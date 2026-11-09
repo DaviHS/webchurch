@@ -24,15 +24,15 @@ export function SearchPickList<T>({
   label,
 }: SearchPickListProps<T>) {
   if (isLoading) {
-    return <p className="rounded-lg border py-4 text-center text-sm text-muted-foreground">Carregando…</p>;
+    return <p className="rounded-md border py-4 text-center text-sm text-muted-foreground">Carregando…</p>;
   }
 
   if (items.length === 0) {
-    return <p className="rounded-lg border py-4 text-center text-sm text-muted-foreground">{emptyMessage}</p>;
+    return <p className="rounded-md border py-4 text-center text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
-    <ul aria-label={label} className="max-h-60 divide-y overflow-y-auto overscroll-contain rounded-lg border">
+    <ul aria-label={label} className="max-h-60 divide-y overflow-y-auto overscroll-contain rounded-md border">
       {items.map((item) => (
         <li key={getKey(item)}>
           <button
@@ -56,7 +56,7 @@ interface SelectedPickProps {
 
 export function SelectedPick({ children, onClear, clearLabel }: SelectedPickProps) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-muted/30 py-2 pl-3 pr-1">
+    <div className="flex items-center gap-2 rounded-md border bg-muted/30 py-2 pl-3 pr-1">
       <div className="min-w-0 flex-1">{children}</div>
       <Button type="button" variant="ghost" size="icon" onClick={onClear} title={clearLabel} aria-label={clearLabel}>
         <X />

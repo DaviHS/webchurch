@@ -131,7 +131,7 @@ function MonthlyClosureForm({ summary, onDone }: { summary: MonthSummary; onDone
             />
           ) : null}
 
-          <div className="divide-y rounded-lg border px-4">
+          <div className="divide-y rounded-md border px-4">
             {!needsOpeningBalance && (
               <SummaryLine label="Saldo inicial" value={formatCurrency(summary.openingBalance)} />
             )}

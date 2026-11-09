@@ -161,7 +161,7 @@ export function TransactionForm({
               <FormItem>
                 <FormLabel>Categoria *</FormLabel>
                 {visibleCategories.length === 0 ? (
-                  <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm">
+                  <div className="space-y-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm">
                     <p>
                       Nenhuma categoria de {TRANSACTION_TYPES[selectedType].label.toLocaleLowerCase("pt-BR")} ativa. Crie uma
                       categoria antes de lançar.

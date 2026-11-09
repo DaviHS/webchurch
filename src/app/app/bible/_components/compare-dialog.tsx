@@ -64,7 +64,7 @@ function CompareColumn({
   const shown = data?.verses.filter((v) => wanted.has(v.verse)) ?? [];
 
   return (
-    <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-lg border p-3">
+    <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-md border p-3">
       <div className="flex items-center gap-1">
         <VersionSelect value={version} versions={versions} taken={taken} onChange={onChange} label="Versão" className="w-full min-w-0 flex-1" />
         {onRemove && (

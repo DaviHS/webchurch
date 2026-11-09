@@ -277,7 +277,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                   </div>
                 )}
                 {withoutLyrics.length > 0 && (
-                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm" role="status">
+                  <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm" role="status">
                     <p className="font-medium">
                       {withoutLyrics.length === 1 ? "1 música está sem letra" : `${withoutLyrics.length} músicas estão sem letra`}: {withoutLyrics.join(", ")}.
                     </p>
@@ -285,7 +285,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                   </div>
                 )}
                 {playlist && (
-                  <div className="space-y-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm">
+                  <div className="space-y-1 rounded-md border border-success/40 bg-success/10 p-3 text-sm">
                     <p className="font-medium">Este repertório tem uma playlist no Spotify.</p>
                     <div className="flex flex-wrap items-center gap-x-4">
                       <a

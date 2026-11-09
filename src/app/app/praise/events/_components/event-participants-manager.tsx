@@ -160,7 +160,7 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
           ) : (
             <ul className="space-y-2">
               {participants.map((participant, index) => (
-                <li key={participant.id} className="flex items-center gap-3 rounded-lg border p-2 sm:p-3">
+                <li key={participant.id} className="flex items-center gap-3 rounded-md border p-2 sm:p-3">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium text-secondary-foreground">
                     {index + 1}
                   </div>

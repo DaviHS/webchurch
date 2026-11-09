@@ -217,7 +217,7 @@ export function EventForm({ id, onSubmit, initialData, defaults }: EventFormProp
           </div>
         </div>
 
-        <Collapsible defaultOpen={hasDetails} className="rounded-lg border">
+        <Collapsible defaultOpen={hasDetails} className="rounded-md border">
           <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between px-3 text-sm font-medium">
             Mais detalhes
             <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />

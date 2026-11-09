@@ -138,7 +138,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
               type="button"
               onClick={() => onGoTo(position)}
               className={cn(
-                "relative flex min-h-28 flex-col rounded-lg border-2 p-3 pt-6 text-left text-sm leading-snug transition-colors",
+                "relative flex min-h-28 flex-col rounded-md border-2 p-3 pt-6 text-left text-sm leading-snug transition-colors",
                 isLive
                   ? "border-red-500 bg-red-500/10"
                   : isNext

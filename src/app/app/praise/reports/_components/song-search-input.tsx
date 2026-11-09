@@ -106,7 +106,7 @@ export function SongSearchInput({
       {showResults && searchTerm && (
         <div
           className={cn(
-            "mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover",
+            "mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover",
             inline ? "max-h-[45dvh]" : "absolute z-9999 shadow-2xl sm:max-h-56",
           )}
         >
@@ -126,7 +126,7 @@ export function SongSearchInput({
                       onClick={() => onSongSelect(song)}
                       disabled={isSelected}
                       className={cn(
-                        "flex min-h-11 w-full flex-col justify-center rounded px-2 py-1.5 text-left text-sm transition-colors sm:min-h-9",
+                        "flex min-h-11 w-full flex-col justify-center rounded-md px-2 py-1.5 text-left text-sm transition-colors sm:min-h-9",
                         isSelected ? "cursor-not-allowed bg-muted opacity-60" : "hover:bg-accent hover:text-accent-foreground"
                       )}
                     >

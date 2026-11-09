@@ -85,7 +85,7 @@ export default function PendingUsersPage() {
               {pendingUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex flex-col items-stretch justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center"
+                  className="flex flex-col items-stretch justify-between gap-4 rounded-md border p-4 sm:flex-row sm:items-center"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">

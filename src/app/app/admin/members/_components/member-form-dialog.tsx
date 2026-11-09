@@ -143,7 +143,7 @@ function buildDefaultValues(member: MemberWithMinistries | null | undefined): Me
 
 function FormSection({ title, action, children }: { title: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="space-y-3 rounded-lg border p-4 sm:p-5">
+    <section className="space-y-3 rounded-md border p-4 sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="flex items-center gap-2 text-base font-semibold">{title}</h3>
         {action}
@@ -663,7 +663,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                     const ministryFunctions = getFunctionsForMinistry(selectedMinistryId);
 
                     return (
-                      <div key={field.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-end">
+                      <div key={field.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-end">
                         <div className="grid w-full min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
                           <div className="min-w-0 space-y-2">
                             <Label htmlFor={`ministry-${field.id}`}>Ministério</Label>
@@ -766,7 +766,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                       </div>
 
                       {createUser && (
-                        <div className="space-y-3 rounded-lg border bg-muted/50 p-4">
+                        <div className="space-y-3 rounded-md border bg-muted/50 p-4">
                           <div className="space-y-2">
                             <Label htmlFor="accessEmail">Email para acesso</Label>
                             <Input id="accessEmail" value={email ?? ""} readOnly disabled className="bg-background" />
@@ -793,7 +793,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                     </div>
                   ) : existingUser ? (
                     <div className="space-y-4">
-                      <div className={cn("rounded-lg border p-4", USER_ACCESS_STATUS[existingUser.status].boxClassName)}>
+                      <div className={cn("rounded-md border p-4", USER_ACCESS_STATUS[existingUser.status].boxClassName)}>
                         <div className="mb-2 flex items-center gap-2">
                           <User className="size-4" />
                           <span className="font-medium">{USER_ACCESS_STATUS[existingUser.status].title}</span>
@@ -878,7 +878,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                      <div className="rounded-md border border-warning/30 bg-warning/10 p-4">
                         <div className="mb-2 flex items-center gap-2 text-warning">
                           <User className="size-4" />
                           <span className="font-medium">Sem acesso ao sistema</span>

@@ -165,7 +165,7 @@ export default function MembersPage() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-full sm:w-52" aria-label="Aniversariantes do mês">
+          <SelectTrigger className="w-full sm:w-64" aria-label="Aniversariantes do mês">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

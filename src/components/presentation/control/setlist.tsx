@@ -109,7 +109,7 @@ function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
             <li key={song.id}>
               <button
                 type="button"
-                className="flex min-h-11 w-full items-center justify-between gap-2 rounded px-2 py-2.5 text-left text-sm hover:bg-accent"
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 py-2.5 text-left text-sm hover:bg-accent"
                 onClick={() => {
                   onAdd({ id: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics });
                   setTerm("");

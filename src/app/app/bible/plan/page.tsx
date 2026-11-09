@@ -100,7 +100,7 @@ function ActivePlan({ plan, progress, today }: { plan: ReadingPlan; progress: Pl
         ) : dueDay === 0 ? (
           <p className="text-sm text-muted-foreground">O plano começa em {progress.startedOn}.</p>
         ) : (
-          <div className={cn("space-y-3 rounded-lg border p-3", todayDone && "border-success/40 bg-success/5")}>
+          <div className={cn("space-y-3 rounded-md border p-3", todayDone && "border-success/40 bg-success/5")}>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Leitura de hoje · dia {dueDay}</p>
               <p className="text-base font-semibold">{describeChapters(chaptersForDay(plan, dueDay))}</p>
@@ -119,7 +119,7 @@ function ActivePlan({ plan, progress, today }: { plan: ReadingPlan; progress: Pl
         )}
 
         {overdue.length > 0 && (
-          <Collapsible className="rounded-lg border">
+          <Collapsible className="rounded-md border">
             <CollapsibleTrigger className="group flex w-full items-center gap-2 p-3 text-left text-sm font-semibold">
               <span className="flex-1">
                 {overdue.length} {overdue.length === 1 ? "dia atrasado" : "dias atrasados"}

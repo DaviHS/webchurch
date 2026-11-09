@@ -76,7 +76,7 @@ export default function DashboardPage() {
           ) : recentSongs && recentSongs.length > 0 ? (
             <ol className="space-y-2">
               {recentSongs.slice(0, 5).map((song, index) => (
-                <li key={song.songId} className="flex items-center gap-3 rounded-lg border p-3">
+                <li key={song.songId} className="flex items-center gap-3 rounded-md border p-3">
                   <RankBadge rank={index + 1} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold sm:text-base">{song.title}</div>

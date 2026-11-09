@@ -61,7 +61,7 @@ export function PrintRepertoireDialog({ eventId, open, onOpenChange }: PrintRepe
           ) : !event ? (
             <ErrorDisplay title="Evento não encontrado" message="Ele pode ter sido excluído." className="mt-0" />
           ) : (
-            <div ref={sheetRef} className="space-y-5 rounded-lg border bg-card p-4 text-card-foreground print:border-0">
+            <div ref={sheetRef} className="space-y-5 rounded-md border bg-card p-4 text-card-foreground print:border-0">
               <header className="space-y-1 border-b pb-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eventTypeLabel(event.type)}</p>
                 <h2 className="break-words text-xl font-bold leading-tight">{event.title}</h2>

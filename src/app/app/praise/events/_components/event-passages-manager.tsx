@@ -108,7 +108,7 @@ export function EventPassagesManager({ eventId, passages, onUpdate }: EventPassa
         ) : (
           <ul className="space-y-2">
             {passages.map((passage) => (
-              <li key={passage.id} className="flex items-center gap-3 rounded-lg border p-2 sm:p-3">
+              <li key={passage.id} className="flex items-center gap-3 rounded-md border p-2 sm:p-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{passage.reference}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

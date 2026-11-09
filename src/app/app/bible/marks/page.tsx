@@ -3,11 +3,10 @@
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import Link from "next/link";
-import { Bookmark, BookOpenCheck, ChevronLeft, StickyNote } from "lucide-react";
+import { Bookmark, BookOpenCheck, ChevronLeft, StickyNote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { PageContainer, PageHeader } from "@/components/page-header";
@@ -57,24 +56,35 @@ export default function MyMarksPage() {
         }
       />
 
-      {/* Uma lista no lugar de um botão por cor: ocupa o mesmo espaço com 4 ou com 12 cores. */}
-      <div className="flex items-center gap-3">
-        <Select value={color ?? "all"} onValueChange={(value) => pickColor(value === "all" ? undefined : (value as BibleMarkColor))}>
-          <SelectTrigger className="w-44" aria-label="Filtrar por cor">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as cores</SelectItem>
-            {BIBLE_MARK_COLORS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <span className="flex items-center gap-2">
-                  <span className={cn("size-3 rounded-full border border-foreground/20", option.swatch)} />
-                  {option.label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Cores empilhadas como um grupo de avatares: ocupam pouco e crescem sem quebrar a linha. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-2" role="group" aria-label="Filtrar por cor">
+            {BIBLE_MARK_COLORS.map((option) => {
+              const active = color === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  aria-label={`Marcações ${option.label.toLowerCase()}`}
+                  title={option.label}
+                  onClick={() => pickColor(active ? undefined : option.value)}
+                  className={cn(
+                    "size-9 rounded-full border-2 border-background transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+                    option.swatch,
+                    active ? "z-10 scale-110 ring-2 ring-primary" : color !== undefined && "opacity-40 hover:opacity-100",
+                  )}
+                />
+              );
+            })}
+          </div>
+          {color !== undefined && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => pickColor(undefined)}>
+              <X className="mr-1" /> Limpar
+            </Button>
+          )}
+        </div>
         <label className="flex min-h-10 items-center gap-2 text-sm">
           <Checkbox
             checked={onlyNotes}
@@ -109,7 +119,7 @@ export default function MyMarksPage() {
                 <Link
                   key={`${mark.bookId}:${mark.chapter}:${mark.verse}`}
                   href={`/app/bible?${query.toString()}`}
-                  className="block rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="transition-colors hover:bg-accent/40">
                     <CardContent className="space-y-1.5 p-3">

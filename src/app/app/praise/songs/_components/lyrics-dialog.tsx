@@ -123,7 +123,7 @@ export function LyricsDialog({ song, open, onOpenChange, onEdit }: LyricsDialogP
               <pre className={`whitespace-pre-wrap break-words font-sans leading-relaxed ${SIZES[size]}`}>{song.lyrics}</pre>
             </>
           ) : (
-            <div className="space-y-3 rounded-lg border border-dashed p-4 text-sm">
+            <div className="space-y-3 rounded-md border border-dashed p-4 text-sm">
               <p className="font-medium">Esta música ainda não tem letra.</p>
               <p className="text-muted-foreground">Sem letra não é possível apresentar. Cadastre a letra na edição da música.</p>
               <div className="flex flex-col gap-2 sm:flex-row">

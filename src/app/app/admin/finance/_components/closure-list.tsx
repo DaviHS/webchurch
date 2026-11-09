@@ -91,7 +91,7 @@ export function ClosureList() {
         })}
       </ul>
 
-      <div className="hidden overflow-hidden rounded-lg border md:block">
+      <div className="hidden overflow-hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>

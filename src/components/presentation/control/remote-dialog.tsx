@@ -53,7 +53,7 @@ export function RemoteDialog({ open, onOpenChange, host, now }: RemoteDialogProp
         {host.code && url ? (
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-lg border bg-white p-3">
+              <div className="rounded-md border bg-white p-3">
                 <QRCodeSVG value={url} size={176} />
               </div>
               <p className="text-xs text-muted-foreground">Aponte a câmera do celular ou digite o código:</p>

@@ -30,7 +30,7 @@ export function SongExecutionList({ executions, emptyDescription, highlightLates
       {executions.map((execution, index) => {
         const isLatest = highlightLatest && index === 0;
         return (
-          <li key={execution.id} className="flex items-start gap-3 rounded-lg border p-3">
+          <li key={execution.id} className="flex items-start gap-3 rounded-md border p-3">
             <RankBadge rank={index + 1} variant={isLatest ? "success" : "soft"} />
 
             <div className="min-w-0 flex-1 space-y-1">

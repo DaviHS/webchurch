@@ -193,7 +193,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
         </TabsList>
 
         <TabsContent value="control" className="mt-0 min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-          <section className="space-y-1 rounded-lg border-2 border-red-500/70 bg-red-500/5 p-3">
+          <section className="space-y-1 rounded-md border-2 border-red-500/70 bg-red-500/5 p-3">
             <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
               <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-white", mode === "live" ? "bg-red-500" : "bg-zinc-600")}>
                 {MODE_LABELS[mode].toUpperCase()}
@@ -215,7 +215,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
             )}
           </section>
 
-          <section className="space-y-1 rounded-lg border p-3">
+          <section className="space-y-1 rounded-md border p-3">
             <p className="text-xs font-bold text-sky-600 dark:text-sky-400">PRÓXIMA{state?.next ? ` · ${state.next.label}` : ""}</p>
             <p className="line-clamp-4 whitespace-pre-line text-sm text-muted-foreground">
               {state?.next?.text ?? "Fim do repertório."}
@@ -235,7 +235,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                     type="button"
                     onClick={() => selectSong(index)}
                     className={cn(
-                      "flex min-h-14 w-full items-center gap-3 rounded-lg border-2 p-3 text-left",
+                      "flex min-h-14 w-full items-center gap-3 rounded-md border-2 p-3 text-left",
                       isLive
                         ? "border-red-500 bg-red-500/10"
                         : index === selectedSong
@@ -310,7 +310,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                       type="button"
                       onClick={() => press({ type: "goto", song: selectedSong, slide: slideIndex })}
                       className={cn(
-                        "flex min-h-20 flex-col gap-1 rounded-lg border-2 p-2 text-left text-xs leading-snug",
+                        "flex min-h-20 flex-col gap-1 rounded-md border-2 p-2 text-left text-xs leading-snug",
                         isLive ? "border-red-500 bg-red-500/10" : "border-border active:bg-accent",
                       )}
                     >

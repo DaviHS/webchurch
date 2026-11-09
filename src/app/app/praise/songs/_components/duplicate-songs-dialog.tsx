@@ -27,7 +27,7 @@ function GroupCard({ group, onMerge, busy }: { group: Group; onMerge: (keepId: n
   const [keepId, setKeepId] = useState(() => bestToKeep(group));
 
   return (
-    <div className="space-y-2 rounded-lg border p-3">
+    <div className="space-y-2 rounded-md border p-3">
       <p className="text-xs text-muted-foreground">Escolha qual manter. As outras serão mescladas nela.</p>
       <div role="radiogroup" className="space-y-1.5">
         {group.map((song) => (

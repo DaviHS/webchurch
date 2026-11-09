@@ -22,8 +22,8 @@ import { api } from "@/trpc/react"
 function UserSummary({ name, email, initials }: { name: string; email: string; initials: string }) {
   return (
     <>
-      <Avatar className="h-8 w-8 rounded-lg border">
-        <AvatarFallback className="rounded-lg bg-primary/10 font-semibold text-primary">{initials}</AvatarFallback>
+      <Avatar className="h-8 w-8 rounded-md border">
+        <AvatarFallback className="rounded-md bg-primary/10 font-semibold text-primary">{initials}</AvatarFallback>
       </Avatar>
       <div className="grid flex-1 text-left text-sm leading-tight">
         <span className="truncate font-semibold">{name}</span>

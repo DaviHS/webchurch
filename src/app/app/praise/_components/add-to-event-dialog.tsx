@@ -73,7 +73,7 @@ export function AddToEventDialog({ song, open, onOpenChange }: AddToEventDialogP
                     type="button"
                     disabled={!song || addSong.isPending}
                     onClick={() => song && addSong.mutate({ eventId: event.id, songId: song.id })}
-                    className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                    className="flex min-h-14 w-full items-center justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{event.title}</span>

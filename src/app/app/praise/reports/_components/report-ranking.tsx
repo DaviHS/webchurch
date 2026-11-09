@@ -45,7 +45,7 @@ export function ReportRanking({ report, isLoading, isDateRangeValid, onSongClick
   return (
     <Card className="overflow-hidden">
       <CardHeader className="p-4 pb-3">
-        <div role="radiogroup" aria-label="Lista" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+        <div role="radiogroup" aria-label="Lista" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
           {MODES.map((option) => (
             <button
               key={option.value}
@@ -79,7 +79,7 @@ export function ReportRanking({ report, isLoading, isDateRangeValid, onSongClick
                 <li key={item.songId}>
                   <button
                     type="button"
-                    className="group relative flex min-h-14 w-full items-center gap-3 overflow-hidden rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="group relative flex min-h-14 w-full items-center gap-3 overflow-hidden rounded-md border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => onSongClick({ id: item.songId, title: item.title, artist: item.artist ?? "" })}
                   >
                     <span

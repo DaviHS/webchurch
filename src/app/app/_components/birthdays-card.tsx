@@ -66,8 +66,8 @@ export function BirthdaysStatCard() {
                   const number = passed ? null : whatsappNumber(person.whatsapp);
                   const message = `Feliz aniversário, ${person.firstName}! Que Deus abençoe muito a sua vida. Com carinho, Igreja Central.`;
                   return (
-                    <li key={person.id} className={cn("flex items-center gap-3 rounded-lg border p-3", passed && "opacity-60")}>
-                      <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <li key={person.id} className={cn("flex items-center gap-3 rounded-md border p-3", passed && "opacity-60")}>
+                      <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-md bg-primary/10 text-primary">
                         <span className="text-lg font-bold leading-none tabular-nums">{pad(person.day)}</span>
                         <span className="text-[11px] uppercase tabular-nums">/{pad(Number(today.slice(5, 7)))}</span>
                       </div>

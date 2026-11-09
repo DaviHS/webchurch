@@ -101,7 +101,7 @@ function ChapterColumn({
   const headingAt = new Map(data?.headings.map((heading) => [heading.verse, heading.title]));
 
   return (
-    <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-lg border p-4">
+    <section aria-label={`Texto em ${version}`} className="min-w-0 space-y-3 rounded-md border p-4">
       {isPending && (
         <div className="flex justify-center py-10">
           <Loader2 className="size-6 animate-spin text-primary" />
@@ -204,7 +204,7 @@ function SearchResults({
   );
   const hits = data?.hits ?? [];
   return (
-    <div className="space-y-2 rounded-lg border bg-background p-3 shadow-xl">
+    <div className="space-y-2 rounded-md border bg-background p-3 shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Resultados em {version}
@@ -240,7 +240,7 @@ function SearchResults({
           <li key={`${hit.bookId}:${hit.chapter}:${hit.verse}`}>
             <button
               type="button"
-              className="w-full rounded px-2 py-2 text-left text-sm hover:bg-accent"
+              className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
               onClick={() => onPick({ bookId: hit.bookId, chapter: hit.chapter }, hit.verse)}
             >
               <span className="font-semibold">
@@ -636,7 +636,7 @@ Abrir no app: ${link}`;
       </div>
 
       {notedVerses.length > 0 && (
-        <Collapsible className="rounded-lg border">
+        <Collapsible className="rounded-md border">
           <CollapsibleTrigger className="group flex w-full items-center gap-2 p-3 text-left text-sm font-semibold">
             <StickyNote className="size-4 shrink-0 text-primary" />
             <span className="flex-1">Minhas anotações ({notedVerses.length})</span>
@@ -648,7 +648,7 @@ Abrir no app: ${link}`;
                 <li key={mark.verse}>
                   <button
                     type="button"
-                    className="flex w-full items-start gap-2 rounded px-2 py-2 text-left text-sm hover:bg-accent"
+                    className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
                     onClick={() => setNoteVerse(mark.verse)}
                   >
                     <span className="shrink-0 font-semibold">v. {mark.verse}</span>
@@ -725,7 +725,7 @@ Abrir no app: ${link}`;
       />
 
       {selected.size > 0 && (
-        <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 space-y-2 rounded-lg border bg-background p-2.5 shadow-lg md:bottom-3">
+        <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 space-y-2 rounded-md border bg-background p-2.5 shadow-lg md:bottom-3">
           <div className="flex items-center gap-2">
             <p className="min-w-0 flex-1 truncate text-sm">
               {selectionLabel ? (

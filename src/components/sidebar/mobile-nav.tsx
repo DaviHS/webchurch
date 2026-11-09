@@ -30,7 +30,7 @@ function MoreLink({ link, isActive, onNavigate }: { link: NavLink; isActive: boo
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3.5 text-left text-xs font-semibold transition-all active:scale-[0.98]",
+        "flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 p-3.5 text-left text-xs font-semibold transition-all active:scale-[0.98]",
         isActive && "border-primary/50 bg-primary/10 text-primary"
       )}
     >
@@ -123,7 +123,7 @@ export function MobileNavigation() {
               href={link.url}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
+                "flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
                 isActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -137,7 +137,7 @@ export function MobileNavigation() {
             type="button"
             onClick={() => setIsMoreOpen(true)}
             className={cn(
-              "flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
+              "flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
               secondaryActive ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"
             )}
           >

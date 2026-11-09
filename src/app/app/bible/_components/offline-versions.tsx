@@ -110,7 +110,7 @@ export function OfflineVersions({ currentVersion }: { currentVersion?: string })
               const date = savedAt.get(version.code);
               const id = `offline-${version.code}`;
               return (
-                <li key={version.code} className="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-accent">
+                <li key={version.code} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent">
                   {date ? (
                     <span className="size-4 shrink-0" aria-hidden />
                   ) : (

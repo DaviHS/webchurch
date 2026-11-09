@@ -15,7 +15,7 @@ export function CollapsibleAddPanel({ title, children }: CollapsibleAddPanelProp
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="rounded-lg border">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="rounded-md border">
       <CollapsibleTrigger asChild>
         <Button variant="ghost" className="h-auto min-h-12 w-full justify-between px-4 py-3">
           <span className="flex items-center gap-2 font-semibold">

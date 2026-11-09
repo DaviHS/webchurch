@@ -204,7 +204,7 @@ export default function EventsPage() {
         }
       />
 
-      <div role="radiogroup" aria-label="Forma de ver os eventos" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 sm:w-64">
+      <div role="radiogroup" aria-label="Forma de ver os eventos" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1 sm:w-64">
         {(["list", "calendar"] as const).map((option) => (
           <button
             key={option}

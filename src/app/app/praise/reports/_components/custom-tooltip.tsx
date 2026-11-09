@@ -17,7 +17,7 @@ export function CustomTooltip({ active, payload, label }: TooltipContentProps) {
   const artist = isChartPayload(data) && data.artist ? data.artist : "Artista desconhecido";
 
   return (
-    <div className="bg-popover text-popover-foreground p-3 border rounded-lg shadow-lg">
+    <div className="bg-popover text-popover-foreground p-3 border rounded-md shadow-lg">
       <p className="font-semibold">{label}</p>
       <p className="text-sm text-muted-foreground">{artist}</p>
       <p className="font-medium text-primary">

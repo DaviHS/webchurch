@@ -138,7 +138,7 @@ export function EventCalendar({
       <section className="space-y-2" aria-live="polite">
         <h3 className="text-sm font-semibold capitalize text-muted-foreground">{format(selected, "EEEE, d 'de' MMMM", { locale: ptBR })}</h3>
         {dayEvents.length === 0 ? (
-          <p className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             <CalendarDays className="size-4 shrink-0" />
             Nenhum evento neste dia.
           </p>
@@ -149,7 +149,7 @@ export function EventCalendar({
                 <button
                   type="button"
                   onClick={() => onViewDetails(event)}
-                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-md border bg-card p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">{event.title}</span>

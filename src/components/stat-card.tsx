@@ -37,14 +37,14 @@ export function StatCard({ title, value, description, icon: Icon, href, isLoadin
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="block w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" onClick={onClick} className="block w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {content}
       </button>
     )
   }
 
   return href ? (
-    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <Link href={href} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       {content}
     </Link>
   ) : (

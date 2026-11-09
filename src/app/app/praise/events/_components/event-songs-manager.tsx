@@ -247,7 +247,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                             ref={draggable.innerRef}
                             {...draggable.draggableProps}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg border bg-card p-2 sm:gap-3 sm:p-3",
+                              "flex items-center gap-2 rounded-md border bg-card p-2 sm:gap-3 sm:p-3",
                               snapshot.isDragging && "shadow-lg ring-2 ring-primary/40",
                             )}
                           >
@@ -278,7 +278,7 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                                 </div>
                                 <div
                                   {...draggable.dragHandleProps}
-                                  className="hidden shrink-0 cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing sm:block"
+                                  className="hidden shrink-0 cursor-grab touch-none rounded-md p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing sm:block"
                                   title="Arraste para reordenar"
                                   aria-label="Arraste para reordenar"
                                 >

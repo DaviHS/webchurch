@@ -163,7 +163,7 @@ export default function SongsPage() {
         <button
           type="button"
           onClick={() => setDuplicatesOpen(true)}
-          className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 text-left text-sm sm:w-auto"
+          className="flex min-h-11 w-full items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 text-left text-sm sm:w-auto"
         >
           <Merge className="size-4 shrink-0 text-warning" />
           <span>

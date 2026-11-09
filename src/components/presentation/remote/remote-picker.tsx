@@ -41,7 +41,7 @@ export function RemotePicker({ error, onSelect }: { error?: string; onSelect: (c
           </div>
         )}
         {sessions.data?.length === 0 && (
-          <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+          <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
             Nenhum computador conectado agora. Abra o console de projeção e ative o controle remoto, ou digite o código
             abaixo.
           </p>
@@ -51,7 +51,7 @@ export function RemotePicker({ error, onSelect }: { error?: string; onSelect: (c
             key={session.code}
             type="button"
             onClick={() => onSelect(session.code)}
-            className="flex min-h-16 w-full items-center gap-3 rounded-lg border p-3 text-left active:bg-accent"
+            className="flex min-h-16 w-full items-center gap-3 rounded-md border p-3 text-left active:bg-accent"
           >
             <Monitor className="size-5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1">
