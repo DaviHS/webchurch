@@ -5,6 +5,7 @@ import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LiveBadge } from "../live-badge";
 import { plainSlideText, samePosition, VERSES_PER_SLIDE_OPTIONS, type Deck, type DeckSong, type PassageSource, type Position } from "../deck";
 
 interface SlideGridProps {
@@ -148,8 +149,8 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
               <span className="absolute left-2 top-1.5 text-xs font-bold text-muted-foreground">
                 {slide + 1}
                 {song.slideLabels?.[slide] && <span className="ml-1 font-normal">· {song.slideLabels[slide]}</span>}
-                {isLive && <span className="ml-2 rounded bg-red-500 px-1 text-white">AO VIVO</span>}
-                {isNext && <span className="ml-2 rounded bg-sky-600 px-1 text-white">PRÓXIMA</span>}
+                {isLive && <LiveBadge kind="live" className="ml-2" />}
+                {isNext && <LiveBadge kind="next" className="ml-2" />}
               </span>
               <span className={song.kind === "bible" ? undefined : "whitespace-pre-line"}>
                 {song.kind === "bible" ? plainSlideText(text).replace(/\n/g, " ") : plainSlideText(text)}

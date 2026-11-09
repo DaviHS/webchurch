@@ -130,7 +130,7 @@ function FinanceDashboard() {
       <Tabs value={activeTab} onValueChange={(value) => isTabValue(value) && setActiveTab(value)}>
         <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto [scrollbar-width:none] print:hidden sm:w-auto sm:inline-flex [&::-webkit-scrollbar]:hidden">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="min-h-9 shrink-0 snap-start px-4 sm:min-h-7">
+            <TabsTrigger key={tab.value} value={tab.value} className="min-h-11 shrink-0 snap-start px-4 sm:min-h-7">
               {tab.label}
             </TabsTrigger>
           ))}

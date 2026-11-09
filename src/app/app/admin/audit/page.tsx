@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import { History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ export default function AuditPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  const { data, isLoading, error } = api.audit.list.useQuery(
+  const { data, isLoading, error, refetch } = api.audit.list.useQuery(
     { page, limit: PAGE_SIZE, area: area === ALL ? undefined : area, search: debouncedSearch || undefined },
     { placeholderData: (previous) => previous },
   );
@@ -67,7 +68,7 @@ export default function AuditPage() {
       {isLoading ? (
         <LoadingState />
       ) : error ? (
-        <p className="text-sm text-destructive">{error.message}</p>
+        <ErrorDisplay message={error.message} onRetry={() => void refetch()} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState icon={History} title="Nada registrado" description="As alterações feitas no sistema aparecerão aqui." />
       ) : (

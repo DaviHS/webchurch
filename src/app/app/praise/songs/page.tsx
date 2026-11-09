@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -52,7 +53,7 @@ export default function SongsPage() {
   const songDialog = useEntityDialog<Song>({ fromUrl: true });
   const debouncedSearch = useDebounce(search, 300);
 
-  const { data, isLoading, isFetching } = api.song.list.useQuery({
+  const { data, isLoading, isFetching, isError, error: listError, refetch } = api.song.list.useQuery({
     search: debouncedSearch,
     category: category === "" ? undefined : category,
     page,
@@ -198,7 +199,9 @@ export default function SongsPage() {
         </CardHeader>
 
         <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-          {isLoading ? (
+          {isError && !data ? (
+            <ErrorDisplay title="Não foi possível carregar as músicas" message={listError.message} onRetry={() => void refetch()} className="mt-0" />
+          ) : isLoading ? (
             <SongGridSkeleton />
           ) : songs.length > 0 ? (
             <>

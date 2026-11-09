@@ -462,7 +462,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
       >
         <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-3 lg:hidden">
           {CONSOLE_TABS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="h-9">
+            <TabsTrigger key={value} value={value} className="h-11 sm:h-9">
               {label}
             </TabsTrigger>
           ))}

@@ -12,6 +12,7 @@ import { useBibleVersion } from "@/hooks/use-bible-version";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+import { LiveBadge } from "../live-badge";
 import { lyricSlideCount, passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
 import { VersesPerSlideSelect } from "./slide-grid";
 
@@ -165,7 +166,7 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onAddPa
                       {song.artist ? ` · ${song.artist}` : ""}
                     </span>
                   </span>
-                  {isLive && <span className="rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
+                  {isLive && <LiveBadge kind="live" />}
                   {song.kind === "bible" && <BookOpen className="h-4 w-4 text-muted-foreground" />}
                   {song.kind === "song" && song.slides.length === 0 && <Music className="h-4 w-4 text-amber-500" />}
                 </button>

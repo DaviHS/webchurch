@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { ProjectorMode } from "../protocol";
 import { plainSlideText } from "../deck";
+import { LiveBadge } from "../live-badge";
 import {
   REMOTE_POLL_MS,
   REMOTE_STALE_SECONDS,
@@ -185,7 +186,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
       >
         <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-3">
           {TABS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="h-9">
+            <TabsTrigger key={value} value={value} className="h-11">
               {label}
             </TabsTrigger>
           ))}
@@ -215,7 +216,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
           </section>
 
           <section className="space-y-1 rounded-lg border p-3">
-            <p className="text-xs font-bold text-sky-600">PRÓXIMA{state?.next ? ` · ${state.next.label}` : ""}</p>
+            <p className="text-xs font-bold text-sky-600 dark:text-sky-400">PRÓXIMA{state?.next ? ` · ${state.next.label}` : ""}</p>
             <p className="line-clamp-4 whitespace-pre-line text-sm text-muted-foreground">
               {state?.next?.text ?? "Fim do repertório."}
             </p>
@@ -253,7 +254,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
                           : `${item.kind === "bible" ? item.slides.length : Math.max(0, item.slides.length - 1)} ${item.kind === "bible" ? "slides" : "estrofes"}`}
                       </span>
                     </span>
-                    {isLive && <span className="shrink-0 rounded bg-red-500 px-1 text-xs font-bold text-white">AO VIVO</span>}
+                    {isLive && <LiveBadge kind="live" />}
                     {item.kind === "bible" ? (
                       <BookOpen className="size-4 shrink-0 text-muted-foreground" />
                     ) : (
