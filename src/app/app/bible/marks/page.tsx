@@ -7,6 +7,7 @@ import { Bookmark, BookOpenCheck, ChevronLeft, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { PageContainer, PageHeader } from "@/components/page-header";
@@ -56,24 +57,25 @@ export default function MyMarksPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" variant={color === undefined ? "default" : "outline"} onClick={() => pickColor(undefined)}>
-          Todas
-        </Button>
-        {BIBLE_MARK_COLORS.map((option) => (
-          <Button
-            key={option.value}
-            type="button"
-            size="sm"
-            variant={color === option.value ? "default" : "outline"}
-            aria-pressed={color === option.value}
-            onClick={() => pickColor(color === option.value ? undefined : option.value)}
-          >
-            <span className={cn("mr-1.5 size-3 rounded-full border border-foreground/20", option.swatch)} />
-            {option.label}
-          </Button>
-        ))}
-        <label className="ml-auto flex items-center gap-2 text-sm">
+      {/* Uma lista no lugar de um botão por cor: ocupa o mesmo espaço com 4 ou com 12 cores. */}
+      <div className="flex items-center gap-3">
+        <Select value={color ?? "all"} onValueChange={(value) => pickColor(value === "all" ? undefined : (value as BibleMarkColor))}>
+          <SelectTrigger className="w-44" aria-label="Filtrar por cor">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as cores</SelectItem>
+            {BIBLE_MARK_COLORS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <span className="flex items-center gap-2">
+                  <span className={cn("size-3 rounded-full border border-foreground/20", option.swatch)} />
+                  {option.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <label className="flex min-h-10 items-center gap-2 text-sm">
           <Checkbox
             checked={onlyNotes}
             onCheckedChange={(checked) => {

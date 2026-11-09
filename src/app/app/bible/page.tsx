@@ -4,7 +4,7 @@ import { ErrorDisplay } from "@/components/ui/error-display";
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Bookmark, BookOpenCheck, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, Share2, StickyNote, X } from "lucide-react";
+import { Bookmark, BookOpenCheck, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, Highlighter, ListChecks, Loader2, Projector, Search, Share2, StickyNote, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
@@ -20,6 +20,7 @@ import { toastError } from "@/lib/toast";
 import { PageContainer } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -740,34 +741,41 @@ Abrir no app: ${link}`;
             </Button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex flex-1 items-center justify-between gap-1.5 sm:flex-none sm:justify-start" role="group" aria-label="Marcar com uma cor">
-              {BIBLE_MARK_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  className={cn("size-7 rounded-full border border-foreground/20 disabled:opacity-50", color.swatch)}
-                  disabled={setMarksMutation.isPending}
-                  onClick={() => applyColor(color.value)}
-                  title={`Marcar de ${color.label.toLowerCase()}`}
-                  aria-label={`Marcar de ${color.label.toLowerCase()}`}
-                />
-              ))}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={setMarksMutation.isPending}
-                onClick={() => applyColor(null)}
-                title="Remover marcação"
-                aria-label="Remover marcação"
-              >
-                <Eraser />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 border-t pt-2">
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" disabled={setMarksMutation.isPending} title="Marcar com uma cor">
+                  {setMarksMutation.isPending ? <Loader2 className="animate-spin sm:mr-1" /> : <Highlighter className="sm:mr-1" />}
+                  <span className="sr-only sm:not-sr-only">Marcar</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="top" className="w-auto max-w-[min(18rem,90vw)] p-2">
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Marcar com uma cor">
+                  {BIBLE_MARK_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      className={cn("size-9 rounded-full border border-foreground/20 disabled:opacity-50", color.swatch)}
+                      disabled={setMarksMutation.isPending}
+                      onClick={() => applyColor(color.value)}
+                      title={`Marcar de ${color.label.toLowerCase()}`}
+                      aria-label={`Marcar de ${color.label.toLowerCase()}`}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={setMarksMutation.isPending}
+                    onClick={() => applyColor(null)}
+                    title="Remover marcação"
+                    aria-label="Remover marcação"
+                  >
+                    <Eraser />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               type="button"
               variant="outline"
