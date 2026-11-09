@@ -11,7 +11,7 @@ import {
   members,
 } from "@/server/db/schema";
 import { endOfDay, startOfDay } from "date-fns";
-import { asc, eq, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
+import { asc, eq, getTableColumns, lt, ne, desc, and, gte, lte, ilike, inArray, or, count, sql } from "drizzle-orm";
 import { cleanEmptyStrings } from "@/lib/formatters";
 import { loadPassage } from "@/server/bible-passage";
 import { eventSchema, eventUpdateSchema, eventTypes, type EventType } from "@/validators/event";
@@ -46,18 +46,25 @@ export const eventRouter = createTRPCRouter({
             eventTypes.includes(v as EventType) ? (v as EventType) : undefined
           ),
         search: z.string().optional(),
+        /** "upcoming": de hoje em diante, do mais próximo ao mais distante. "past": antes de hoje, do mais recente. */
+        scope: z.enum(["upcoming", "past"]).optional(),
+        /** Início do dia de hoje no aparelho de quem consulta (evita depender do fuso do servidor). */
+        today: z.date().optional(),
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(10),
       })
     )
     .query(async ({ input }) => {
-      const { startDate, endDate, type, search, page, limit } = input;
+      const { startDate, endDate, type, search, scope, today, page, limit } = input;
       const offset = (page - 1) * limit;
 
       const whereConditions = [];
       if (startDate) whereConditions.push(gte(events.date, startDate));
       if (endDate) whereConditions.push(lte(events.date, endDate));
       if (type) whereConditions.push(eq(events.type, type));
+      const startOfToday = today ?? startOfDay(new Date());
+      if (scope === "upcoming") whereConditions.push(gte(events.date, startOfToday), ne(events.type, "template"));
+      if (scope === "past") whereConditions.push(lt(events.date, startOfToday), ne(events.type, "template"));
       if (search?.trim()) {
         const searchPattern = `%${search.trim()}%`;
         whereConditions.push(
@@ -72,10 +79,16 @@ export const eventRouter = createTRPCRouter({
       const where = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
       const [data, total] = await Promise.all([
-        db.select()
+        db.select({
+            ...getTableColumns(events),
+            // Com uma tabela só, o Drizzle escreve "id" sem o nome da tabela, o que apontaria para event_songs.id.
+            // Por isso o texto fixo "events"."id".
+            songCount: sql<number>`(select count(*)::int from event_songs where event_songs.event_id = "events"."id")`,
+            passageCount: sql<number>`(select count(*)::int from event_passages where event_passages.event_id = "events"."id")`,
+          })
           .from(events)
           .where(where)
-          .orderBy(desc(events.date), desc(events.id))
+          .orderBy(...(scope === "upcoming" ? [asc(events.date), asc(events.id)] : [desc(events.date), desc(events.id)]))
           .limit(limit)
           .offset(offset),
         db.select({ count: count() })
@@ -91,6 +104,18 @@ export const eventRouter = createTRPCRouter({
         totalPages: Math.ceil(totalCount / limit),
         currentPage: page,
       };
+    }),
+
+  /** Tipos de evento que existem no escopo (próximos ou passados), para mostrar só os filtros que servem. */
+  typesInScope: protectedProcedure
+    .input(z.object({ scope: z.enum(["upcoming", "past"]), today: z.date().optional() }))
+    .query(async ({ input }) => {
+      const startOfToday = input.today ?? startOfDay(new Date());
+      const rows = await db
+        .selectDistinct({ type: events.type })
+        .from(events)
+        .where(and(ne(events.type, "template"), input.scope === "upcoming" ? gte(events.date, startOfToday) : lt(events.date, startOfToday)));
+      return rows.map((row) => row.type);
     }),
 
   getById: protectedProcedure.input(z.number()).query(async ({ input }) => {
@@ -214,6 +239,20 @@ export const eventRouter = createTRPCRouter({
       const cleanedData = cleanEmptyStrings(input);
       const [eventSong] = await db.insert(eventSongs).values(cleanedData).returning();
       return eventSong;
+    }),
+
+  /** Grava a nova ordem do repertório de uma vez (1, 2, 3…), para não ficar pela metade se uma chamada falhar. */
+  reorderSongs: editEvents
+    .input(z.object({ eventId: z.number(), orderedIds: z.array(z.number()).min(1).max(200) }))
+    .mutation(async ({ input }) => {
+      const [first, ...rest] = input.orderedIds.map((id, index) =>
+        db
+          .update(eventSongs)
+          .set({ order: index + 1 })
+          .where(and(eq(eventSongs.id, id), eq(eventSongs.eventId, input.eventId))),
+      );
+      if (first) await db.batch([first, ...rest]);
+      return { success: true };
     }),
 
   /** Coloca uma música no fim do repertório do evento (usado pelos relatórios, sem precisar abrir o evento). */

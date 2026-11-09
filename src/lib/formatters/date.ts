@@ -19,6 +19,16 @@ export function formatDate(value: DateInput): string {
   return date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : "";
 }
 
+/** "Dom, 09/11 · 18:00": dia da semana, dia e horário, do jeito que se fala de um culto. */
+export function formatEventWhen(value: DateInput, startTime?: string | null): string {
+  const date = toDate(value);
+  if (!date) return "";
+  const weekday = format(date, "EEE", { locale: ptBR });
+  const day = `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${format(date, "dd/MM", { locale: ptBR })}`;
+  const time = formatTime(startTime);
+  return time ? `${day} · ${time}` : day;
+}
+
 export function formatDateTime(value: DateInput): string {
   const date = toDate(value);
   return date ? format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "";

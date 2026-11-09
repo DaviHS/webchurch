@@ -108,6 +108,19 @@ export const reportRouter = createTRPCRouter({
       };
     }),
 
+  /** Última vez em que cada música tocou (até hoje), para avisar na hora de escalar. */
+  lastPlayed: protectedProcedure
+    .input(z.object({ songIds: z.array(z.number()).min(1).max(100) }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({ songId: eventSongs.songId, lastPlayed: sql<string>`max(${events.date})` })
+        .from(eventSongs)
+        .innerJoin(events, eq(eventSongs.eventId, events.id))
+        .where(and(inArray(eventSongs.songId, input.songIds), notTemplate, lte(events.date, new Date())))
+        .groupBy(eventSongs.songId);
+      return rows.map((row) => ({ songId: row.songId, lastPlayed: new Date(row.lastPlayed) }));
+    }),
+
   getSongExecutions: protectedProcedure
     .input(z.object({
       songId: z.number(),
