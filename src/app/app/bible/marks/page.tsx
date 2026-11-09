@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, BookOpenCheck, ChevronLeft, StickyNote } from "lucide-react";
@@ -23,7 +24,7 @@ export default function MyMarksPage() {
   const [color, setColor] = useState<BibleMarkColor | undefined>(undefined);
   const [onlyNotes, setOnlyNotes] = useState(false);
 
-  const { data, isLoading, error } = api.bible.myMarks.useQuery(
+  const { data, isLoading, error, refetch } = api.bible.myMarks.useQuery(
     { page, limit: PAGE_SIZE, color, onlyNotes },
     { placeholderData: (previous) => previous },
   );
@@ -87,7 +88,7 @@ export default function MyMarksPage() {
       {isLoading ? (
         <LoadingState />
       ) : error ? (
-        <p className="text-sm text-destructive">{error.message}</p>
+        <ErrorDisplay message={error.message} onRetry={() => void refetch()} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState
           icon={Bookmark}

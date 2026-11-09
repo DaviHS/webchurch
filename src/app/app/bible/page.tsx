@@ -1,9 +1,10 @@
 "use client";
 
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Bookmark, BookOpenCheck, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, StickyNote, X } from "lucide-react";
+import { Bookmark, BookOpenCheck, ChevronDown, ChevronLeft, ChevronRight, Columns2, Copy, Eraser, ListChecks, Loader2, Projector, Search, Share2, StickyNote, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDebounce } from "@/hooks/use-debounce";
 import { BIBLE_MARK_COLORS, markColor } from "@/lib/bible-marks";
@@ -90,7 +91,7 @@ function ChapterColumn({
   marks: VerseMarks;
   onToggle: (verse: number) => void;
 }) {
-  const { data, isPending, error } = api.bible.getChapter.useQuery(
+  const { data, isPending, error, refetch } = api.bible.getChapter.useQuery(
     { version, ...location },
     { staleTime: Infinity, networkMode: "always", refetchOnWindowFocus: false },
   );
@@ -105,7 +106,7 @@ function ChapterColumn({
           <Loader2 className="size-6 animate-spin text-primary" />
         </div>
       )}
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {error && <ErrorDisplay message={error.message} onRetry={() => void refetch()} className="mt-0" />}
       {data && (
         <div
           className={cn("leading-relaxed", onePerLine && "space-y-1.5")}
@@ -467,6 +468,22 @@ function BibleReader() {
     }
   };
 
+  // Abre o WhatsApp com o texto e um link que leva direto a estes versículos no app.
+  const share = async (code = version) => {
+    if (!selectionLabel || !code || !singleRun) return;
+    try {
+      const passage = await fetchSelectedText(code);
+      const link = `${window.location.origin}/app/bible?${new URLSearchParams({ b: String(location.bookId), c: String(location.chapter), s: String(singleRun[0]), v: code })}`;
+      const message = `*${selectionLabel} (${code})*
+${passage}
+
+Abrir no app: ${link}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    } catch {
+      toastError("Não foi possível compartilhar.");
+    }
+  };
+
   const { data: chapterMarks = [] } = api.bible.chapterMarks.useQuery(location, { staleTime: 60_000, placeholderData: (previous) => previous });
   const marks = useMemo<VerseMarks>(
     () => new Map(chapterMarks.map((mark) => [mark.verse, { color: mark.color, note: mark.note }])),
@@ -558,7 +575,7 @@ function BibleReader() {
         </div>
       </div>
 
-      <div className="sticky top-[4.5rem] z-10 -mx-1 flex items-center gap-2 bg-background/95 px-1 py-2 backdrop-blur">
+      <div className="sticky top-16 z-10 -mx-1 flex items-center gap-2 bg-background/95 px-1 py-2 backdrop-blur">
         <h2 className="min-w-0 flex-1 text-xl font-bold">
           <button
             type="button"
@@ -578,7 +595,7 @@ function BibleReader() {
             taken={[version]}
             onChange={changeVersion}
             label="Versão"
-            className="w-auto shrink-0 gap-1 px-2 py-0 text-xs h-9 sm:h-8"
+            className="w-auto shrink-0 gap-1 px-2 py-0 text-xs h-10 sm:h-8"
           />
         )}
         <Button
@@ -773,6 +790,9 @@ function BibleReader() {
             </Button>
             <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void copy()} title="Copiar">
               <Copy className="sm:mr-1" /> <span className="sr-only sm:not-sr-only">Copiar</span>
+            </Button>
+            <Button type="button" variant="outline" size="sm" disabled={!selectionLabel} onClick={() => void share()} title="Compartilhar no WhatsApp">
+              <Share2 className="sm:mr-1" /> <span className="sr-only sm:not-sr-only">WhatsApp</span>
             </Button>
             <Button type="button" size="sm" className="ml-auto" disabled={!selectionLabel} onClick={() => project()}>
               <Projector className="mr-1" /> Projetar

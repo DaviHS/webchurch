@@ -4,6 +4,16 @@ import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
 import { formatReference, parseReference } from "@/lib/bible";
 
+/**
+ * Algumas fontes (a ACF importada, por exemplo) trazem "Verszeile ohne Text" em versículos cujo texto já está
+ * junto do versículo anterior. Mostramos um aviso em português no lugar do texto de marcação.
+ */
+const EMPTY_VERSE = /^s*Verszeile ohne Texts*$/i;
+export const EMPTY_VERSE_NOTE = "(texto reunido ao versículo anterior)";
+
+export const cleanVerses = <T extends { text: string }>(verses: T[]): T[] =>
+  verses.map((verse) => (EMPTY_VERSE.test(verse.text) ? { ...verse, text: EMPTY_VERSE_NOTE } : verse));
+
 export async function findVersion(code: string) {
   const [version] = await db
     .select({ id: bibleVersions.id, code: bibleVersions.code, name: bibleVersions.name, language: bibleVersions.language })
@@ -41,6 +51,6 @@ export async function loadPassage(versionCodeValue: string, reference: string) {
     title: formatReference(ref),
     bookChapter: `${ref.book.namePt} ${ref.chapter}`,
     version: { code: version.code, name: version.name },
-    verses,
+    verses: cleanVerses(verses),
   };
 }

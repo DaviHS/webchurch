@@ -5,7 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { bibleHeadings, bibleVerses, bibleVersions } from "@/server/db/schema";
 import { getBook } from "@/lib/bible";
-import { findVersion, loadPassage } from "@/server/bible-passage";
+import { cleanVerses, findVersion, loadPassage } from "@/server/bible-passage";
 import { biblePersonalProcedures } from "@/server/api/routers/bible-personal";
 import { bibleReadingPlanProcedures } from "@/server/api/routers/bible-plan";
 
@@ -54,7 +54,7 @@ export const bibleRouter = createTRPCRouter({
           ),
         )
         .orderBy(asc(bibleHeadings.verse));
-      return { version, bookId: input.bookId, chapter: input.chapter, verses, headings };
+      return { version, bookId: input.bookId, chapter: input.chapter, verses: cleanVerses(verses), headings };
     }),
 
   getPassage: protectedProcedure

@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
 import Link from "next/link";
 import { BookOpenCheck, CalendarCheck, Check, ChevronDown, ChevronLeft, RotateCcw } from "lucide-react";
@@ -174,7 +175,7 @@ function PlanOffer({ plan, today }: { plan: ReadingPlan; today: string }) {
 
 export default function ReadingPlanPage() {
   const [today] = useState(() => localToday());
-  const { data, isLoading, error } = api.bible.planState.useQuery();
+  const { data, isLoading, error, refetch } = api.bible.planState.useQuery();
 
   const byKey = new Map((data ?? []).map((item) => [item.planKey, item]));
   const active = READING_PLANS.filter((plan) => byKey.has(plan.key));
@@ -196,7 +197,7 @@ export default function ReadingPlanPage() {
       />
 
       {isLoading && <LoadingState />}
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {error && <ErrorDisplay message={error.message} onRetry={() => void refetch()} />}
 
       {data && (
         <>
