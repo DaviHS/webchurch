@@ -25,6 +25,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { cleanEmptyStrings, emptyStringsToNull } from "@/lib/formatters";
+import type { BatchItem } from "drizzle-orm/batch";
 import { birthdayThisMonth } from "@/lib/birthdays";
 
 type MinistryInput = { ministryId: number; functionId?: number | null };
@@ -39,6 +40,38 @@ const toMemberMinistryRows = (memberId: number, ministriesInput: MinistryInput[]
     }));
 
 const manageMembers = can("members.manage");
+
+const memberFilters = z.object({
+  search: z.string().optional().nullable(),
+  status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
+  gender: z.enum(["male", "female"]).optional().nullable(),
+  hasAccess: z.enum(["true", "false"]).optional().nullable(),
+  /** Só quem faz aniversário neste mês (1 a 12); a lista passa a ser ordenada pelo dia. */
+  birthMonth: z.number().int().min(1).max(12).optional().nullable(),
+});
+
+function memberConditions({ search, status, gender, hasAccess, birthMonth }: z.infer<typeof memberFilters>): SQL[] {
+  const conditions: SQL[] = [eq(members.status, status ?? "active")];
+  if (gender) conditions.push(eq(members.gender, gender));
+
+  const term = search?.trim().toLowerCase();
+  if (term) {
+    const searchLower = `%${term}%`;
+    const searchConditions = or(
+      sql`LOWER(${members.firstName}) LIKE ${searchLower}`,
+      sql`LOWER(${members.lastName}) LIKE ${searchLower}`,
+      sql`LOWER(${members.email}) LIKE ${searchLower}`,
+      sql`LOWER(${members.firstName} || ' ' || ${members.lastName}) LIKE ${searchLower}`,
+    );
+    if (searchConditions) conditions.push(searchConditions);
+  }
+
+  if (birthMonth) conditions.push(sql`extract(month from ${members.birthDate}) = ${birthMonth}`);
+
+  if (hasAccess === "true") conditions.push(isNotNull(users.id));
+  else if (hasAccess === "false") conditions.push(isNull(users.id));
+  return conditions;
+}
 
 async function assertCanGrantFunctions(access: Access, ministriesInput: MinistryInput[] = [], alreadyHeld = new Set<number>()) {
   const functionIds = [
@@ -79,50 +112,27 @@ export const memberRouter = createTRPCRouter({
     return newMember;
   }),
 
+  /** Quantos membros batem com os filtros (para a paginação). */
+  count: protectedProcedure.input(memberFilters).query(async ({ input }) => {
+    const [row] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(members)
+      .leftJoin(users, eq(members.id, users.memberId))
+      .where(and(...memberConditions(input)));
+    return row?.total ?? 0;
+  }),
+
   list: protectedProcedure
     .input(
-      z.object({
+      memberFilters.extend({
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(20),
-        search: z.string().optional().nullable(),
-        status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
-        gender: z.enum(["male", "female"]).optional().nullable(),
-        hasAccess: z.enum(["true", "false"]).optional().nullable(),
-        /** Só quem faz aniversário neste mês (1 a 12); a lista passa a ser ordenada pelo dia. */
-        birthMonth: z.number().int().min(1).max(12).optional().nullable(),
       })
     )
     .query(async ({ input }) => {
-      const { page, limit, search, status, gender, hasAccess, birthMonth } = input;
+      const { page, limit, birthMonth } = input;
       const offset = (page - 1) * limit;
-
-      const conditions: SQL[] = [eq(members.status, status ?? "active")];
-
-      if (gender) {
-        conditions.push(eq(members.gender, gender));
-      }
-
-      const term = search?.trim().toLowerCase();
-      if (term) {
-        const searchLower = `%${term}%`;
-        const searchConditions = or(
-          sql`LOWER(${members.firstName}) LIKE ${searchLower}`,
-          sql`LOWER(${members.lastName}) LIKE ${searchLower}`,
-          sql`LOWER(${members.email}) LIKE ${searchLower}`,
-          sql`LOWER(${members.firstName} || ' ' || ${members.lastName}) LIKE ${searchLower}`
-        );
-        if (searchConditions) conditions.push(searchConditions);
-      }
-
-      if (birthMonth) {
-        conditions.push(sql`extract(month from ${members.birthDate}) = ${birthMonth}`);
-      }
-
-      if (hasAccess === "true") {
-        conditions.push(isNotNull(users.id));
-      } else if (hasAccess === "false") {
-        conditions.push(isNull(users.id));
-      }
+      const conditions = memberConditions(input);
 
       const result = await db
         .select({
@@ -206,7 +216,7 @@ export const memberRouter = createTRPCRouter({
           phone: members.phone,
         })
         .from(members)
-        .where(and(eq(members.isActive, true), isNotNull(members.birthDate)));
+        .where(and(eq(members.status, "active"), isNotNull(members.birthDate)));
 
       return rows
         .flatMap((row) => {
@@ -288,15 +298,29 @@ export const memberRouter = createTRPCRouter({
         .where(eq(members.id, input.id))
         .returning();
 
-      const rows = toMemberMinistryRows(input.id, ministriesInput);
-      const deactivateMinistries = db
-        .update(memberMinistries)
-        .set({ isActive: false, leftAt: new Date() })
+      // Só mexe no que mudou: vínculos iguais ficam como estão (com a data de entrada), os que saíram são encerrados
+      // e só os novos são criados. Antes, cada salvamento apagava a data de entrada e acumulava linhas repetidas.
+      const wanted = toMemberMinistryRows(input.id, ministriesInput);
+      const current = await db
+        .select({ id: memberMinistries.id, ministryId: memberMinistries.ministryId, functionId: memberMinistries.functionId })
+        .from(memberMinistries)
         .where(and(eq(memberMinistries.memberId, input.id), eq(memberMinistries.isActive, true)));
+      const sameLink = (x: { ministryId: number; functionId: number | null }, y: { ministryId: number; functionId: number | null }) =>
+        x.ministryId === y.ministryId && x.functionId === y.functionId;
+      const toEnd = current.filter((row) => !wanted.some((want) => sameLink(row, want)));
+      const toAdd = wanted.filter((want) => !current.some((row) => sameLink(row, want)));
 
-      const [result] = rows.length > 0
-        ? await db.batch([updateMember, deactivateMinistries, db.insert(memberMinistries).values(rows)])
-        : await db.batch([updateMember, deactivateMinistries]);
+      const statements: BatchItem<"pg">[] = [];
+      if (toEnd.length > 0) {
+        statements.push(
+          db
+            .update(memberMinistries)
+            .set({ isActive: false, leftAt: new Date() })
+            .where(inArray(memberMinistries.id, toEnd.map((row) => row.id))),
+        );
+      }
+      if (toAdd.length > 0) statements.push(db.insert(memberMinistries).values(toAdd));
+      const [result] = await db.batch([updateMember, ...statements]);
 
       const updatedMember = result[0];
       if (!updatedMember) {
@@ -306,22 +330,51 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
+  /** Desativa o membro e também a conta de acesso dele (sem isso, a pessoa continuaria entrando no sistema). */
   deactivate: manageMembers
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const [deleted] = await db
+    .mutation(async ({ input, ctx }) => {
+      const [account] = await db.select({ id: users.id }).from(users).where(eq(users.memberId, input.id)).limit(1);
+      if (account && String(account.id) === String(ctx.session.user.id)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode desativar o seu próprio cadastro." });
+      }
+
+      const now = new Date();
+      const [deactivated] = await db
         .update(members)
-        .set({
-          status: "inactive",
-          updatedAt: new Date(),
-        })
+        .set({ status: "inactive", updatedAt: now })
         .where(eq(members.id, input.id))
         .returning();
 
-      if (!deleted) {
+      if (!deactivated) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
       }
 
-      return deleted;
+      await db.update(users).set({ status: "inactive", updatedAt: now }).where(eq(users.memberId, input.id));
+      return deactivated;
+    }),
+
+  /** Volta a ativar um membro desativado. A conta de acesso só volta se já tinha sido aprovada (cadastro rejeitado não volta). */
+  reactivate: manageMembers
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const now = new Date();
+      const [member] = await db
+        .update(members)
+        .set({ status: "active", updatedAt: now })
+        .where(eq(members.id, input.id))
+        .returning();
+
+      if (!member) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
+      }
+
+      const restored = await db
+        .update(users)
+        .set({ status: "active", updatedAt: now })
+        .where(and(eq(users.memberId, input.id), eq(users.status, "inactive"), isNotNull(users.approvedAt)))
+        .returning({ id: users.id });
+
+      return { member, accessRestored: restored.length > 0 };
     }),
 });

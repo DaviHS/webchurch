@@ -48,6 +48,10 @@ export function SignInForm() {
             setError("Credenciais inválidas. Por favor, tente novamente.")
             toastError("Credenciais inválidas. Verifique seus dados e tente novamente.", { id: toastId })
             break
+          case "REJECTED":
+            setError("Seu cadastro não foi aprovado. Fale com a liderança da igreja se achar que houve engano.")
+            toastError("Cadastro não aprovado", { id: toastId })
+            break
           case "INACTIVE":
             setError("Seu cadastro não está ativo. Entre em contato com o suporte.")
             toastError("Cadastro inativo", { id: toastId })

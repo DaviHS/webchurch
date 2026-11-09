@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, UserCheck, Users, UserX } from "lucide-react";
+import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, RotateCcw, UserCheck, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [birthMonth, setBirthMonth] = useState<number | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive">("active");
   const debouncedSearch = useDebounce(search, 500);
 
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -42,12 +43,14 @@ export default function MembersPage() {
   const memberDialog = useEntityDialog<MemberWithMinistries>({ fromUrl: true });
   const confirm = useConfirm();
 
-  const { data: members = [], isLoading, refetch } = api.member.list.useQuery({
-    page,
-    limit: PAGE_SIZE,
-    search: debouncedSearch || undefined,
-    birthMonth,
-  }, { placeholderData: (previous) => previous });
+  const filters = { search: debouncedSearch || undefined, birthMonth, status: statusFilter };
+  const { data: members = [], isLoading, refetch } = api.member.list.useQuery(
+    { page, limit: PAGE_SIZE, ...filters },
+    { placeholderData: (previous) => previous },
+  );
+  const { data: total = 0 } = api.member.count.useQuery(filters, { placeholderData: (previous) => previous });
+  const utils = api.useUtils();
+  const refreshMembers = () => Promise.all([refetch(), utils.member.count.invalidate()]);
 
   const { data: pendingCount } = api.user.getPendingCount.useQuery();
 
@@ -55,7 +58,15 @@ export default function MembersPage() {
     mutationFeedback({
       success: "Membro desativado com sucesso",
       error: "Erro ao desativar membro",
-      onSuccess: () => refetch(),
+      onSuccess: () => refreshMembers(),
+    })
+  );
+
+  const reactivateMemberMutation = api.member.reactivate.useMutation(
+    mutationFeedback({
+      success: (result) => (result.accessRestored ? "Membro reativado. O acesso ao sistema também voltou." : "Membro reativado"),
+      error: "Erro ao reativar membro",
+      onSuccess: () => refreshMembers(),
     })
   );
 
@@ -73,7 +84,7 @@ export default function MembersPage() {
       loading: "Excluindo os dados pessoais...",
       success: "Dados pessoais excluídos",
       error: "Erro ao excluir os dados pessoais",
-      onSuccess: () => refetch(),
+      onSuccess: () => refreshMembers(),
     })
   );
 
@@ -120,7 +131,7 @@ export default function MembersPage() {
 
   const handleFormOpenChange = (open: boolean) => {
     memberDialog.onOpenChange(open);
-    if (!open) void refetch();
+    if (!open) void refreshMembers();
   };
 
   return (
@@ -158,6 +169,23 @@ export default function MembersPage() {
           isLoading={search !== debouncedSearch}
           className="sm:max-w-md"
         />
+        <div className="flex gap-2" role="group" aria-label="Situação do membro">
+          {(["active", "inactive"] as const).map((value) => (
+            <Button
+              key={value}
+              type="button"
+              size="sm"
+              variant={statusFilter === value ? "default" : "outline"}
+              aria-pressed={statusFilter === value}
+              onClick={() => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
+            >
+              {value === "active" ? "Ativos" : "Inativos"}
+            </Button>
+          ))}
+        </div>
         <Select
           value={birthMonth ? String(birthMonth) : "all"}
           onValueChange={(value) => {
@@ -186,7 +214,9 @@ export default function MembersPage() {
         <EmptyState
           icon={Users}
           title={
-            birthMonth
+            statusFilter === "inactive" && !debouncedSearch && !birthMonth
+              ? "Nenhum membro inativo"
+              : birthMonth
               ? `Ninguém faz aniversário em ${MONTHS[birthMonth - 1]}`
               : debouncedSearch
               ? "Nenhum membro encontrado"
@@ -201,7 +231,7 @@ export default function MembersPage() {
                 <ChevronLeft className="mr-2 size-4" />
                 Voltar à primeira página
               </Button>
-            ) : (
+            ) : statusFilter === "inactive" ? undefined : (
               <Button onClick={handleCreate}>
                 <Plus className="mr-2 size-4" />
                 Novo membro
@@ -236,13 +266,20 @@ export default function MembersPage() {
                       actions={[
                         { label: "Ver", icon: Eye, onSelect: () => handleQuickView(m) },
                         { label: "Editar", icon: Edit, onSelect: () => handleEdit(m) },
-                        {
-                          label: "Desativar",
-                          icon: UserX,
-                          destructive: true,
-                          disabled: deactivateMemberMutation.isPending,
-                          onSelect: () => void handleDeactivate(m),
-                        },
+                        m.status === "inactive"
+                          ? {
+                              label: "Reativar",
+                              icon: RotateCcw,
+                              disabled: reactivateMemberMutation.isPending,
+                              onSelect: () => reactivateMemberMutation.mutate({ id: m.id }),
+                            }
+                          : {
+                              label: "Desativar",
+                              icon: UserX,
+                              destructive: true,
+                              disabled: deactivateMemberMutation.isPending,
+                              onSelect: () => void handleDeactivate(m),
+                            },
                         {
                           label: "Exportar dados",
                           icon: Download,
@@ -316,7 +353,14 @@ export default function MembersPage() {
       )}
 
       {!isLoading && (
-        <PaginationBar page={page} onPageChange={setPage} hasNextPage={members.length === PAGE_SIZE} />
+        <PaginationBar
+          page={page}
+          onPageChange={setPage}
+          totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+          total={total}
+          showing={members.length}
+          itemLabel="membros"
+        />
       )}
 
       <MemberQuickViewDialog

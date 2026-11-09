@@ -194,6 +194,19 @@ export const ministryRouter = createTRPCRouter({
         })
         .where(eq(ministryFunctions.id, input.id))
         .returning()
+      if (removedRelation) {
+        // Quem tinha essa função neste ministério continua no ministério, mas sem a função (e sem as permissões dela).
+        await db
+          .update(memberMinistries)
+          .set({ functionId: null })
+          .where(
+            and(
+              eq(memberMinistries.ministryId, removedRelation.ministryId),
+              eq(memberMinistries.functionId, removedRelation.functionId),
+              eq(memberMinistries.isActive, true),
+            ),
+          )
+      }
       return removedRelation
     }),
 

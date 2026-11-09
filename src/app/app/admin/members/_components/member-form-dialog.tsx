@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useForm, useFieldArray, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronLeft, ChevronRight, Key, Loader2, Plus, Save, Trash2, User, UserPlus } from "lucide-react";
@@ -30,6 +30,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@/trpc/react";
 import { DEFAULT_PASSWORD } from "@/lib/default-password";
 import { fullName } from "@/lib/formatters";
+import { formatCep, isCompleteCep, lookupCep } from "@/lib/cep";
 import { mutationFeedback } from "@/lib/mutation-feedback";
 import { cn } from "@/lib/utils";
 import type { MemberStatus, MemberWithMinistries } from "./types";
@@ -198,6 +199,48 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     resolver: zodResolver(memberSchema),
     defaultValues,
   });
+
+  // Ao completar o CEP (8 dígitos), busca o endereço e preenche cidade, estado e, se estiver vazio, a rua e o bairro.
+  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "notfound" | "error">("idle");
+  const lastLookedUp = useRef<string | null>(null);
+  const cepRequest = useRef<AbortController | null>(null);
+
+  const zipCodeField = form.register("zipCode");
+
+  const handleCepChange = (value: string) => {
+    const formatted = formatCep(value);
+    form.setValue("zipCode", formatted, { shouldDirty: true });
+    cepRequest.current?.abort();
+    if (!isCompleteCep(formatted)) {
+      setCepStatus("idle");
+      return;
+    }
+    const digits = formatted.replace(/\D/g, "");
+    if (lastLookedUp.current === digits) return;
+    lastLookedUp.current = digits;
+    const controller = new AbortController();
+    cepRequest.current = controller;
+    setCepStatus("loading");
+    lookupCep(digits, controller.signal)
+      .then((result) => {
+        if (!result) {
+          setCepStatus("notfound");
+          return;
+        }
+        setCepStatus("idle");
+        if (result.city) form.setValue("city", result.city, { shouldDirty: true });
+        if (result.state) form.setValue("state", result.state, { shouldDirty: true });
+        if (!form.getValues("address")?.trim()) {
+          const street = [result.street, result.district].filter(Boolean).join(", ");
+          if (street) form.setValue("address", `${street}, `, { shouldDirty: true });
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        lastLookedUp.current = null;
+        setCepStatus("error");
+      });
+  };
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -542,17 +585,29 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
 
               <TabsContent value="address" className="mt-0 space-y-4">
                 <FormSection title="Endereço">
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Endereço completo</Label>
-                    <Textarea
-                      id="address"
-                      rows={3}
-                      autoComplete="street-address"
-                      placeholder="Rua, número, bairro..."
-                      {...form.register("address")}
-                    />
-                  </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="zipCode">CEP</Label>
+                      <div className="relative">
+                        <Input
+                          id="zipCode"
+                          inputMode="numeric"
+                          autoComplete="postal-code"
+                          placeholder="00000-000"
+                          maxLength={9}
+                          aria-invalid={Boolean(errors.zipCode) || cepStatus === "notfound"}
+                          {...zipCodeField}
+                          onChange={(event) => {
+                            void zipCodeField.onChange(event);
+                            handleCepChange(event.target.value);
+                          }}
+                        />
+                        {cepStatus === "loading" && <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                      </div>
+                      <FieldError message={errors.zipCode?.message} />
+                      {cepStatus === "notfound" && <p className="text-xs text-warning">CEP não encontrado. Confira os números ou preencha à mão.</p>}
+                      {cepStatus === "error" && <p className="text-xs text-warning">Não foi possível consultar o CEP agora. Preencha à mão.</p>}
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="city">Cidade</Label>
                       <Input
@@ -577,18 +632,17 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                       />
                       <FieldError message={errors.state?.message} />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">CEP</Label>
-                      <Input
-                        id="zipCode"
-                        inputMode="numeric"
-                        autoComplete="postal-code"
-                        placeholder="00000-000"
-                        aria-invalid={Boolean(errors.zipCode)}
-                        {...form.register("zipCode")}
-                      />
-                      <FieldError message={errors.zipCode?.message} />
-                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Endereço completo</Label>
+                    <Textarea
+                      id="address"
+                      rows={3}
+                      autoComplete="street-address"
+                      placeholder="Rua, número, bairro..."
+                      {...form.register("address")}
+                    />
+                    <p className="text-xs text-muted-foreground">Digite o CEP e a rua e o bairro entram sozinhos. Falta só o número.</p>
                   </div>
                 </FormSection>
               </TabsContent>

@@ -23,7 +23,7 @@ export default function PendingUsersPage() {
 
   const approveUserMutation = api.user.approve.useMutation(
     mutationFeedback({
-      success: "Usuário aprovado com sucesso",
+      success: (data) => (data.emailSent ? "Usuário aprovado. A pessoa foi avisada por e-mail." : "Usuário aprovado. Não foi possível avisar por e-mail: avise a pessoa."),
       error: "Erro ao aprovar usuário",
       onSuccess: refreshPending,
     })

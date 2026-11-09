@@ -48,6 +48,7 @@ export const authConfig: NextAuthConfig = {
             firstName: members.firstName,
             lastName: members.lastName,
             status: users.status,
+            approvedAt: users.approvedAt,
             isAdmin: users.isAdmin,
           })
           .from(users)
@@ -59,6 +60,10 @@ export const authConfig: NextAuthConfig = {
 
         if (user.status === "pending") {
           throw new InvalidLoginError("PENDING", "Seu cadastro está pendente de aprovação. Aguarde a liberação do acesso.");
+        }
+
+        if (user.status === "inactive" && !user.approvedAt) {
+          throw new InvalidLoginError("REJECTED", "Seu cadastro não foi aprovado. Fale com a liderança da igreja se achar que houve engano.");
         }
 
         if (user.status !== "active") {

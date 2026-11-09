@@ -7,8 +7,26 @@ import { compare, hash } from "bcrypt-ts"
 import { eq, asc, count } from "drizzle-orm"
 import { userCreateSchema, userUpdateSchema } from "@/validators/user"
 import { DEFAULT_PASSWORD } from "@/lib/default-password"
+import { escapeHtml, sendEmail } from "@/server/email"
 
 const manageUsers = can("users.manage")
+
+function approvalEmail(name: string | null, link: string | null) {
+  const greeting = name ? `Olá, ${name}!` : "Olá!";
+  const lines = [
+    greeting,
+    "",
+    "O seu acesso ao sistema da Igreja Central - Vida com Propósito foi aprovado.",
+    link ? `Para entrar, acesse: ${link}` : "Você já pode entrar no sistema com o seu e-mail e a sua senha.",
+  ];
+  const safeLink = link ? escapeHtml(link) : null;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#111">
+<p>${escapeHtml(greeting)}</p>
+<p>O seu acesso ao sistema da <strong>Igreja Central - Vida com Propósito</strong> foi aprovado.</p>
+${safeLink ? `<p><a href="${safeLink}" style="display:inline-block;background:#111;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Entrar no sistema</a></p>` : "<p>Você já pode entrar com o seu e-mail e a sua senha.</p>"}
+</div>`;
+  return { subject: "Seu acesso foi aprovado", text: lines.join("\n"), html };
+}
 
 const safeUserColumns = {
   id: users.id,
@@ -170,7 +188,17 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Falha ao aprovar usuário" });
       }
 
-      return updatedUser;
+      // Avisa a pessoa por e-mail. Se o envio falhar (ou não estiver configurado), a aprovação vale do mesmo jeito.
+      const [member] = updatedUser.memberId
+        ? await db.select({ firstName: members.firstName }).from(members).where(eq(members.id, updatedUser.memberId)).limit(1)
+        : [];
+      const base = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");
+      const emailSent = await sendEmail({
+        to: updatedUser.email,
+        ...approvalEmail(member?.firstName ?? null, base ? `${base}/sign-in` : null),
+      });
+
+      return { ...updatedUser, emailSent };
     }),
 
   reject: manageUsers
@@ -180,6 +208,7 @@ export const userRouter = createTRPCRouter({
         .update(users)
         .set({
           status: "inactive",
+          approvedAt: null,
           updatedAt: new Date(),
         })
         .where(eq(users.id, input.id))
