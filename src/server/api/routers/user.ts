@@ -3,6 +3,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { db } from "@/server/db"
 import { users, members } from "@/server/db/schema"
+import { randomBytes, createHash } from "node:crypto"
 import { compare, hash } from "bcrypt-ts"
 import { eq, asc, count } from "drizzle-orm"
 import { userCreateSchema, userUpdateSchema } from "@/validators/user"
@@ -10,6 +11,9 @@ import { DEFAULT_PASSWORD } from "@/lib/default-password"
 import { escapeHtml, sendEmail } from "@/server/email"
 
 const manageUsers = can("users.manage")
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex")
 
 function approvalEmail(name: string | null, link: string | null) {
   const greeting = name ? `Olá, ${name}!` : "Olá!";
@@ -56,7 +60,8 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com esse e-mail." })
       }
 
-      const passwordHash = await hash(input.password, 10)
+      // Sem senha informada, cria uma aleatória que ninguém conhece: a pessoa define a dela pelo link de primeiro acesso.
+      const passwordHash = await hash(input.password ?? randomBytes(24).toString("base64url"), 10)
       const now = new Date()
 
       const [newUser] = await db
@@ -66,11 +71,39 @@ export const userRouter = createTRPCRouter({
           email: input.email,
           passwordHash,
           passwordCreatedAt: now,
-          status: "pending",
+          // Quem cria o acesso já está liberando: não precisa passar pela fila de aprovações.
+          status: "active",
+          approvedAt: now,
         })
         .returning(safeUserColumns)
 
       return newUser
+    }),
+
+  /**
+   * Gera o link para a pessoa criar (ou refazer) a própria senha. Vale por 7 dias e só uma vez.
+   * Quem criou o acesso manda o link (por WhatsApp, por exemplo): ninguém usa uma senha padrão conhecida.
+   */
+  inviteLink: manageUsers
+    .input(z.object({ userId: z.number(), origin: z.string().url().max(200).optional() }))
+    .mutation(async ({ input }) => {
+      const [user] = await db.select({ id: users.id, status: users.status }).from(users).where(eq(users.id, input.userId)).limit(1)
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" })
+      if (user.status !== "active") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "O acesso precisa estar ativo para gerar o link. Ative ou aprove primeiro." })
+      }
+
+      const base = ((process.env.NEXT_PUBLIC_APP_URL?.trim() ? process.env.NEXT_PUBLIC_APP_URL.trim() : (input.origin ?? ""))).replace(/\/+$/, "")
+      if (!base) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Endereço do sistema não configurado." })
+
+      const token = randomBytes(32).toString("base64url")
+      const expires = new Date(Date.now() + INVITE_TTL_MS)
+      await db
+        .update(users)
+        .set({ resetToken: hashToken(token), resetTokenExpires: expires, updatedAt: new Date() })
+        .where(eq(users.id, user.id))
+
+      return { url: `${base}/reset-password?token=${token}`, expiresAt: expires }
     }),
 
   list: manageUsers.query(async () => {

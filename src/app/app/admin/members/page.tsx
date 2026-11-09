@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, Plus, RotateCcw, UserCheck, Users, UserX } from "lucide-react";
+import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, MessageCircle, Plus, RotateCcw, UserCheck, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +17,12 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { formatDate, fullName } from "@/lib/formatters";
+import { ageOn, whatsappNumber } from "@/lib/birthdays";
+import { localToday } from "@/lib/bible-plans";
 import { mutationFeedback } from "@/lib/mutation-feedback";
 import { downloadJson } from "@/lib/download";
 import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 import { MemberQuickViewDialog } from "./_components/member-quick-view-dialog";
 import { MemberFormDialog } from "./_components/member-form-dialog";
 import { MemberStatusBadge } from "./_components/member-status-badge";
@@ -28,13 +31,25 @@ import type { MemberWithMinistries } from "./_components/types";
 
 const PAGE_SIZE = 20;
 
+type StatusFilter = "active" | "visiting" | "transferred" | "inactive";
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "active", label: "Ativos" },
+  { value: "visiting", label: "Visitantes" },
+  { value: "transferred", label: "Transferidos" },
+  { value: "inactive", label: "Inativos" },
+];
+
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [birthMonth, setBirthMonth] = useState<number | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState<"active" | "inactive">("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [ministryId, setMinistryId] = useState<number | undefined>(undefined);
+  const [noAccess, setNoAccess] = useState(false);
+  const [today] = useState(() => localToday());
   const debouncedSearch = useDebounce(search, 500);
 
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -43,16 +58,27 @@ export default function MembersPage() {
   const memberDialog = useEntityDialog<MemberWithMinistries>({ fromUrl: true });
   const confirm = useConfirm();
 
-  const filters = { search: debouncedSearch || undefined, birthMonth, status: statusFilter };
+  const filters = {
+    search: debouncedSearch || undefined,
+    birthMonth,
+    status: statusFilter,
+    ministryId,
+    hasAccess: noAccess ? ("false" as const) : undefined,
+  };
+  const { data: facets, refetch: refetchFacets } = api.member.facets.useQuery();
   const { data: members = [], isLoading, refetch } = api.member.list.useQuery(
     { page, limit: PAGE_SIZE, ...filters },
     { placeholderData: (previous) => previous },
   );
   const { data: total = 0 } = api.member.count.useQuery(filters, { placeholderData: (previous) => previous });
   const utils = api.useUtils();
-  const refreshMembers = () => Promise.all([refetch(), utils.member.count.invalidate()]);
+  const refreshMembers = () => Promise.all([refetch(), utils.member.count.invalidate(), refetchFacets()]);
 
   const { data: pendingCount } = api.user.getPendingCount.useQuery();
+
+  // Só aparece o filtro do que existe: situação com membros (a escolhida fica sempre) e ministério com gente.
+  const visibleStatuses = STATUS_OPTIONS.filter((option) => (facets?.statuses[option.value] ?? 0) > 0 || option.value === statusFilter);
+  const ministriesWithPeople = facets?.ministries ?? [];
 
   const deactivateMemberMutation = api.member.deactivate.useMutation(
     mutationFeedback({
@@ -161,7 +187,7 @@ export default function MembersPage() {
         }
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="space-y-3">
         <SearchInput
           value={search}
           onChange={handleSearchChange}
@@ -169,43 +195,84 @@ export default function MembersPage() {
           isLoading={search !== debouncedSearch}
           className="sm:max-w-md"
         />
-        <div className="flex gap-2" role="group" aria-label="Situação do membro">
-          {(["active", "inactive"] as const).map((value) => (
+        {visibleStatuses.length > 1 && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Situação do membro">
+          {visibleStatuses.map((option) => (
             <Button
-              key={value}
+              key={option.value}
               type="button"
               size="sm"
-              variant={statusFilter === value ? "default" : "outline"}
-              aria-pressed={statusFilter === value}
+              className="shrink-0"
+              variant={statusFilter === option.value ? "default" : "outline"}
+              aria-pressed={statusFilter === option.value}
               onClick={() => {
-                setStatusFilter(value);
+                setStatusFilter(option.value);
                 setPage(1);
               }}
             >
-              {value === "active" ? "Ativos" : "Inativos"}
+              {option.label} ({facets?.statuses[option.value] ?? 0})
             </Button>
           ))}
         </div>
-        <Select
-          value={birthMonth ? String(birthMonth) : "all"}
-          onValueChange={(value) => {
-            setBirthMonth(value === "all" ? undefined : Number(value));
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-64" aria-label="Aniversariantes do mês">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Aniversário: todos os meses</SelectItem>
-            {MONTHS.map((name, index) => (
-              <SelectItem key={name} value={String(index + 1)}>
-                {name}
-                {index === new Date().getMonth() ? " (este mês)" : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {(ministriesWithPeople.length > 0 || ministryId !== undefined) && (
+          <Select
+            value={ministryId ? String(ministryId) : "all"}
+            onValueChange={(value) => {
+              setMinistryId(value === "all" ? undefined : Number(value));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-56" aria-label="Filtrar por ministério">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os ministérios</SelectItem>
+              {ministriesWithPeople.map((ministry) => (
+                <SelectItem key={ministry.id} value={String(ministry.id)}>
+                  {ministry.name} ({ministry.total})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          )}
+          <Select
+            value={birthMonth ? String(birthMonth) : "all"}
+            onValueChange={(value) => {
+              setBirthMonth(value === "all" ? undefined : Number(value));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-64" aria-label="Aniversariantes do mês">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Aniversário: todos os meses</SelectItem>
+              {MONTHS.map((name, index) => (
+                <SelectItem key={name} value={String(index + 1)}>
+                  {name}
+                  {index === new Date().getMonth() ? " (este mês)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {((facets?.noAccessCount ?? 0) > 0 || noAccess) && (
+          <Button
+            type="button"
+            size="sm"
+            variant={noAccess ? "default" : "outline"}
+            aria-pressed={noAccess}
+            className="sm:shrink-0"
+            onClick={() => {
+              setNoAccess((value) => !value);
+              setPage(1);
+            }}
+          >
+            Sem acesso ao sistema ({facets?.noAccessCount ?? 0})
+          </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -214,8 +281,8 @@ export default function MembersPage() {
         <EmptyState
           icon={Users}
           title={
-            statusFilter === "inactive" && !debouncedSearch && !birthMonth
-              ? "Nenhum membro inativo"
+            statusFilter !== "active" && !debouncedSearch && !birthMonth && !ministryId && !noAccess
+              ? `Nenhum membro ${statusFilter === "visiting" ? "visitante" : statusFilter === "transferred" ? "transferido" : "inativo"}`
               : birthMonth
               ? `Ninguém faz aniversário em ${MONTHS[birthMonth - 1]}`
               : debouncedSearch
@@ -231,7 +298,7 @@ export default function MembersPage() {
                 <ChevronLeft className="mr-2 size-4" />
                 Voltar à primeira página
               </Button>
-            ) : statusFilter === "inactive" ? undefined : (
+            ) : statusFilter !== "active" || ministryId || noAccess ? undefined : (
               <Button onClick={handleCreate}>
                 <Plus className="mr-2 size-4" />
                 Novo membro
@@ -242,7 +309,7 @@ export default function MembersPage() {
       ) : (
         <div className="grid gap-3 sm:gap-4">
           {members.map(({ members: m, users: u }) => (
-            <Card key={m.id} className="transition-shadow hover:shadow-md">
+            <Card key={m.id} className="relative cursor-pointer transition-shadow hover:shadow-md">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex items-start justify-between gap-2">
@@ -251,7 +318,7 @@ export default function MembersPage() {
                         <button
                           type="button"
                           onClick={() => handleQuickView(m)}
-                          className="text-left underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+                          className="text-left underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:underline focus-visible:outline-none"
                         >
                           {fullName(m)}
                         </button>
@@ -262,9 +329,23 @@ export default function MembersPage() {
 
                     <RowActionsMenu
                       label={`Ações para ${fullName(m)}`}
-                      className="-mr-2 -mt-2"
+                      className="relative z-10 -mr-2 -mt-2"
                       actions={[
                         { label: "Ver", icon: Eye, onSelect: () => handleQuickView(m) },
+                        {
+                          label: "Ligar",
+                          icon: Phone,
+                          hidden: !m.phone,
+                          onSelect: () => {
+                            window.location.href = `tel:${(m.phone ?? "").replace(/[^\d+]/g, "")}`;
+                          },
+                        },
+                        {
+                          label: "WhatsApp",
+                          icon: MessageCircle,
+                          hidden: !whatsappNumber(m.whatsapp ?? m.phone),
+                          onSelect: () => window.open(`https://wa.me/${whatsappNumber(m.whatsapp ?? m.phone)}`, "_blank", "noopener,noreferrer"),
+                        },
                         { label: "Editar", icon: Edit, onSelect: () => handleEdit(m) },
                         m.status === "inactive"
                           ? {
@@ -313,10 +394,14 @@ export default function MembersPage() {
                       )}
                     </div>
                     <div className="space-y-1">
-                      {birthMonth && m.birthDate && (
-                        <p className="flex items-center gap-1.5 font-medium text-primary">
+                      {m.birthDate && (
+                        <p className={cn("flex items-center gap-1.5", birthMonth && "font-medium text-primary")}>
                           <Cake className="size-4 shrink-0" />
-                          <span>Aniversário: dia {Number(m.birthDate.slice(8, 10))}</span>
+                          <span>
+                            {birthMonth ? `Aniversário: dia ${Number(m.birthDate.slice(8, 10))}` : ""}
+                            {birthMonth && ageOn(m.birthDate, today) !== null ? " · " : ""}
+                            {ageOn(m.birthDate, today) !== null ? `${ageOn(m.birthDate, today)} anos` : ""}
+                          </span>
                         </p>
                       )}
                       {m.memberSince && (

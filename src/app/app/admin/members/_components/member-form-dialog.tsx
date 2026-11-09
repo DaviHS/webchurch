@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useForm, useFieldArray, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronLeft, ChevronRight, Key, Loader2, Plus, Save, Trash2, User, UserPlus } from "lucide-react";
+import { Check, ChevronRight, Key, Loader2, Plus, Save, Trash2, User, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast";
 import { useSession } from "next-auth/react";
@@ -25,10 +25,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { PasswordInput } from "@/components/password-input";
+import { PhoneInput } from "@/components/phone-input";
+import { InviteLinkDialog } from "./invite-link-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { api } from "@/trpc/react";
-import { DEFAULT_PASSWORD } from "@/lib/default-password";
+import { formatPhone } from "@/lib/phone";
 import { fullName } from "@/lib/formatters";
 import { formatCep, isCompleteCep, lookupCep } from "@/lib/cep";
 import { mutationFeedback } from "@/lib/mutation-feedback";
@@ -64,10 +65,22 @@ const FIELD_TABS: Partial<Record<keyof MemberFormInput, TabValue>> = {
   baptismDate: "church",
   status: "church",
   notes: "church",
+  emergencyContact: "church",
+  emergencyPhone: "church",
+  baptized: "church",
   ministries: "ministries",
 };
 
 const NO_FUNCTION = "none";
+
+/** Campos de cada aba: "Próximo" confere só os da aba atual, e o ponto vermelho usa a mesma lista. */
+const TAB_FIELDS: Record<TabValue, (keyof MemberFormInput)[]> = {
+  personal: ["firstName", "lastName", "email", "phone", "whatsapp", "birthDate", "gender", "maritalStatus", "profession"],
+  address: ["zipCode", "city", "state", "address"],
+  church: ["status", "memberSince", "baptized", "baptismDate", "emergencyContact", "emergencyPhone", "notes"],
+  ministries: ["ministries"],
+  access: [],
+};
 
 const USER_ACCESS_STATUS: Record<
   UserAccessStatus,
@@ -96,7 +109,7 @@ function buildDefaultValues(member: MemberWithMinistries | null | undefined): Me
       phone: "",
       whatsapp: "",
       birthDate: "",
-      gender: "male",
+      gender: undefined,
       maritalStatus: "single",
       address: "",
       city: "",
@@ -118,10 +131,10 @@ function buildDefaultValues(member: MemberWithMinistries | null | undefined): Me
     firstName: member.firstName,
     lastName: member.lastName,
     email: member.email ?? "",
-    phone: member.phone ?? "",
-    whatsapp: member.whatsapp ?? "",
+    phone: formatPhone(member.phone ?? ""),
+    whatsapp: formatPhone(member.whatsapp ?? ""),
     birthDate: member.birthDate ?? "",
-    gender: member.gender ?? "male",
+    gender: member.gender ?? undefined,
     maritalStatus: member.maritalStatus ?? "single",
     address: member.address ?? "",
     city: member.city ?? "",
@@ -129,7 +142,7 @@ function buildDefaultValues(member: MemberWithMinistries | null | undefined): Me
     zipCode: member.zipCode ?? "",
     profession: member.profession ?? "",
     emergencyContact: member.emergencyContact ?? "",
-    emergencyPhone: member.emergencyPhone ?? "",
+    emergencyPhone: formatPhone(member.emergencyPhone ?? ""),
     baptismDate: member.baptismDate ?? "",
     memberSince: member.memberSince ?? todayIsoDate(),
     status: member.status,
@@ -247,20 +260,36 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     name: "ministries",
   });
 
-  const [email, gender, maritalStatus, status, watchedMinistries] = useWatch({
+  const [email, gender, maritalStatus, status, watchedMinistries, baptized] = useWatch({
     control: form.control,
-    name: ["email", "gender", "maritalStatus", "status", "ministries"],
+    name: ["email", "gender", "maritalStatus", "status", "ministries", "baptized"],
   });
 
-  const { errors } = form.formState;
+  const { errors, isDirty } = form.formState;
+
+  // Link para a pessoa criar a própria senha (no lugar de uma senha padrão igual para todos).
+  const [invite, setInvite] = useState<{ url: string; closeFormAfter: boolean } | null>(null);
+  const inviteMutation = api.user.inviteLink.useMutation({
+    onError: (error) => toastError(error.message),
+  });
+  const openInvite = (userId: number, closeFormAfter: boolean) => {
+    inviteMutation.mutate(
+      { userId, origin: window.location.origin },
+      {
+        onSuccess: (result) => setInvite({ url: result.url, closeFormAfter }),
+        onSettled: () => void utils.user.getByMemberId.invalidate(),
+      },
+    );
+  };
 
   const createUserMutation = api.user.create.useMutation(
     mutationFeedback({
-      success: "Usuário criado com sucesso",
+      success: "Acesso criado. Agora envie o link para a pessoa criar a senha.",
       error: "Erro ao criar usuário",
-      onSuccess: () => {
+      onSuccess: (user) => {
         void utils.user.getByMemberId.invalidate();
-        onOpenChange(false);
+        if (user) openInvite(user.id, true);
+        else onOpenChange(false);
       },
     })
   );
@@ -271,11 +300,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
       error: "Erro ao criar membro",
       onSuccess: (newMember) => {
         if (createUser && newMember?.email) {
-          createUserMutation.mutate({
-            memberId: newMember.id,
-            email: newMember.email,
-            password: DEFAULT_PASSWORD,
-          });
+          createUserMutation.mutate({ memberId: newMember.id, email: newMember.email });
         } else {
           onOpenChange(false);
         }
@@ -320,13 +345,37 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     updateUserAdminMutation.mutate({ id: userId, isAdmin });
   };
 
-  const handleSubmit = (data: MemberFormData) => {
+  const handleSubmit = async (data: MemberFormData) => {
     const submitData = {
       ...data,
       ministries: data.ministries.filter((ministry) => ministry.ministryId > 0),
     };
 
     if (memberId === undefined) {
+      if (!data.gender) {
+        form.setError("gender", { message: "Selecione o gênero" });
+        setActiveTab("personal");
+        toastError("Selecione o gênero do membro");
+        return;
+      }
+      if (createUser && !data.email?.trim()) {
+        form.setError("email", { message: "Informe o e-mail para criar o acesso" });
+        setActiveTab("personal");
+        toastError("Para criar o acesso, informe o e-mail do membro");
+        return;
+      }
+      // Antes de criar, avisa se já existe alguém com o mesmo nome, e-mail ou telefone.
+      const duplicates = await utils.member.findDuplicates
+        .fetch({ firstName: data.firstName, lastName: data.lastName, email: data.email, phone: data.phone })
+        .catch(() => []);
+      if (duplicates.length > 0) {
+        const confirmed = await confirm({
+          title: "Já existe um cadastro parecido",
+          description: duplicates.map((item) => `${item.name} (${item.reason})`).join("; ") + ". Cadastrar mesmo assim?",
+          confirmLabel: "Cadastrar mesmo assim",
+        });
+        if (!confirmed) return;
+      }
       createMemberMutation.mutate(submitData);
     } else {
       updateMemberMutation.mutate({ id: memberId, data: submitData });
@@ -347,16 +396,12 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
       return;
     }
 
-    createUserMutation.mutate({ memberId, email, password: DEFAULT_PASSWORD });
+    createUserMutation.mutate({ memberId, email });
   };
 
   const handleResetPassword = () => {
     if (!existingUser) return;
-
-    updateUserMutation.mutate(
-      { id: existingUser.id, password: DEFAULT_PASSWORD },
-      { onSuccess: () => toast.success(`Senha redefinida para ${DEFAULT_PASSWORD}`) }
-    );
+    openInvite(existingUser.id, false);
   };
 
   const handleChangeUserStatus = async (userId: number, nextStatus: "active" | "inactive") => {
@@ -389,14 +434,44 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     createUserMutation.isPending ||
     updateUserMutation.isPending;
 
+  // Fechar (Cancelar, tocar fora, Esc) pergunta antes de jogar fora o que já foi preenchido.
+  const requestClose = async () => {
+    if (isDirty && !isSaving) {
+      const discard = await confirm({
+        title: "Descartar as alterações?",
+        description: "O que você preencheu neste formulário será perdido.",
+        confirmLabel: "Descartar",
+        destructive: true,
+      });
+      if (!discard) return;
+    }
+    onOpenChange(false);
+  };
+
   const activeIndex = TABS.findIndex((tab) => tab.value === activeTab);
-  const previousTab = TABS[activeIndex - 1];
   const nextTab = TABS[activeIndex + 1];
+
+  // Só avança se a aba atual está certa; o erro aparece onde a pessoa está.
+  const goNextTab = async () => {
+    if (!nextTab) return;
+    if (activeTab === "personal" && !form.getValues("gender")) {
+      form.setError("gender", { message: "Selecione o gênero" });
+      return;
+    }
+    const valid = await form.trigger(TAB_FIELDS[activeTab]);
+    if (valid) setActiveTab(nextTab.value);
+  };
 
   const getFunctionsForMinistry = (ministryId: number) => functionsByMinistry.get(ministryId) ?? [];
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) onOpenChange(true);
+        else void requestClose();
+      }}
+    >
       <ResponsiveDialogContent size="xl">
         <Tabs
           value={activeTab}
@@ -421,6 +496,9 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                   className="min-h-9 shrink-0 snap-start px-4 sm:min-h-7 sm:flex-1"
                 >
                   {tab.label}
+                  {TAB_FIELDS[tab.value].some((field) => field in errors) && (
+                    <span className="ml-1.5 size-2 rounded-full bg-destructive" role="img" aria-label="Há campos com erro nesta aba" />
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -478,14 +556,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
 
                     <div className="space-y-2">
                       <Label htmlFor="phone">Telefone</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        placeholder="(11) 99999-9999"
-                        {...form.register("phone")}
-                      />
+                      <PhoneInput id="phone" autoComplete="tel" placeholder="(11) 99999-9999" {...form.register("phone")} />
                     </div>
 
                     <div className="space-y-2">
@@ -495,21 +566,21 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
 
                     <div className="space-y-2">
                       <Label htmlFor="whatsapp">WhatsApp</Label>
-                      <Input
-                        id="whatsapp"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        placeholder="(11) 99999-9999"
-                        {...form.register("whatsapp")}
-                      />
+                      <PhoneInput id="whatsapp" autoComplete="tel" placeholder="(11) 99999-9999" {...form.register("whatsapp")} />
+                      <button
+                        type="button"
+                        onClick={() => form.setValue("whatsapp", form.getValues("phone") ?? "", { shouldDirty: true })}
+                        className="min-h-8 text-xs font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        É o mesmo número do telefone
+                      </button>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="gender">Gênero</Label>
                       <Select
-                        value={gender ?? "male"}
-                        onValueChange={(value) => form.setValue("gender", value as Gender)}
+                        value={gender ?? ""}
+                        onValueChange={(value) => form.setValue("gender", value as Gender, { shouldDirty: true, shouldValidate: true })}
                       >
                         <SelectTrigger id="gender">
                           <SelectValue placeholder="Selecione" />
@@ -519,6 +590,7 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                           <SelectItem value="female">Feminino</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FieldError message={errors.gender?.message} />
                     </div>
 
                     <div className="space-y-2">
@@ -549,35 +621,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                         {...form.register("profession")}
                       />
                       <FieldError message={errors.profession?.message} />
-                    </div>
-                  </div>
-                </FormSection>
-
-                <FormSection title="Contato de emergência">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="emergencyContact">Nome do contato</Label>
-                      <Input
-                        id="emergencyContact"
-                        autoComplete="off"
-                        placeholder="Nome do contato de emergência"
-                        aria-invalid={Boolean(errors.emergencyContact)}
-                        {...form.register("emergencyContact")}
-                      />
-                      <FieldError message={errors.emergencyContact?.message} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="emergencyPhone">Telefone de emergência</Label>
-                      <Input
-                        id="emergencyPhone"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="off"
-                        placeholder="(11) 99999-9999"
-                        aria-invalid={Boolean(errors.emergencyPhone)}
-                        {...form.register("emergencyPhone")}
-                      />
-                      <FieldError message={errors.emergencyPhone?.message} />
                     </div>
                   </div>
                 </FormSection>
@@ -651,18 +694,16 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                 <FormSection title="Informações da igreja">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="memberSince">Membro desde</Label>
-                      <Input id="memberSince" type="date" {...form.register("memberSince")} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="baptismDate">Data do batismo</Label>
-                      <Input id="baptismDate" type="date" {...form.register("baptismDate")} />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
                       <Select
                         value={status ?? "active"}
-                        onValueChange={(value) => form.setValue("status", value as MemberStatus)}
+                        onValueChange={(value) => {
+                          form.setValue("status", value as MemberStatus, { shouldDirty: true });
+                          // "Membro desde" começa com a data de hoje só para quem entra como ativo.
+                          const since = form.getValues("memberSince");
+                          if (value !== "active" && since === todayIsoDate()) form.setValue("memberSince", "", { shouldDirty: true });
+                          if (value === "active" && !since && mode === "create") form.setValue("memberSince", todayIsoDate(), { shouldDirty: true });
+                        }}
                       >
                         <SelectTrigger id="status">
                           <SelectValue placeholder="Selecione" />
@@ -675,15 +716,51 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                         </SelectContent>
                       </Select>
                     </div>
-                    <label htmlFor="baptized" className="flex min-h-10 cursor-pointer items-center gap-3 self-end text-sm font-medium">
-                      <input
-                        type="checkbox"
+                    <div className="space-y-2">
+                      <Label htmlFor="memberSince">Membro desde</Label>
+                      <Input id="memberSince" type="date" {...form.register("memberSince")} />
+                    </div>
+                    <label htmlFor="baptized" className="flex min-h-10 cursor-pointer items-center gap-3 text-sm font-medium sm:col-span-2">
+                      <Switch
                         id="baptized"
-                        className="size-5 accent-primary"
-                        {...form.register("baptized")}
+                        checked={baptized ?? false}
+                        onCheckedChange={(checked) => form.setValue("baptized", checked, { shouldDirty: true })}
                       />
-                      Batizado
+                      Batizado(a)
                     </label>
+                    {baptized && (
+                      <div className="space-y-2">
+                        <Label htmlFor="baptismDate">Data do batismo</Label>
+                        <Input id="baptismDate" type="date" {...form.register("baptismDate")} />
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
+
+                <FormSection title="Contato de emergência">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="emergencyContact">Nome do contato</Label>
+                      <Input
+                        id="emergencyContact"
+                        autoComplete="off"
+                        placeholder="Nome do contato de emergência"
+                        aria-invalid={Boolean(errors.emergencyContact)}
+                        {...form.register("emergencyContact")}
+                      />
+                      <FieldError message={errors.emergencyContact?.message} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="emergencyPhone">Telefone de emergência</Label>
+                      <PhoneInput
+                        id="emergencyPhone"
+                        autoComplete="off"
+                        placeholder="(11) 99999-9999"
+                        aria-invalid={Boolean(errors.emergencyPhone)}
+                        {...form.register("emergencyPhone")}
+                      />
+                      <FieldError message={errors.emergencyPhone?.message} />
+                    </div>
                   </div>
                 </FormSection>
 
@@ -829,19 +906,9 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                             </p>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="initialPassword">Senha inicial</Label>
-                            <PasswordInput
-                              id="initialPassword"
-                              value={DEFAULT_PASSWORD}
-                              readOnly
-                              autoComplete="new-password"
-                              className="bg-background"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              O usuário receberá esta senha inicial e poderá alterá-la depois
-                            </p>
-                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Ao salvar, o sistema gera um link para a pessoa criar a própria senha. Você envia o link por WhatsApp ou copia. Não existe senha padrão.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -892,11 +959,12 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                           type="button"
                           variant="outline"
                           onClick={handleResetPassword}
-                          disabled={updateUserMutation.isPending}
+                          disabled={inviteMutation.isPending || existingUser.status !== "active"}
+                          title={existingUser.status !== "active" ? "Ative ou aprove o acesso primeiro" : undefined}
                           className="flex-1"
                         >
                           <Key className="mr-2 size-4" />
-                          {updateUserMutation.isPending ? "Redefinindo..." : "Redefinir senha"}
+                          {inviteMutation.isPending ? "Gerando..." : "Gerar link de nova senha"}
                         </Button>
 
                         {existingUser.status === "pending" ? (
@@ -961,14 +1029,20 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                   )}
                 </FormSection>
               </TabsContent>
+              {mode === "create" && nextTab && (
+                <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => void goNextTab()}>
+                  Próximo: {nextTab.label}
+                  <ChevronRight className="ml-1 size-4" />
+                </Button>
+              )}
             </ResponsiveDialogBody>
 
-            <ResponsiveDialogFooter className="sm:flex-row-reverse sm:justify-between">
+            <ResponsiveDialogFooter>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => void requestClose()}
                   disabled={isSaving}
                   className="flex-1 sm:flex-none"
                 >
@@ -980,32 +1054,22 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                 </Button>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => previousTab && setActiveTab(previousTab.value)}
-                  disabled={!previousTab}
-                  className="flex-1 sm:flex-none"
-                >
-                  <ChevronLeft className="mr-1 size-4" />
-                  Anterior
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => nextTab && setActiveTab(nextTab.value)}
-                  disabled={!nextTab}
-                  className="flex-1 sm:flex-none"
-                >
-                  Próximo
-                  <ChevronRight className="ml-1 size-4" />
-                </Button>
-              </div>
             </ResponsiveDialogFooter>
           </form>
         </Tabs>
       </ResponsiveDialogContent>
+      <InviteLinkDialog
+        open={invite !== null}
+        onOpenChange={(next) => {
+          if (next) return;
+          const closeForm = invite?.closeFormAfter ?? false;
+          setInvite(null);
+          if (closeForm) onOpenChange(false);
+        }}
+        url={invite?.url ?? null}
+        name={form.getValues("firstName") || "a pessoa"}
+        phone={form.getValues("whatsapp")?.trim() ? form.getValues("whatsapp") : form.getValues("phone")}
+      />
     </ResponsiveDialog>
   );
 }

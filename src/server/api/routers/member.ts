@@ -22,6 +22,7 @@ import {
   sql,
   inArray,
   asc,
+  ne,
   type SQL,
 } from "drizzle-orm";
 import { cleanEmptyStrings, emptyStringsToNull } from "@/lib/formatters";
@@ -48,9 +49,11 @@ const memberFilters = z.object({
   hasAccess: z.enum(["true", "false"]).optional().nullable(),
   /** Só quem faz aniversário neste mês (1 a 12); a lista passa a ser ordenada pelo dia. */
   birthMonth: z.number().int().min(1).max(12).optional().nullable(),
+  /** Só quem está (ativo) neste ministério. */
+  ministryId: z.number().int().positive().optional().nullable(),
 });
 
-function memberConditions({ search, status, gender, hasAccess, birthMonth }: z.infer<typeof memberFilters>): SQL[] {
+function memberConditions({ search, status, gender, hasAccess, birthMonth, ministryId }: z.infer<typeof memberFilters>): SQL[] {
   const conditions: SQL[] = [eq(members.status, status ?? "active")];
   if (gender) conditions.push(eq(members.gender, gender));
 
@@ -67,6 +70,12 @@ function memberConditions({ search, status, gender, hasAccess, birthMonth }: z.i
   }
 
   if (birthMonth) conditions.push(sql`extract(month from ${members.birthDate}) = ${birthMonth}`);
+
+  if (ministryId) {
+    conditions.push(
+      sql`exists (select 1 from member_ministries mm where mm.member_id = "members"."id" and mm.ministry_id = ${ministryId} and mm.is_active)`,
+    );
+  }
 
   if (hasAccess === "true") conditions.push(isNotNull(users.id));
   else if (hasAccess === "false") conditions.push(isNull(users.id));
@@ -110,6 +119,66 @@ export const memberRouter = createTRPCRouter({
     }
 
     return newMember;
+  }),
+
+  /** Possíveis cadastros repetidos (mesmo e-mail, mesmo telefone ou mesmo nome) para avisar antes de salvar. */
+  findDuplicates: manageMembers
+    .input(
+      z.object({
+        firstName: z.string().trim().min(1).max(50),
+        lastName: z.string().trim().min(1).max(50),
+        email: z.string().trim().toLowerCase().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        excludeId: z.number().optional().nullable(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const phoneDigits = (input.phone ?? "").replace(/\D/g, "");
+      const matches = [
+        sql`unaccent(lower(${members.firstName} || ' ' || ${members.lastName})) = unaccent(lower(${`${input.firstName} ${input.lastName}`}))`,
+        ...(input.email ? [sql`lower(${members.email}) = ${input.email}`] : []),
+        ...(phoneDigits.length >= 10 ? [sql`regexp_replace(coalesce(${members.phone}, ''), '\\D', '', 'g') = ${phoneDigits}`] : []),
+      ];
+      const rows = await db
+        .select({ id: members.id, firstName: members.firstName, lastName: members.lastName, email: members.email, phone: members.phone })
+        .from(members)
+        .where(and(or(...matches), input.excludeId ? ne(members.id, input.excludeId) : undefined))
+        .limit(3);
+      return rows.map((row) => {
+        const sameEmail = Boolean(input.email) && row.email?.toLowerCase() === input.email;
+        const samePhone = phoneDigits.length >= 10 && (row.phone ?? "").replace(/\D/g, "") === phoneDigits;
+        const reasons = [sameEmail ? "mesmo e-mail" : null, samePhone ? "mesmo telefone" : null].filter(Boolean);
+        return { id: row.id, name: `${row.firstName} ${row.lastName}`, reason: reasons.length > 0 ? reasons.join(" e ") : "mesmo nome" };
+      });
+    }),
+
+  /** O que existe de verdade, para a tela só oferecer filtros que servem: situações com membros, ministérios com gente e quantos estão sem acesso. */
+  facets: manageMembers.query(async () => {
+    const [statuses, ministryRows, noAccess] = await Promise.all([
+      db.select({ status: members.status, total: sql<number>`count(*)::int` }).from(members).groupBy(members.status),
+      db
+        .select({
+          id: ministries.id,
+          name: ministries.name,
+          total: sql<number>`count(distinct ${memberMinistries.memberId})::int`,
+        })
+        .from(memberMinistries)
+        .innerJoin(ministries, eq(ministries.id, memberMinistries.ministryId))
+        .innerJoin(members, eq(members.id, memberMinistries.memberId))
+        .where(and(eq(memberMinistries.isActive, true), eq(ministries.isActive, true), eq(members.status, "active")))
+        .groupBy(ministries.id, ministries.name)
+        .orderBy(asc(ministries.name)),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(members)
+        .leftJoin(users, eq(users.memberId, members.id))
+        .where(and(eq(members.status, "active"), isNull(users.id))),
+    ]);
+    return {
+      statuses: Object.fromEntries(statuses.map((row) => [row.status, row.total])),
+      ministries: ministryRows,
+      noAccessCount: noAccess[0]?.total ?? 0,
+    };
   }),
 
   /** Quantos membros batem com os filtros (para a paginação). */

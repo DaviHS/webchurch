@@ -26,3 +26,12 @@ export function birthdayThisMonth(birthDate: string, today: string): MonthBirthd
   const shown = dayOfYear(year, month, day);
   return { day: shown, turning: year - birthYear, daysFromToday: shown - todayDay };
 }
+
+/** Idade em anos completos na data de hoje (as duas no formato AAAA-MM-DD). */
+export function ageOn(birthDate: string, today: string): number | null {
+  const [birthYear = 0, birthMonth = 0, birthDay = 0] = birthDate.split("-").map(Number);
+  const [year = 0, month = 0, day = 0] = today.split("-").map(Number);
+  if (!birthYear || !birthMonth || !birthDay || !year) return null;
+  const age = year - birthYear - (month < birthMonth || (month === birthMonth && day < birthDay) ? 1 : 0);
+  return age >= 0 ? age : null;
+}

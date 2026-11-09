@@ -1,5 +1,6 @@
 "use client";
 
+import { whatsappNumber } from "@/lib/birthdays";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
@@ -136,7 +137,18 @@ export function MemberQuickViewDialog({ member, open, onOpenChange, onEdit }: Me
                     )}
                   </InfoField>
                   <InfoField label="WhatsApp" icon={Phone}>
-                    {textOr(member.whatsapp)}
+                    {whatsappNumber(member.whatsapp) ? (
+                      <a
+                        href={`https://wa.me/${whatsappNumber(member.whatsapp)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {member.whatsapp}
+                      </a>
+                    ) : (
+                      textOr(member.whatsapp)
+                    )}
                   </InfoField>
                 </div>
               </InfoSection>
