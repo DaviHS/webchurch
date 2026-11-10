@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { appSettings, events } from "@/server/db/schema";
 import { spotifyService } from "@/lib/spotify";
 import { deleteSetting, getSetting, setSetting } from "@/server/settings";
+import { logError } from "@/server/log";
 
 export const EVENT_PLAYLIST_PREFIX = "event_spotify_playlist:";
 export const EVENT_PLAYLIST_KEEP_DAYS = 30;
@@ -39,10 +40,10 @@ export async function cleanupOldEventPlaylists(): Promise<void> {
         if (playlistId) await spotifyService.deletePlaylist(playlistId);
         await deleteSetting(row.key);
       } catch (error) {
-        console.error("[spotify] não foi possível apagar a playlist antiga:", error instanceof Error ? error.message : error);
+        logError("spotify: playlist antiga não apagada", error);
       }
     }
   } catch (error) {
-    console.error("[spotify] limpeza das playlists de eventos falhou:", error instanceof Error ? error.message : error);
+    logError("spotify: limpeza das playlists de eventos falhou", error);
   }
 }

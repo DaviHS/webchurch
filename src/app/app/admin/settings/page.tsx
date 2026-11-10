@@ -13,7 +13,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { mutationFeedback } from "@/lib/mutation-feedback";
-import { siteSettingsSchema, type SiteSettings } from "@/lib/site-settings";
+import { MAX_GALLERY_PHOTOS, MAX_PHOTO_MB, siteSettingsSchema, type SiteSettings } from "@/lib/site-settings";
 import { toastError } from "@/lib/toast";
 import { useUploadThing } from "@/lib/uploadthing";
 import { api } from "@/trpc/react";
@@ -290,7 +290,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
             <CardHeader>
               <CardTitle>Galeria de fotos</CardTitle>
               <CardDescription>
-                Até 12 fotos, de até 8 MB cada. As fotos só são enviadas quando você clicar em Salvar. Sem fotos, a galeria não aparece na página.
+                Até {MAX_GALLERY_PHOTOS} fotos, de até {MAX_PHOTO_MB} MB cada. As fotos só são enviadas quando você clicar em Salvar. Sem fotos, a galeria não aparece na página.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -342,12 +342,12 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
                   const files = Array.from(event.target.files ?? []);
                   event.target.value = "";
                   if (files.length === 0) return;
-                  if (form.galleryImages.length + pending.length + files.length > 12) {
-                    toastError("A galeria aceita no máximo 12 fotos.");
+                  if (form.galleryImages.length + pending.length + files.length > MAX_GALLERY_PHOTOS) {
+                    toastError(`A galeria aceita no máximo ${MAX_GALLERY_PHOTOS} fotos.`);
                     return;
                   }
-                  if (files.some((file) => file.size > 8 * 1024 * 1024)) {
-                    toastError("Cada foto pode ter até 8 MB.");
+                  if (files.some((file) => file.size > MAX_PHOTO_MB * 1024 * 1024)) {
+                    toastError(`Cada foto pode ter até ${MAX_PHOTO_MB} MB.`);
                     return;
                   }
                   setPending((current) => [
@@ -356,7 +356,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
                   ]);
                 }}
               />
-              <Button type="button" variant="outline" disabled={form.galleryImages.length + pending.length >= 12} onClick={() => fileInput.current?.click()}>
+              <Button type="button" variant="outline" disabled={form.galleryImages.length + pending.length >= MAX_GALLERY_PHOTOS} onClick={() => fileInput.current?.click()}>
                 <ImagePlus className="mr-1" />
                 Adicionar fotos
               </Button>

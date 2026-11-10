@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const MAX_GALLERY_PHOTOS = 12;
+export const MAX_PHOTO_MB = 8;
+
 const text = (max: number) => z.string().trim().max(max);
 const optionalUrl = z.union([z.literal(""), z.string().trim().url().max(300)]);
 
@@ -28,7 +31,7 @@ export const siteSettingsSchema = z.object({
   email: z.union([z.literal(""), z.string().trim().email("E-mail inválido").max(120)]),
   whatsapp: text(30),
   instagram: optionalUrl,
-  galleryImages: z.array(z.string().trim().url("Link de foto inválido").max(500)).max(12),
+  galleryImages: z.array(z.string().trim().url("Link de foto inválido").max(500)).max(MAX_GALLERY_PHOTOS),
 });
 
 export type SiteSettings = z.infer<typeof siteSettingsSchema>;

@@ -3,6 +3,7 @@ import { auth, youtube, type youtube_v3 } from "@googleapis/youtube";
 import { env } from "@/env";
 import { getSetting, SETTING_YOUTUBE_PLAYLIST_ID } from "@/server/settings";
 import { extractYouTubeVideoId, youtubePlaylistUrl } from "@/lib/youtube-url";
+import { normalizeText } from "@/lib/text";
 
 export type YouTubeErrorReason = "not_configured" | "auth" | "quota" | "playlist_not_found" | "unknown";
 
@@ -84,14 +85,6 @@ export interface PlaylistSyncResult {
 }
 
 const PLAYLIST_ID_TTL_MS = 60_000;
-
-const normalizeText = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 
 const words = (value: string) => normalizeText(value).split(" ").filter((word) => word.length > 1);
 

@@ -1,4 +1,5 @@
-import { cleanPastedLyrics, stripAccents } from "@/lib/lyrics";
+import { cleanPastedLyrics } from "@/lib/lyrics";
+import { normalizeText } from "@/lib/text";
 
 export interface LyricsCandidate {
   title: string;
@@ -16,8 +17,6 @@ interface LrclibItem {
 }
 
 const ENDPOINT = "https://lrclib.net/api/search";
-
-const norm = (value: string) => stripAccents(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 async function query(params: Record<string, string>): Promise<LrclibItem[]> {
   const response = await fetch(`${ENDPOINT}?${new URLSearchParams(params).toString()}`, {
@@ -44,8 +43,8 @@ export async function findLyrics(title: string, artist: string): Promise<LyricsC
     return [];
   }
 
-  const wantedTitle = norm(cleanTitle);
-  const wantedArtist = norm(cleanArtist);
+  const wantedTitle = normalizeText(cleanTitle);
+  const wantedArtist = normalizeText(cleanArtist);
   const seen = new Set<string>();
   const scored: { score: number; candidate: LyricsCandidate }[] = [];
 
@@ -54,12 +53,12 @@ export async function findLyrics(title: string, artist: string): Promise<LyricsC
     if (item.instrumental || !lyrics) continue;
     const itemTitle = item.trackName ?? "";
     const itemArtist = item.artistName ?? "";
-    const key = norm(`${itemTitle} ${itemArtist}`) + lyrics.slice(0, 40);
+    const key = normalizeText(`${itemTitle} ${itemArtist}`) + lyrics.slice(0, 40);
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const t = norm(itemTitle);
-    const a = norm(itemArtist);
+    const t = normalizeText(itemTitle);
+    const a = normalizeText(itemArtist);
     let score = 0;
     if (t === wantedTitle) score += 4;
     else if (t.includes(wantedTitle) || wantedTitle.includes(t)) score += 2;

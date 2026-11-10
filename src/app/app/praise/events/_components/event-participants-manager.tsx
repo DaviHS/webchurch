@@ -16,16 +16,11 @@ import type { EventParticipant, RouterOutputs } from "@/types";
 import { CollapsibleAddPanel } from "./collapsible-add-panel";
 import { usePermissions } from "@/hooks/use-permissions";
 import { SearchPickList, SelectedPick } from "./search-pick-list";
+import { fold } from "@/lib/text";
 
 type MemberOption = RouterOutputs["member"]["list"][number]["members"];
 
 const COMMON_ROLES = ["Vocalista", "Back Vocal", "Líder"];
-
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
 
 interface EventParticipantsManagerProps {
   eventId: number;
@@ -43,9 +38,9 @@ export function EventParticipantsManager({ eventId, participants, onUpdate }: Ev
 
   const { data: membersData, isLoading: isLoadingMembers } = api.member.list.useQuery({ limit: 100 });
   const allMembers = membersData?.map((item) => item.members) ?? [];
-  const searchTerm = normalize(memberSearch.trim());
+  const searchTerm = fold(memberSearch.trim());
   const filteredMembers = searchTerm
-    ? allMembers.filter((member) => normalize(fullName(member)).includes(searchTerm))
+    ? allMembers.filter((member) => fold(fullName(member)).includes(searchTerm))
     : allMembers;
 
   const addParticipantMutation = api.event.addParticipant.useMutation(

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { baseTitle, normalizeText, normalizeTitle } from "@/lib/text";
 
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
@@ -15,22 +16,6 @@ function cleanArtistForSearch(artist: string | null | undefined): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-const withoutVersionSuffix = (name: string) =>
-  name
-    .replace(/\s*[([][^)\]]*[)\]]/g, "")
-    .replace(/\s+-\s+.*$/, "")
-    .trim();
-
-const normalizeTitle = (value: string) => normalizeForMatch(value).replace(/^(o|a|os|as) /, "");
-
-const normalizeForMatch = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
 
 export class SpotifyIntegrationError extends Error {
   readonly reason: SpotifyFailure;
@@ -208,11 +193,11 @@ class SpotifyService {
 
     const titles = [cleanTitle, ...(cleanTitle.includes("/") ? [cleanTitle.split("/")[0]!.trim()] : [])];
     const wanted = titles.map(normalizeTitle);
-    const wantedArtist = normalizeForMatch(mainArtist);
+    const wantedArtist = normalizeText(mainArtist);
     const matches = (track: SpotifyTrack) =>
-      wanted.includes(normalizeTitle(withoutVersionSuffix(track.name))) &&
+      wanted.includes(baseTitle(track.name)) &&
       track.artists.some((trackArtist) => {
-        const name = normalizeForMatch(trackArtist.name);
+        const name = normalizeText(trackArtist.name);
         return name.includes(wantedArtist) || wantedArtist.includes(name);
       });
     for (const title of titles) {

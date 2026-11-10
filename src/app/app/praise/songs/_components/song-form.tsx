@@ -25,7 +25,8 @@ import type { LyricsCandidate } from "@/lib/lyrics-search";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { lyricsToSlides } from "@/components/presentation/deck";
-import { cleanPastedLyrics, stripAccents } from "@/lib/lyrics";
+import { cleanPastedLyrics } from "@/lib/lyrics";
+import { normalizeText } from "@/lib/text";
 import { toastError } from "@/lib/toast";
 
 interface SongFormProps {
@@ -96,7 +97,7 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
     staleTime: 10 * 60_000,
   });
   const suggestedArtist = spotifyTrack.data?.artists[0];
-  const sameArtist = (a: string, b: string) => stripAccents(a).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === stripAccents(b).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const sameArtist = (a: string, b: string) => normalizeText(a) === normalizeText(b);
   const showArtistSuggestion = Boolean(suggestedArtist) && !sameArtist(artist, suggestedArtist ?? "");
 
   const isEditing = Boolean(initialData);

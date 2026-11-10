@@ -2,6 +2,7 @@ import { UTApi } from "uploadthing/server";
 import { can, createTRPCRouter } from "@/server/api/trpc";
 import { siteSettingsSchema } from "@/lib/site-settings";
 import { getSiteSettings, saveSiteSettings } from "@/server/site-settings";
+import { logError } from "@/server/log";
 
 const manageSettings = can("settings.manage");
 
@@ -20,7 +21,7 @@ export const siteRouter = createTRPCRouter({
       try {
         await new UTApi().deleteFiles(keys);
       } catch (error) {
-        console.error("[uploadthing] não foi possível apagar as fotos removidas:", error instanceof Error ? error.message : error);
+        logError("uploadthing: fotos removidas não apagadas", error);
       }
     }
     return { success: true };

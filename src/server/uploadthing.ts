@@ -2,11 +2,12 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { auth } from "@/server/auth";
 import { loadAccess } from "@/server/access";
+import { MAX_GALLERY_PHOTOS } from "@/lib/site-settings";
 
 const f = createUploadthing();
 
 export const uploadRouter = {
-  galleryImage: f({ image: { maxFileSize: "8MB", maxFileCount: 12 } })
+  galleryImage: f({ image: { maxFileSize: "8MB", maxFileCount: MAX_GALLERY_PHOTOS } })
     .middleware(async () => {
       const session = await auth();
       const userId = Number(session?.user?.id);

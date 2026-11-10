@@ -1,6 +1,6 @@
-export const stripAccents = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "");
+import { fold } from "@/lib/text";
 
-const normalize = (value: string) => stripAccents(value).toLowerCase();
+const normalize = fold;
 
 export function lyricsSnippet(lyrics: string | null | undefined, query: string, radius = 36): string | null {
   const term = normalize(query.trim());

@@ -17,6 +17,8 @@ import { loadPassage } from "@/server/bible-passage";
 import { spotifyService } from "@/lib/spotify";
 import { deleteSetting, getSetting, setSetting } from "@/server/settings";
 import { cleanupOldEventPlaylists } from "@/server/spotify-cleanup";
+import { logError } from "@/server/log";
+import { matchTracksToCatalog } from "@/lib/spotify-match";
 
 async function syncEventPlaylist(eventId: number): Promise<void> {
   try {
@@ -30,22 +32,9 @@ async function syncEventPlaylist(eventId: number): Promise<void> {
       .orderBy(asc(eventSongs.order), asc(eventSongs.id));
     await spotifyService.replacePlaylistTracks(playlist.id, rows.flatMap((row) => (row.trackId ? [row.trackId] : [])));
   } catch (error) {
-    console.error("[spotify] não foi possível atualizar a playlist do evento:", error instanceof Error ? error.message : error);
+    logError("spotify: playlist do evento não atualizada", error);
   }
 }
-
-const normalizeText = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-
-const baseTitle = (name: string) =>
-  normalizeText(name.replace(/\s*[([][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "")).replace(/^(o|a|os|as) /, "");
-
-type SyncItem = { id: string; name: string; artist: string; status: "match" | "version" | "new"; songId: number | null; songTitle: string | null };
 
 const playlistKey = (eventId: number) => `event_spotify_playlist:${eventId}`;
 
@@ -268,7 +257,7 @@ export const eventRouter = createTRPCRouter({
 
   delete: editEvents.input(z.number()).mutation(async ({ input }) => {
     const playlist = await savedPlaylist(input);
-    if (playlist) await spotifyService.deletePlaylist(playlist.id).catch(() => undefined);
+    if (playlist) await spotifyService.deletePlaylist(playlist.id).catch((error: unknown) => logError("spotify", error));
     await db.batch([
       db.delete(eventSongs).where(eq(eventSongs.eventId, input)),
       db.delete(eventParticipants).where(eq(eventParticipants.eventId, input)),
@@ -418,21 +407,7 @@ export const eventRouter = createTRPCRouter({
         .innerJoin(songs, eq(eventSongs.songId, songs.id))
         .where(eq(eventSongs.eventId, eventId)),
     ]);
-    const byTrack = new Map(catalog.flatMap((song) => (song.trackId ? [[song.trackId, song] as const] : [])));
-
-    const seen = new Set<string>();
-    const items = tracks.flatMap((track): SyncItem[] => {
-      if (seen.has(track.id)) return [];
-      seen.add(track.id);
-      const exact = byTrack.get(track.id);
-      if (exact) return [{ ...track, status: "match", songId: exact.id, songTitle: exact.title }];
-      const base = baseTitle(track.name);
-      const sameTitle = base ? catalog.filter((song) => baseTitle(song.title) === base) : [];
-      const artist = normalizeText(track.artist);
-      const version = sameTitle.find((song) => song.artist && artist.includes(normalizeText(song.artist))) ?? sameTitle[0];
-      if (version) return [{ ...track, status: "version", songId: version.id, songTitle: version.title }];
-      return [{ ...track, status: "new", songId: null, songTitle: null }];
-    });
+    const items = matchTracksToCatalog(tracks, catalog);
 
     const keptIds = new Set(items.flatMap((item) => (item.songId ? [item.songId] : [])));
     const removed = current.filter((row) => !keptIds.has(row.songId));
