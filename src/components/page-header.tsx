@@ -26,5 +26,5 @@ export function PageHeader({ title, description, icon: Icon, actions, className 
 }
 
 export function PageContainer({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("mx-auto w-full max-w-[1400px] space-y-6", className)}>{children}</div>;
+  return <div className={cn("w-full space-y-6", className)}>{children}</div>;
 }

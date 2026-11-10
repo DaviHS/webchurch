@@ -1,13 +1,32 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { ministries, functions, ministryFunctions, memberMinistries, members } from "@/server/db/schema"
-import { eq, and, inArray, asc, not, countDistinct } from "drizzle-orm"
+import { eq, and, inArray, asc, not, countDistinct, ne, sql } from "drizzle-orm"
 import { ministrySchema, functionSchema, ministryFunctionSchema } from "@/validators/ministry"
 
 const presentMemberStatuses = ["active", "visiting"] as const
 
 const manageMinistries = can("ministries.manage")
+
+/** Nome repetido: diz com clareza se o outro está ativo ou desativado (e então é só reativar). */
+async function assertUniqueName(kind: "ministry" | "function", name: string, excludeId?: number) {
+  const table = kind === "ministry" ? ministries : functions
+  const [other] = await db
+    .select({ id: table.id, isActive: table.isActive })
+    .from(table)
+    .where(and(sql`lower(${table.name}) = lower(${name.trim()})`, excludeId ? ne(table.id, excludeId) : undefined))
+    .limit(1)
+  if (!other) return
+  const label = kind === "ministry" ? "ministério" : "função"
+  throw new TRPCError({
+    code: "CONFLICT",
+    message: other.isActive
+      ? `Já existe um ${label} com esse nome.`
+      : `Já existe um ${label} desativado com esse nome. Reative-o em "Desativados" em vez de criar outro.`,
+  })
+}
 
 export const ministryRouter = createTRPCRouter({
   list: protectedProcedure.query(async () => {
@@ -25,6 +44,7 @@ export const ministryRouter = createTRPCRouter({
   create: manageMinistries
     .input(ministrySchema)
     .mutation(async ({ input }) => {
+      await assertUniqueName("ministry", input.name)
       const [newMinistry] = await db
         .insert(ministries)
         .values(input)
@@ -36,6 +56,7 @@ export const ministryRouter = createTRPCRouter({
     .input(ministrySchema.extend({ id: z.number() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input
+      await assertUniqueName("ministry", data.name, id)
       const [updatedMinistry] = await db
         .update(ministries)
         .set({
@@ -67,16 +88,39 @@ export const ministryRouter = createTRPCRouter({
         id: functions.id,
         name: functions.name,
         description: functions.description,
-        displayOrder: functions.displayOrder
+        displayOrder: functions.displayOrder,
+        // Onde a função é usada: serve para avisar o que muda ao desativar.
+        ministryCount: sql<number>`(select count(*)::int from "ministry_functions" mf inner join "ministries" m on m.id = mf.ministry_id where mf.function_id = "functions"."id" and mf.is_active = true and m.is_active = true)`,
+        memberCount: sql<number>`(select count(distinct mm.member_id)::int from "member_ministries" mm where mm.function_id = "functions"."id" and mm.is_active = true)`,
       })
       .from(functions)
       .where(eq(functions.isActive, true))
       .orderBy(functions.displayOrder, functions.name);
   }),
 
+  /** Ministérios e funções desativados, para poder reativar. */
+  listInactive: manageMinistries.query(async () => {
+    const [inactiveMinistries, inactiveFunctions] = await Promise.all([
+      db.select({ id: ministries.id, name: ministries.name }).from(ministries).where(eq(ministries.isActive, false)).orderBy(asc(ministries.name)),
+      db.select({ id: functions.id, name: functions.name }).from(functions).where(eq(functions.isActive, false)).orderBy(asc(functions.name)),
+    ])
+    return { ministries: inactiveMinistries, functions: inactiveFunctions }
+  }),
+
+  reactivate: manageMinistries.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    const [row] = await db.update(ministries).set({ isActive: true, updatedAt: new Date() }).where(eq(ministries.id, input.id)).returning()
+    return row
+  }),
+
+  reactivateFunction: manageMinistries.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    const [row] = await db.update(functions).set({ isActive: true, updatedAt: new Date() }).where(eq(functions.id, input.id)).returning()
+    return row
+  }),
+
   createFunction: manageMinistries
     .input(functionSchema)
     .mutation(async ({ input }) => {
+      await assertUniqueName("function", input.name)
       const [newFunction] = await db
         .insert(functions)
         .values(input)
@@ -88,6 +132,7 @@ export const ministryRouter = createTRPCRouter({
     .input(functionSchema.extend({ id: z.number() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input
+      await assertUniqueName("function", data.name, id)
       const [updatedFunction] = await db
         .update(functions)
         .set({

@@ -42,6 +42,8 @@ const ACTIONS: Record<string, string> = {
   "ministry.create": "Criou ministério",
   "ministry.update": "Editou ministério",
   "ministry.deactivate": "Desativou ministério",
+  "ministry.reactivate": "Reativou ministério",
+  "ministry.reactivateFunction": "Reativou função",
   "ministry.createFunction": "Criou função",
   "ministry.updateFunction": "Editou função",
   "ministry.deactivateFunction": "Desativou função",
@@ -53,6 +55,7 @@ const ACTIONS: Record<string, string> = {
   "user.deactivate": "Desativou acesso",
   "user.approve": "Aprovou cadastro",
   "user.reject": "Rejeitou cadastro",
+  "user.reconsider": "Reconsiderou cadastro rejeitado",
 
   "access.setFunctionPermissions": "Alterou as permissões de uma função",
 

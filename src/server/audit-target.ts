@@ -42,12 +42,15 @@ const ID_ENTITY: Record<string, Entity> = {
   "privacy.exportMember": "member",
   "ministry.update": "ministry",
   "ministry.deactivate": "ministry",
+  "ministry.reactivate": "ministry",
+  "ministry.reactivateFunction": "function",
   "ministry.updateFunction": "function",
   "ministry.deactivateFunction": "function",
   "user.update": "user",
   "user.deactivate": "user",
   "user.approve": "user",
   "user.reject": "user",
+  "user.reconsider": "user",
   "finance.updateCategory": "category",
   "finance.setCategoryActive": "category",
   "finance.updateTransaction": "transaction",
@@ -128,6 +131,8 @@ export async function describeAuditTarget(action: string, raw: unknown): Promise
       text(input.email) ??
       (text(input.firstName) ? `${text(input.firstName)} ${text(input.lastName) ?? ""}`.trim() : null);
     if (created && /\.(create|createCategory|createFunction|createTransaction)$/.test(action)) own.push(created);
+    if (action === "user.reject" && text(input.reason)) own.push(`Motivo: ${text(input.reason)}`);
+    if (action === "user.approve" && typeof input.ministryId === "number") ids.ministry.add(input.ministryId);
     if (action === "event.addPassage" && text(input.reference)) own.push(`Passagem: ${text(input.reference)}`);
     if (typeof input.month === "number" && typeof input.year === "number") own.push(`Mês: ${input.month}/${input.year}`);
     if (action === "access.setFunctionPermissions" && Array.isArray(input.permissions)) {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Cake, Calendar, ChevronLeft, Download, Edit, Eraser, Eye, Mail, Phone, MessageCircle, Plus, RotateCcw, UserCheck, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,16 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 export default function MembersPage() {
-  const [search, setSearch] = useState("");
+  return (
+    <Suspense>
+      <MembersContent />
+    </Suspense>
+  );
+}
+
+function MembersContent() {
+  const initialSearch = useSearchParams().get("search") ?? "";
+  const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const [birthMonth, setBirthMonth] = useState<number | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");

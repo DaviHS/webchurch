@@ -20,11 +20,13 @@ import { MinistryMemberItem } from "./ministry-member-item";
 
 interface MinistryFunctionsDialogProps {
   ministry: Ministry | null;
+  /** Aba que abre primeiro: o card leva para Membros, o menu para Funções. */
+  initialTab?: "functions" | "members";
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function MinistryFunctionsDialog({ ministry, open, onOpenChange }: MinistryFunctionsDialogProps) {
+export function MinistryFunctionsDialog({ ministry, initialTab = "functions", open, onOpenChange }: MinistryFunctionsDialogProps) {
   if (!ministry) return null;
 
   return (
@@ -34,13 +36,13 @@ export function MinistryFunctionsDialog({ ministry, open, onOpenChange }: Minist
           <ResponsiveDialogTitle className="min-w-0 break-words">Ministério: {ministry.name}</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 
-        <MinistryFunctionsContent key={ministry.id} ministryId={ministry.id} />
+        <MinistryFunctionsContent key={`${ministry.id}-${initialTab}-${open}`} ministryId={ministry.id} initialTab={initialTab} />
       </ResponsiveDialogContent>
     </ResponsiveDialog>
   );
 }
 
-function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
+function MinistryFunctionsContent({ ministryId, initialTab }: { ministryId: number; initialTab: "functions" | "members" }) {
   const [isAddingFunction, setIsAddingFunction] = useState(false);
 
   const utils = api.useUtils();
@@ -90,7 +92,7 @@ function MinistryFunctionsContent({ ministryId }: { ministryId: number }) {
   };
 
   return (
-    <Tabs defaultValue="functions" className="flex min-h-0 flex-1 flex-col">
+    <Tabs defaultValue={initialTab} className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-2 sm:px-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="functions" className="gap-2">

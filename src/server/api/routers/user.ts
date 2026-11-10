@@ -2,10 +2,10 @@ import { can, createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { db } from "@/server/db"
-import { users, members } from "@/server/db/schema"
+import { users, members, memberMinistries, ministries, ministryFunctions } from "@/server/db/schema"
 import { randomBytes, createHash } from "node:crypto"
 import { compare, hash } from "bcrypt-ts"
-import { eq, asc, count } from "drizzle-orm"
+import { and, asc, count, desc, eq, isNull, ne, or, sql } from "drizzle-orm"
 import { userCreateSchema, userUpdateSchema } from "@/validators/user"
 import { DEFAULT_PASSWORD } from "@/lib/default-password"
 import { escapeHtml, sendEmail } from "@/server/email"
@@ -205,8 +205,22 @@ export const userRouter = createTRPCRouter({
   }),
 
   approve: manageUsers
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), ministryId: z.number().optional(), functionId: z.number().optional() }))
     .mutation(async ({ input }) => {
+      // Valida o ministério (e a função dele) antes de liberar o acesso, para não aprovar pela metade.
+      if (input.ministryId !== undefined) {
+        const [ministry] = await db.select({ id: ministries.id }).from(ministries).where(and(eq(ministries.id, input.ministryId), eq(ministries.isActive, true))).limit(1)
+        if (!ministry) throw new TRPCError({ code: "BAD_REQUEST", message: "Ministério não encontrado ou inativo." })
+        if (input.functionId !== undefined) {
+          const [link] = await db
+            .select({ id: ministryFunctions.id })
+            .from(ministryFunctions)
+            .where(and(eq(ministryFunctions.ministryId, input.ministryId), eq(ministryFunctions.functionId, input.functionId), eq(ministryFunctions.isActive, true)))
+            .limit(1)
+          if (!link) throw new TRPCError({ code: "BAD_REQUEST", message: "Essa função não pertence ao ministério escolhido." })
+        }
+      }
+
       const [updatedUser] = await db
         .update(users)
         .set({
@@ -219,6 +233,17 @@ export const userRouter = createTRPCRouter({
 
       if (!updatedUser) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Falha ao aprovar usuário" });
+      }
+
+      if (input.ministryId !== undefined && updatedUser.memberId) {
+        const [already] = await db
+          .select({ id: memberMinistries.id })
+          .from(memberMinistries)
+          .where(and(eq(memberMinistries.memberId, updatedUser.memberId), eq(memberMinistries.ministryId, input.ministryId), eq(memberMinistries.isActive, true)))
+          .limit(1)
+        if (!already) {
+          await db.insert(memberMinistries).values({ memberId: updatedUser.memberId, ministryId: input.ministryId, functionId: input.functionId })
+        }
       }
 
       // Avisa a pessoa por e-mail. Se o envio falhar (ou não estiver configurado), a aprovação vale do mesmo jeito.
@@ -235,7 +260,8 @@ export const userRouter = createTRPCRouter({
     }),
 
   reject: manageUsers
-    .input(z.object({ id: z.number() }))
+    // O motivo fica registrado no histórico de auditoria junto com a ação (sem coluna nova no banco).
+    .input(z.object({ id: z.number(), reason: z.string().trim().max(200).optional() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
         .update(users)
@@ -255,7 +281,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   getPending: manageUsers.query(async () => {
-    return await db
+    const rows = await db
       .select({
         id: users.id,
         email: users.email,
@@ -267,11 +293,70 @@ export const userRouter = createTRPCRouter({
         firstName: members.firstName,
         lastName: members.lastName,
         phone: members.phone,
+        whatsapp: members.whatsapp,
+        birthDate: members.birthDate,
+        city: members.city,
+        state: members.state,
+        baptismDate: members.baptismDate,
       })
       .from(users)
       .leftJoin(members, eq(users.memberId, members.id))
       .where(eq(users.status, "pending"))
       .orderBy(asc(users.createdAt));
+
+    // Outro cadastro com o mesmo nome ou telefone (o e-mail já é único): evita aprovar uma pessoa que já está na igreja.
+    return await Promise.all(
+      rows.map(async (row) => {
+        if (!row.memberId || !row.firstName || !row.lastName) return { ...row, duplicates: [] as { id: number; name: string; reason: string }[] }
+        const phoneDigits = (row.phone ?? "").replace(/\D/g, "")
+        const matches = [
+          sql`unaccent(lower(${members.firstName} || ' ' || ${members.lastName})) = unaccent(lower(${`${row.firstName} ${row.lastName}`}))`,
+          ...(phoneDigits.length >= 10 ? [sql`regexp_replace(coalesce(${members.phone}, ''), '\\D', '', 'g') = ${phoneDigits}`] : []),
+        ]
+        const found = await db
+          .select({ id: members.id, firstName: members.firstName, lastName: members.lastName, phone: members.phone })
+          .from(members)
+          .where(and(or(...matches), ne(members.id, row.memberId)))
+          .limit(3)
+        return {
+          ...row,
+          duplicates: found.map((item) => ({
+            id: item.id,
+            name: `${item.firstName} ${item.lastName}`,
+            reason: phoneDigits.length >= 10 && (item.phone ?? "").replace(/\D/g, "") === phoneDigits ? "mesmo telefone" : "mesmo nome",
+          })),
+        }
+      }),
+    )
+  }),
+
+  /** Solicitações rejeitadas (acesso inativo que nunca foi aprovado), para poder reconsiderar. */
+  getRejected: manageUsers.query(async () => {
+    return await db
+      .select({
+        id: users.id,
+        email: users.email,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        firstName: members.firstName,
+        lastName: members.lastName,
+        phone: members.phone,
+      })
+      .from(users)
+      .leftJoin(members, eq(users.memberId, members.id))
+      .where(and(eq(users.status, "inactive"), isNull(users.approvedAt)))
+      .orderBy(desc(users.updatedAt))
+  }),
+
+  /** Devolve uma solicitação rejeitada para a fila de pendentes. */
+  reconsider: manageUsers.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ status: "pending", updatedAt: new Date() })
+      .where(and(eq(users.id, input.id), eq(users.status, "inactive"), isNull(users.approvedAt)))
+      .returning(safeUserColumns)
+    if (!updatedUser) throw new TRPCError({ code: "NOT_FOUND", message: "Essa solicitação não está mais rejeitada." })
+    return updatedUser
   }),
 
   getPendingCount: manageUsers.query(async () => {
