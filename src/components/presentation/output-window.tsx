@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { Maximize } from "lucide-react";
 import { useBroadcastChannel } from "@/hooks/use-broadcast-channel";
-import { enterFullscreen } from "./fullscreen";
+import { autoFullscreen, enterFullscreen } from "./fullscreen";
 import { useIsFullscreen, useNow, useScreenWakeLock } from "./hooks";
 import {
   CONNECTION_TIMEOUT_MS,
@@ -95,6 +95,20 @@ export function OutputWindow({ role }: { role: OutputRole }) {
     return () => window.removeEventListener("keydown", listener);
   }, []);
 
+  // Ao abrir, tenta a tela cheia sozinho. Se o navegador recusar, o primeiro toque ou tecla na janela entra
+  // em tela cheia (uma vez só, para não brigar com o Esc de quem quiser sair).
+  useEffect(() => {
+    const stopAuto = autoFullscreen();
+    const onFirstInteraction = () => enterFullscreen();
+    window.addEventListener("pointerdown", onFirstInteraction, { once: true });
+    window.addEventListener("keydown", onFirstInteraction, { once: true });
+    return () => {
+      stopAuto();
+      window.removeEventListener("pointerdown", onFirstInteraction);
+      window.removeEventListener("keydown", onFirstInteraction);
+    };
+  }, []);
+
   useEffect(() => {
     document.title = `${OUTPUT_LABELS[role]} - Igreja Central`;
   }, [role]);
@@ -113,7 +127,7 @@ export function OutputWindow({ role }: { role: OutputRole }) {
         <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
           <span className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-medium text-white shadow-lg">
             <Maximize className="h-4 w-4" />
-            {OUTPUT_LABELS[role]}: clique nesta tela (ou tecle F) para tela cheia
+            {OUTPUT_LABELS[role]}: toque em qualquer lugar ou tecle qualquer tecla para tela cheia
           </span>
         </div>
       )}
