@@ -20,12 +20,10 @@ const MAX_COLUMNS = 3;
 interface CompareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Ex.: "João 3:16-18". */
   reference: string;
   location: { bookId: number; chapter: number };
   verses: number[];
   versions: VersionInfo[];
-  /** Versão aberta no leitor: é a primeira coluna. */
   baseVersion: string;
   canProject: boolean;
   onCopy: (version: string) => void;

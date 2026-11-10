@@ -29,7 +29,6 @@ interface AddToEventDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Escolhe um dos próximos eventos e coloca a música no fim do repertório dele. */
 export function AddToEventDialog({ song, open, onOpenChange }: AddToEventDialogProps) {
   const utils = api.useUtils();
   const [today] = useState(() => startOfDay(new Date()));

@@ -149,7 +149,6 @@ export default function SongsPage() {
         icon={Music}
         description="Repertório do ministério de louvor."
         actions={
-          // No celular, "Nova música" fica no botão + do menu de baixo; aqui só aparece em telas maiores.
           canEdit ? (
             <Button onClick={songDialog.openCreate} className="hidden sm:inline-flex">
               <Plus />

@@ -11,9 +11,7 @@ export interface ReadingPlan {
   label: string;
   description: string;
   days: number;
-  /** Capítulos na ordem de leitura. */
   chapters: ChapterRef[];
-  /** Posição (em `chapters`) do primeiro capítulo de cada dia; o dia N vai de dayStarts[N-1] até dayStarts[N]. */
   dayStarts: number[];
 }
 
@@ -26,10 +24,6 @@ const range = (from: number, to: number) => Array.from({ length: to - from + 1 }
 
 const versesOf = ({ bookId, chapter }: ChapterRef) => VERSE_COUNTS[bookId]?.[chapter - 1] ?? 1;
 
-/**
- * Reparte os capítulos (em ordem) em `days` dias de tamanho parecido em VERSÍCULOS, não em número de capítulos:
- * assim um dia com o Salmo 119 não pesa o dobro de um dia de capítulos curtos. Todo dia tem ao menos um capítulo.
- */
 function splitByVerses(chapters: ChapterRef[], days: number): number[] {
   const total = chapters.reduce((sum, chapter) => sum + versesOf(chapter), 0);
   const starts: number[] = [0];
@@ -37,8 +31,7 @@ function splitByVerses(chapters: ChapterRef[], days: number): number[] {
   let accumulated = 0;
   for (let day = 1; day < days; day += 1) {
     const goal = (total * day) / days;
-    const mustLeave = days - day; // capítulos que precisam sobrar para os dias seguintes
-    // O dia sempre leva ao menos um capítulo e continua enquanto chegar mais perto da meta acumulada.
+    const mustLeave = days - day;
     do {
       accumulated += versesOf(chapters[index]!);
       index += 1;
@@ -70,7 +63,6 @@ export const READING_PLANS: ReadingPlan[] = [
 
 export const getPlan = (key: string): ReadingPlan | undefined => READING_PLANS.find((plan) => plan.key === key);
 
-/** Capítulos de um dia (1 a plan.days), com dias de tamanho parecido em versículos. */
 export function chaptersForDay(plan: ReadingPlan, day: number): ChapterRef[] {
   if (day < 1 || day > plan.days) return [];
   const from = plan.dayStarts[day - 1] ?? 0;
@@ -78,7 +70,6 @@ export function chaptersForDay(plan: ReadingPlan, day: number): ChapterRef[] {
   return plan.chapters.slice(from, to);
 }
 
-/** "Gênesis 1–3" ou "Gênesis 50; Êxodo 1–2". */
 export function describeChapters(chapters: ChapterRef[]): string {
   const groups: { bookId: number; from: number; to: number }[] = [];
   for (const { bookId, chapter } of chapters) {
@@ -103,13 +94,11 @@ const dayNumber = (isoDate: string) => {
   return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
 };
 
-/** Dia do plano em que a pessoa deveria estar hoje (1 a plan.days; 0 se a data inicial é futura). */
 export function currentDay(plan: ReadingPlan, startedOn: string, today: string): number {
   const elapsed = dayNumber(today) - dayNumber(startedOn) + 1;
   return Math.max(0, Math.min(plan.days, elapsed));
 }
 
-/** Data local de hoje no formato AAAA-MM-DD. */
 export function localToday(now = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;

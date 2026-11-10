@@ -26,7 +26,6 @@ import { FunctionPermissionsDialog } from "./_components/function-permissions-di
 type Tab = "ministries" | "functions";
 type Situation = "active" | "inactive";
 
-/** Texto sem acento e minúsculo: a busca acha "musica" em "Música". */
 const plain = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 const MAX_CHIPS = 4;
@@ -51,7 +50,6 @@ export default function MinistriesPage() {
   const { data: links = [] } = api.ministry.listMinistryFunctions.useQuery();
   const { data: inactive } = api.ministry.listInactive.useQuery(undefined, { enabled: canManageMinistries });
 
-  // Funções de cada ministério e ministérios de cada função: o card mostra o que existe sem abrir nada.
   const functionsByMinistry = new Map<number, string[]>();
   const ministriesByFunction = new Map<number, string[]>();
   for (const link of links) {
@@ -115,7 +113,6 @@ export default function MinistriesPage() {
   const inactiveItems = isMinistries ? (inactive?.ministries ?? []) : (inactive?.functions ?? []);
   const inactiveCount = inactiveItems.length;
   const activeCount = isMinistries ? stats.length : functions.length;
-  // Só oferece "Desativados" quando existe algum; se a lista esvaziar, volta para os ativos.
   const showingInactive = situation === "inactive" && inactiveCount > 0;
 
   const visibleMinistries = stats.filter(({ ministry }) => matches(ministry.name, ministry.description));
@@ -325,7 +322,6 @@ export default function MinistriesPage() {
             const usedIn = ministriesByFunction.get(item.id) ?? [];
             const permissions = functionPermissions[item.id] ?? [];
             const clickable = canManageAccess || canManageMinistries;
-            // Quem gerencia acessos abre as permissões (o principal da função); os demais, a edição.
             const openMain = () => {
               if (canManageAccess) setPermissionsFunction(item);
               else functionDialog.openEdit(item);

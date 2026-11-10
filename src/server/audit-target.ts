@@ -28,7 +28,6 @@ type Entity =
   | "eventPassage"
   | "eventParticipant";
 
-/** Ações cujo `id` (ou a própria entrada numérica) aponta para esta entidade. */
 const ID_ENTITY: Record<string, Entity> = {
   "song.update": "song",
   "song.delete": "song",
@@ -57,7 +56,6 @@ const ID_ENTITY: Record<string, Entity> = {
   "finance.deleteTransaction": "transaction",
 };
 
-/** Campos da entrada que apontam para uma entidade, em qualquer ação. */
 const FIELD_ENTITY: Record<string, Entity> = {
   songId: "song",
   eventId: "event",
@@ -106,10 +104,6 @@ function newIds(): Record<Entity, Set<number>> {
   };
 }
 
-/**
- * Descreve em palavras o alvo de uma ação ("Música: Quão grande é o meu Deus"). Roda ANTES da ação,
- * para que também funcione com o que ela exclui ou mescla.
- */
 export async function describeAuditTarget(action: string, raw: unknown): Promise<string | null> {
   const ids = newIds();
   const own: string[] = [];
@@ -123,7 +117,6 @@ export async function describeAuditTarget(action: string, raw: unknown): Promise
     for (const id of numbers(input.keepId)) ids.song.add(id);
     for (const id of numbers(input.removeIds)) ids.song.add(id);
 
-    // Ações de criação ainda não têm registro: o nome vem da própria entrada.
     const created =
       text(input.title) ??
       text(input.name) ??
@@ -141,7 +134,6 @@ export async function describeAuditTarget(action: string, raw: unknown): Promise
     }
   }
 
-  // Linhas de ligação (música/passagem/participante do evento) levam ao evento, à música e ao membro.
   const passageLabels = new Map<number, string>();
   const [songLinks, passageLinks, participantLinks] = await Promise.all([
     ids.eventSong.size ? db.select({ eventId: eventSongs.eventId, songId: eventSongs.songId }).from(eventSongs).where(inArray(eventSongs.id, [...ids.eventSong])) : [],

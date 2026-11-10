@@ -56,7 +56,6 @@ export default function MyMarksPage() {
         }
       />
 
-      {/* Cores empilhadas como um grupo de avatares: ocupam pouco e crescem sem quebrar a linha. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex items-center gap-2">
           <div className="flex -space-x-2" role="group" aria-label="Filtrar por cor">

@@ -17,7 +17,6 @@ interface ReportChartProps {
 
 const MAX_BARS = 10;
 const LABEL_LENGTH = 22;
-/** Uma cor só: as barras medem a mesma coisa (execuções), então cor diferente por barra não significaria nada. */
 const BAR_COLOR = "hsl(var(--chart-1))";
 
 const AXIS_TICK = { fontSize: 12, fill: "hsl(var(--muted-foreground))" };
@@ -26,7 +25,6 @@ const CURSOR = { fill: "hsl(var(--muted))", fillOpacity: 0.6 };
 
 const truncateLabel = (value: string) => (value.length > LABEL_LENGTH ? `${value.slice(0, LABEL_LENGTH - 1)}…` : value);
 
-/** Gráfico de barras para telas largas. No celular o próprio ranking, com barras em cada linha, já faz esse papel. */
 export function ReportChart({ report, isLoading, isDateRangeValid, onBarClick }: ReportChartProps) {
   if (isLoading) {
     return (

@@ -26,7 +26,6 @@ interface PrintRepertoireDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Folha do repertório para a banda, numa janela sobre a própria tela: confere e imprime (ou salva em PDF). */
 export function PrintRepertoireDialog({ eventId, open, onOpenChange }: PrintRepertoireDialogProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const { data: event, isLoading, error, refetch } = api.event.getById.useQuery(eventId ?? 0, {

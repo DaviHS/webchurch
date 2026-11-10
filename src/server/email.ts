@@ -10,10 +10,6 @@ export interface Email {
 export const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/**
- * Envia um e-mail pelo Resend. Devolve false (sem lançar) quando não está configurado
- * ou o envio falha, para quem chama decidir o que fazer.
- */
 export async function sendEmail(email: Email): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();

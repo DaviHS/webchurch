@@ -19,7 +19,6 @@ export async function loadAccess(userId: number): Promise<Access> {
     .limit(1);
   if (user?.status !== "active") return NO_ACCESS;
   if (user.isAdmin) return { isAdmin: true, permissions: new Set(PERMISSIONS) };
-  // Membro desativado não mantém as permissões que vinham dos ministérios.
   if (user.memberId === null || user.memberStatus !== "active") return NO_ACCESS;
 
   const rows = await db

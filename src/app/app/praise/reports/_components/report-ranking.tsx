@@ -16,11 +16,9 @@ interface ReportRankingProps {
   isLoading: boolean;
   isDateRangeValid: boolean;
   onSongClick: (song: Song) => void;
-  /** Período e músicas do filtro, usados também pela aba "Esquecidas". */
   startDate?: Date;
   endDate?: Date;
   songIds?: number[];
-  /** Sem resultados no período: oferece olhar um período maior. */
   onWiden?: () => void;
 }
 
@@ -33,7 +31,6 @@ const MODES: { value: Mode; label: string }[] = [
   { value: "forgotten", label: "Esquecidas" },
 ];
 
-/** Ranking com barra proporcional em cada linha. O alternador mostra, sob demanda, as músicas esquecidas. */
 export function ReportRanking({ report, isLoading, isDateRangeValid, onSongClick, startDate, endDate, songIds, onWiden }: ReportRankingProps) {
   const [mode, setMode] = useState<Mode>("top");
   const [showAll, setShowAll] = useState(false);

@@ -8,11 +8,9 @@ interface ReportStatsCardProps {
   stats: ReportStats | null;
   isLoading: boolean;
   periodText: string;
-  /** Execuções no período anterior de mesma duração, para comparar. */
   comparison?: { current: number; previous: number; previousStart: Date; previousEnd: Date } | null;
 }
 
-/** Resumo no topo: quantas vezes se tocou, quantas músicas diferentes e como isso se compara ao período anterior. */
 export function ReportStatsCard({ stats, isLoading, periodText, comparison }: ReportStatsCardProps) {
   if (isLoading) {
     return (

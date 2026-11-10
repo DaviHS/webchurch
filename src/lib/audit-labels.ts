@@ -78,7 +78,6 @@ export const auditActionLabel = (action: string) => ACTIONS[action] ?? action;
 const scalar = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "…";
 
-/** Resume a entrada registrada em pares "campo: valor" curtos, para leitura humana. */
 export function summarizeAuditInput(input: unknown): string {
   if (input === null || input === undefined) return "";
   if (typeof input !== "object") return `#${scalar(input)}`;

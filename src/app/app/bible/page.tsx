@@ -163,7 +163,6 @@ type SearchScope = (typeof SEARCH_SCOPES)[number]["value"];
 
 const fold = (text: string) => text.replace(/[À-ſ]/g, (char) => char.normalize("NFD").replace(/\p{M}/gu, ""));
 
-/** Destaca no texto os termos digitados, ignorando acentos e maiúsculas. */
 function Highlighted({ text, query }: { text: string; query: string }) {
   const terms = [...new Set(fold(query.toLowerCase()).match(/[\p{L}\p{N}]{2,}/gu) ?? [])];
   if (terms.length === 0) return <>{text}</>;
@@ -294,7 +293,6 @@ function BibleReader() {
   });
   const { mutate: savePreferences } = api.bible.savePreferences.useMutation();
 
-  // Sem passagem na URL: retoma a última leitura do perfil (ou, se faltar, a deste navegador).
   useEffect(() => {
     if (hasLocation || preferencesPending) return;
     const savedBook = preferences?.bookId ? getBook(preferences.bookId) : undefined;
@@ -313,13 +311,11 @@ function BibleReader() {
     const current = { bookId: location.bookId, chapter: location.chapter };
     saveLastLocation(current);
     utils.bible.preferences.setData(undefined, (previous) => ({ version: null, ...previous, bookId: current.bookId, chapter: current.chapter }));
-    // Espera a pessoa parar de virar capítulos antes de gravar no perfil.
     const timer = setTimeout(() => savePreferences({ location: current }), 1500);
     return () => clearTimeout(timer);
   }, [hasLocation, location.bookId, location.chapter, savePreferences, utils]);
 
   const key = `${location.bookId}:${location.chapter}`;
-  // Vindo de "Minhas marcações", o versículo escolhido chega em ?s= e já abre selecionado.
   const [initialVerse] = useState(() => Number(params.get("s")));
   const hasInitialVerse = Number.isInteger(initialVerse) && initialVerse >= 1;
   const [selection, setSelection] = useState<{ key: string; verses: Set<number> }>({
@@ -382,7 +378,6 @@ function BibleReader() {
     }
   };
 
-  // Busca sozinha quando a pessoa para de digitar.
   const searchRef = useRef(runSearch);
   useEffect(() => {
     searchRef.current = runSearch;
@@ -405,7 +400,6 @@ function BibleReader() {
     runSearch(searchText);
   };
 
-  // Toque fora (ou Esc) fecha os resultados da busca.
   const searchBox = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!textQuery) return;
@@ -413,7 +407,6 @@ function BibleReader() {
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Element | null;
       if (!target || searchBox.current?.contains(target)) return;
-      // O seletor "Onde buscar" abre numa camada própria, fora da caixa.
       if (target.closest("[role='listbox'], [data-radix-popper-content-wrapper]")) return;
       close();
     };
@@ -469,7 +462,6 @@ function BibleReader() {
     }
   };
 
-  // Abre o WhatsApp com o texto e um link que leva direto a estes versículos no app.
   const share = async (code = version) => {
     if (!selectionLabel || !code || !singleRun) return;
     try {

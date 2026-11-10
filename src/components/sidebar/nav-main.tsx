@@ -109,7 +109,6 @@ export function NavMain() {
 
         {(online ? NAV_SECTIONS : [BIBLE_OFFLINE_SECTION]).map((section) => {
           const links = section.items.filter((link) => canSee(link, can))
-          // Sem nenhum item liberado, o grupo nem aparece (nem como recolhível vazio).
           if (links.length === 0) return null
           const sectionActive = active?.section?.title === section.title
           return (

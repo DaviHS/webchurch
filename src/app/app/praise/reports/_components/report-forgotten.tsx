@@ -88,7 +88,6 @@ function Section({
   );
 }
 
-/** Músicas que não tocaram no período do filtro. Só é montada (e só consulta) quando a aba é aberta. */
 export function ForgottenList({ startDate, endDate, songIds, onSongClick }: ForgottenListProps) {
   const enabled = startDate !== undefined && endDate !== undefined;
   const [adding, setAdding] = useState<Song | null>(null);

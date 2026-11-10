@@ -13,10 +13,6 @@ function readStored(): string | null {
   }
 }
 
-/**
- * Versão da Bíblia da pessoa. Vale a escolha feita agora, depois a preferência salva no perfil
- * (acompanha a pessoa entre aparelhos) e, por último, a guardada neste navegador.
- */
 export function useBibleVersion(versions: { code: string }[] | undefined): [string | null, (code: string) => void] {
   const utils = api.useUtils();
   const [chosen, setChosen] = useState<string | null>(null);
@@ -34,9 +30,7 @@ export function useBibleVersion(versions: { code: string }[] | undefined): [stri
     utils.bible.preferences.setData(undefined, (current) => ({ bookId: null, chapter: null, ...current, version: code }));
     try {
       localStorage.setItem(STORAGE_KEY, code);
-    } catch {
-      // Sem armazenamento local, a preferência do perfil continua valendo.
-    }
+    } catch {}
     savePreferences({ version: code });
   };
 

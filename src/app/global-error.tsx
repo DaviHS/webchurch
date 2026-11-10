@@ -2,13 +2,11 @@
 
 import { useEffect } from "react";
 
-// Entra no lugar do layout raiz, então precisa trazer o próprio <html> e estilos mínimos.
 export default function GlobalError({ error, retry }: { error: unknown; retry: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
 
-  // Dá tempo de ler a mensagem e volta sozinho para o início (menos se já estiver nele, para não repetir o erro).
   useEffect(() => {
     if (window.location.pathname === "/app") return;
     const timer = setTimeout(() => { window.location.href = "/app"; }, 12_000);

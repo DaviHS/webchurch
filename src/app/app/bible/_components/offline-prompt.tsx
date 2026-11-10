@@ -14,7 +14,6 @@ import { api } from "@/trpc/react";
 
 const ASK_AFTER_MS = 4000;
 
-/** Na primeira vez que a pessoa abre a Bíblia, oferece baixar a versão para ler sem internet. */
 export function OfflinePrompt({ version }: { version: string | undefined }) {
   const utils = api.useUtils();
   const client = utils.client.bible.getChapter;

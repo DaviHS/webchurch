@@ -16,7 +16,6 @@ import {
 import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 
-/** Escolhe quais versões ficam guardadas no aparelho para ler sem internet (em "Aa"). */
 export function OfflineVersions({ currentVersion }: { currentVersion?: string }) {
   const utils = api.useUtils();
   const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity, networkMode: "always" });
@@ -25,7 +24,6 @@ export function OfflineVersions({ currentVersion }: { currentVersion?: string })
   const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
   const control = useRef({ cancelled: false });
 
-  // `refresh` só serve para reler o que está guardado depois de baixar ou remover.
   const savedAt = new Map(
     (versions ?? []).flatMap((version) => {
       const date = readDownloadedAt(version.code);

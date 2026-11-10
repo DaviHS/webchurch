@@ -6,11 +6,6 @@ export const metadata: Metadata = {
   title: "Sem conexão",
 };
 
-/**
- * Roda direto do HTML (sem esperar o React, que sem internet pode nem carregar). Se a Bíblia foi
- * baixada neste aparelho, leva para ela, uma vez por sessão, para não entrar em laço. As chaves
- * são as de src/lib/bible-offline.ts.
- */
 const OPEN_BIBLE_SCRIPT = `(function(){try{
 var downloaded=false;
 for(var i=0;i<localStorage.length;i++){if(localStorage.key(i).indexOf("bible-offline:")===0){downloaded=true;break}}

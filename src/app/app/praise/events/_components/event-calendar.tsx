@@ -32,13 +32,11 @@ const MAX_DOTS = 3;
 
 const dayKey = (date: Date) => format(date, "yyyy-MM-dd");
 
-/** Calendário do mês: dias com evento ganham marcas; tocar no dia lista os eventos dele logo abaixo. */
 export function EventCalendar({
   onViewDetails,
   onCreateOnDate,
 }: {
   onViewDetails: (event: EventData) => void;
-  /** Quando informado (e a pessoa pode editar), mostra "Novo evento neste dia". */
   onCreateOnDate?: (date: Date) => void;
 }) {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));

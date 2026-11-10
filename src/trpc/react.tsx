@@ -24,10 +24,6 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
 
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
-/**
- * Consultas que o service worker guarda para a Bíblia funcionar sem internet. Saem sozinhas (sem
- * agrupar com outras), para cada uma ter o seu próprio endereço e poder ser guardada.
- */
 const OFFLINE_CACHEABLE = new Set(["bible.getChapter", "bible.versions"]);
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
@@ -79,5 +75,4 @@ function getBaseUrl() {
   if (typeof window !== "undefined") return "";
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
-
 

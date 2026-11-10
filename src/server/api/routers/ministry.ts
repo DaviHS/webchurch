@@ -10,7 +10,6 @@ const presentMemberStatuses = ["active", "visiting"] as const
 
 const manageMinistries = can("ministries.manage")
 
-/** Nome repetido: diz com clareza se o outro está ativo ou desativado (e então é só reativar). */
 async function assertUniqueName(kind: "ministry" | "function", name: string, excludeId?: number) {
   const table = kind === "ministry" ? ministries : functions
   const [other] = await db
@@ -89,7 +88,6 @@ export const ministryRouter = createTRPCRouter({
         name: functions.name,
         description: functions.description,
         displayOrder: functions.displayOrder,
-        // Onde a função é usada: serve para avisar o que muda ao desativar.
         ministryCount: sql<number>`(select count(*)::int from "ministry_functions" mf inner join "ministries" m on m.id = mf.ministry_id where mf.function_id = "functions"."id" and mf.is_active = true and m.is_active = true)`,
         memberCount: sql<number>`(select count(distinct mm.member_id)::int from "member_ministries" mm where mm.function_id = "functions"."id" and mm.is_active = true)`,
       })
@@ -98,7 +96,6 @@ export const ministryRouter = createTRPCRouter({
       .orderBy(functions.displayOrder, functions.name);
   }),
 
-  /** Ministérios e funções desativados, para poder reativar. */
   listInactive: manageMinistries.query(async () => {
     const [inactiveMinistries, inactiveFunctions] = await Promise.all([
       db.select({ id: ministries.id, name: ministries.name }).from(ministries).where(eq(ministries.isActive, false)).orderBy(asc(ministries.name)),
@@ -240,7 +237,6 @@ export const ministryRouter = createTRPCRouter({
         .where(eq(ministryFunctions.id, input.id))
         .returning()
       if (removedRelation) {
-        // Quem tinha essa função neste ministério continua no ministério, mas sem a função (e sem as permissões dela).
         await db
           .update(memberMinistries)
           .set({ functionId: null })

@@ -1,6 +1,5 @@
 import { toast, type ExternalToast } from "sonner";
 
-/** Erros ficam mais tempo na tela que os avisos de sucesso. */
 export const ERROR_TOAST_DURATION = 7000;
 
 export const toastError = (message: string, options?: ExternalToast) =>
@@ -8,7 +7,6 @@ export const toastError = (message: string, options?: ExternalToast) =>
 
 const NETWORK_ERROR = /failed to fetch|networkerror|network request failed|load failed|fetch failed/i;
 
-/** "Erro ao salvar: <motivo>", ou uma frase simples quando o problema é a conexão. */
 export function errorMessage(prefix: string, cause: { message: string }) {
   return NETWORK_ERROR.test(cause.message) ? "Sem conexão. Verifique a internet e tente novamente." : `${prefix}: ${cause.message}`;
 }

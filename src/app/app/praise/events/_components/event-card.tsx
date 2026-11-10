@@ -18,7 +18,6 @@ interface EventCardProps {
   onViewDetails: (event: EventData) => void;
   onDuplicate: (event: EventData) => void;
   onPrint: (event: EventData) => void;
-  /** Evento que já passou: não faz sentido avisar que o repertório está vazio. */
   isPast?: boolean;
 }
 
@@ -31,7 +30,6 @@ function contentSummary(songs: number, passages: number): string {
 
 export function EventCard({ event, onEdit, onDelete, onViewDetails, onDuplicate, onPrint, isPast = false }: EventCardProps) {
   const canEdit = usePermissions().can("events.edit");
-  // A apresentação usa as músicas e as passagens bíblicas do evento; sem nenhuma das duas, não há o que apresentar.
   const hasContent = event.songCount + event.passageCount > 0;
 
   return (

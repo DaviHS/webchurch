@@ -33,7 +33,6 @@ export function SongDetailDialog({ open, onOpenChange, song, executions, isLoadi
   const [adding, setAdding] = useState(false);
   const latestExecution = executions?.[0];
 
-  // Sem execuções no período: mostra as últimas vezes em que tocou, em qualquer época.
   const noneInPeriod = !isLoading && executions?.length === 0;
   const { data: recent, isLoading: isLoadingRecent } = api.report.getRecentExecutions.useQuery(
     { songId: song?.id ?? 0, limit: 5 },

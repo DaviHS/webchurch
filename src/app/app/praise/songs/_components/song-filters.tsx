@@ -6,7 +6,6 @@ import { SONG_CATEGORY_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { songCategories } from "@/validators/song";
 
-/** "noYoutube" e "noSpotify" mostram só as músicas sem o link (mais recentes primeiro). */
 export type SongSort = "recent" | "title" | "mostPlayed" | "leastPlayed" | "noYoutube" | "noSpotify";
 
 const SORT_OPTIONS: { value: SongSort; label: string }[] = [
@@ -19,7 +18,6 @@ const SORT_OPTIONS: { value: SongSort; label: string }[] = [
 interface SongFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
-  /** "" = todas as categorias. */
   category: string;
   onCategoryChange: (value: string) => void;
   sort: SongSort;
@@ -27,16 +25,12 @@ interface SongFiltersProps {
   noLyrics: boolean;
   onNoLyricsChange: (value: boolean) => void;
   isSearching?: boolean;
-  /** Categorias que existem no catálogo: só elas viram botão. Com uma só, a faixa nem aparece. */
   availableCategories: string[];
-  /** Quantas músicas estão sem letra. O filtro "Sem letra" só aparece se houver alguma. */
   noLyricsCount: number;
-  /** As opções "Sem YouTube/Spotify" da lista só aparecem se houver músicas sem o link. */
   noYoutubeCount: number;
   noSpotifyCount: number;
 }
 
-/** Busca, ordem e filtros em botões: o que existe fica a um toque, sem abrir listas. */
 export function SongFilters({
   search,
   onSearchChange,

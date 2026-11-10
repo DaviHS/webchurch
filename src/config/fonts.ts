@@ -5,7 +5,6 @@ export const fontSans = Poppins({
   weight: ["400"],
 });
 
-/** Letra de livro para a leitura da Bíblia (opção "Livro"). */
 export const fontBook = Lora({
   subsets: ["latin"],
   variable: "--font-book",

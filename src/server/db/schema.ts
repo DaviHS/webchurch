@@ -124,7 +124,6 @@ export const songs = createTable("songs", (d) => ({
 
   spotifyUrl: d.varchar("spotify_url", { length: 255 }),
   spotifyTrackId: d.varchar("spotify_track_id", { length: 50 }),
-  // Música que só guarda a referência (link): não entra nas playlists do YouTube e do Spotify.
   skipPlaylist: d.boolean("skip_playlist").notNull().default(false),
 
   isActive: d.boolean("is_active").notNull().default(true),
@@ -374,14 +373,12 @@ export const bibleVerses = createTable(
   (t) => [primaryKey({ columns: [t.versionId, t.bookId, t.chapter, t.verse] })],
 )
 
-/** Títulos de seção de cada tradução (ex.: "A criação"). Só as traduções que os têm aparecem aqui. */
 export const bibleHeadings = createTable(
   "bible_headings",
   (d) => ({
     versionId: d.integer("version_id").notNull().references(() => bibleVersions.id, { onDelete: "cascade" }),
     bookId: d.integer("book_id").notNull().references(() => bibleBooks.id),
     chapter: d.integer("chapter").notNull(),
-    /** Versículo em que a seção começa. */
     verse: d.integer("verse").notNull(),
     title: d.varchar("title", { length: 200 }).notNull(),
   }),
@@ -391,7 +388,6 @@ export const bibleHeadings = createTable(
 export type BibleVersion = typeof bibleVersions.$inferSelect
 export type BibleBook = typeof bibleBooks.$inferSelect
 export type BibleVerse = typeof bibleVerses.$inferSelect
-
 
 export const presentationSessions = createTable("presentation_sessions", (d) => ({
   id: d.serial("id").primaryKey(),
@@ -446,14 +442,12 @@ export const bibleMarks = createTable(
 
 export type BibleMark = typeof bibleMarks.$inferSelect
 
-/** Configurações do sistema que não são segredo e quase não mudam (ex.: id da playlist do Spotify). */
 export const appSettings = createTable("app_settings", (d) => ({
   key: d.varchar("key", { length: 100 }).primaryKey(),
   value: d.text("value").notNull(),
   updatedAt: d.timestamp("updated_at").notNull().defaultNow(),
 }))
 
-/** Planos de leitura da Bíblia que a pessoa começou (o conteúdo de cada plano fica no código). */
 export const bibleReadingPlans = createTable(
   "bible_reading_plans",
   (d) => ({
@@ -465,7 +459,6 @@ export const bibleReadingPlans = createTable(
   (t) => [primaryKey({ columns: [t.userId, t.planKey] })],
 )
 
-/** Dias de leitura já concluídos em cada plano. */
 export const bibleReadingProgress = createTable(
   "bible_reading_progress",
   (d) => ({

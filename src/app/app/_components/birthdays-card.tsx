@@ -30,7 +30,6 @@ function whenLabel(daysFromToday: number) {
   return `Em ${daysFromToday} dias`;
 }
 
-/** Quadro "Aniversariantes" do Início: mostra quantos fazem aniversário neste mês e, ao tocar, abre a lista. Só para quem gerencia os membros. */
 export function BirthdaysStatCard() {
   const canSee = usePermissions().can("members.manage");
   const [open, setOpen] = useState(false);

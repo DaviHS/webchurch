@@ -25,7 +25,6 @@ interface PassagePickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   current: Location;
-  /** Versão usada só para saber quantos versículos o capítulo tem. */
   version: string | undefined;
   onPick: (location: Location, verse: number | null) => void;
 }

@@ -9,9 +9,7 @@ export interface Song {
   spotifyUrl?: string;
   spotifyTrackId?: string;
   duration?: number;
-  /** Música que só guarda a referência: não entra nas playlists. */
   skipPlaylist?: boolean;
-  /** Quantas vezes tocou em eventos (até hoje) e a última vez. */
   playCount?: number;
   lastPlayed?: Date | null;
   createdAt?: Date;

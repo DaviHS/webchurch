@@ -18,6 +18,7 @@ export function YouTubeStatus() {
       loading: "Sincronizando a playlist do YouTube...",
       success: (result) => {
         const parts = [
+          result.unlinkedDead > 0 ? `${result.unlinkedDead} vídeo(s) indisponível(is) removido(s) para buscar outro` : null,
           result.resolved > 0 ? `${result.resolved} link(s) do YouTube encontrado(s)` : null,
           result.notFound > 0 ? `${result.notFound} sem resultado no YouTube` : null,
           result.unresolvedLeft > 0 ? `${result.unresolvedLeft} sem link ainda: clique de novo para continuar` : null,

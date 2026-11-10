@@ -72,7 +72,6 @@ export const can = (permission: Permission) =>
     if (!access?.permissions.has(permission)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para esta ação." });
     }
-    // O alvo é descrito antes da ação, para existir mesmo quando ela exclui ou mescla o registro.
     const rawInput = type === "mutation" ? await getRawInput().catch(() => null) : null;
     const target = type === "mutation" ? await describeAuditTarget(path, rawInput).catch(() => null) : null;
 

@@ -43,11 +43,9 @@ interface ReportFiltersProps {
   isLoadingSongs: boolean;
   onClearFilters: () => void;
   isDateRangeValid: boolean;
-  /** Há algo diferente do padrão (outro período ou músicas escolhidas). */
   isFiltered: boolean;
 }
 
-/** Período em chips (um toque) e filtro por música numa folha, para o resultado aparecer logo na primeira tela. */
 export function ReportFilters({
   timeRange,
   onTimeRangeChange,

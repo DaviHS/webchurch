@@ -1,6 +1,5 @@
 import { cleanPastedLyrics, stripAccents } from "@/lib/lyrics";
 
-/** Uma letra encontrada na busca automática. */
 export interface LyricsCandidate {
   title: string;
   artist: string;
@@ -31,10 +30,6 @@ async function query(params: Record<string, string>): Promise<LrclibItem[]> {
   return Array.isArray(data) ? (data as LrclibItem[]) : [];
 }
 
-/**
- * Procura a letra no LRCLIB (base aberta e gratuita, sem chave).
- * Tenta título + artista; se não achar, busca só pelo título e ordena pelo artista mais parecido.
- */
 export async function findLyrics(title: string, artist: string): Promise<LyricsCandidate[]> {
   const cleanTitle = title.trim();
   const cleanArtist = artist.trim();

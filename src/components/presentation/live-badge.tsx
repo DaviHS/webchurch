@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 
-/** Selo "AO VIVO" / "PRÓXIMA" usado no console, no repertório e no controle remoto. */
 export function LiveBadge({ kind, className }: { kind: "live" | "next"; className?: string }) {
   return (
     <span

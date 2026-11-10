@@ -47,9 +47,7 @@ const memberFilters = z.object({
   status: z.enum(["active", "inactive", "visiting", "transferred"]).optional().nullable(),
   gender: z.enum(["male", "female"]).optional().nullable(),
   hasAccess: z.enum(["true", "false"]).optional().nullable(),
-  /** Só quem faz aniversário neste mês (1 a 12); a lista passa a ser ordenada pelo dia. */
   birthMonth: z.number().int().min(1).max(12).optional().nullable(),
-  /** Só quem está (ativo) neste ministério. */
   ministryId: z.number().int().positive().optional().nullable(),
 });
 
@@ -121,7 +119,6 @@ export const memberRouter = createTRPCRouter({
     return newMember;
   }),
 
-  /** Possíveis cadastros repetidos (mesmo e-mail, mesmo telefone ou mesmo nome) para avisar antes de salvar. */
   findDuplicates: manageMembers
     .input(
       z.object({
@@ -152,7 +149,6 @@ export const memberRouter = createTRPCRouter({
       });
     }),
 
-  /** O que existe de verdade, para a tela só oferecer filtros que servem: situações com membros, ministérios com gente e quantos estão sem acesso. */
   facets: manageMembers.query(async () => {
     const [statuses, ministryRows, noAccess] = await Promise.all([
       db.select({ status: members.status, total: sql<number>`count(*)::int` }).from(members).groupBy(members.status),
@@ -181,7 +177,6 @@ export const memberRouter = createTRPCRouter({
     };
   }),
 
-  /** Quantos membros batem com os filtros (para a paginação). */
   count: protectedProcedure.input(memberFilters).query(async ({ input }) => {
     const [row] = await db
       .select({ total: sql<number>`count(*)::int` })
@@ -271,7 +266,6 @@ export const memberRouter = createTRPCRouter({
       }));
     }),
 
-  /** Aniversariantes do mês de hoje (membros ativos), por dia. */
   birthdaysOfMonth: manageMembers
     .input(z.object({ today: z.string().regex(/^d{4}-d{2}-d{2}$/) }))
     .query(async ({ input }) => {
@@ -367,8 +361,6 @@ export const memberRouter = createTRPCRouter({
         .where(eq(members.id, input.id))
         .returning();
 
-      // Só mexe no que mudou: vínculos iguais ficam como estão (com a data de entrada), os que saíram são encerrados
-      // e só os novos são criados. Antes, cada salvamento apagava a data de entrada e acumulava linhas repetidas.
       const wanted = toMemberMinistryRows(input.id, ministriesInput);
       const current = await db
         .select({ id: memberMinistries.id, ministryId: memberMinistries.ministryId, functionId: memberMinistries.functionId })
@@ -399,7 +391,6 @@ export const memberRouter = createTRPCRouter({
       return updatedMember;
     }),
 
-  /** Desativa o membro e também a conta de acesso dele (sem isso, a pessoa continuaria entrando no sistema). */
   deactivate: manageMembers
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
@@ -423,7 +414,6 @@ export const memberRouter = createTRPCRouter({
       return deactivated;
     }),
 
-  /** Volta a ativar um membro desativado. A conta de acesso só volta se já tinha sido aprovada (cadastro rejeitado não volta). */
   reactivate: manageMembers
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {

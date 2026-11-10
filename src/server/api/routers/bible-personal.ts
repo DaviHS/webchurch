@@ -39,7 +39,6 @@ async function resolveVersion(preferredCode: string | null | undefined) {
   return first;
 }
 
-/** Preferências e marcações pessoais: cada pessoa só enxerga e altera as próprias. */
 export const biblePersonalProcedures = {
   preferences: protectedProcedure.query(async ({ ctx }) => {
     const [row] = await db

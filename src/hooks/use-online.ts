@@ -9,7 +9,6 @@ const subscribe = (notify: () => void) => {
   };
 };
 
-/** Diz se o aparelho está com internet. No servidor (e na primeira renderização) assume que sim. */
 export function useOnline(): boolean {
   return useSyncExternalStore(
     subscribe,

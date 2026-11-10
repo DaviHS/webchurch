@@ -64,7 +64,6 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
   const [title = "", artist = "", lyrics = ""] = useWatch({ control: form.control, name: ["title", "artist", "lyrics"] });
   const slideCount = lyricsToSlides(lyrics).length;
 
-  // Cola o que está na área de transferência (a letra copiada do site) já arrumada.
   const pasteLyrics = async () => {
     try {
       const text = cleanPastedLyrics(await navigator.clipboard.readText());
@@ -92,7 +91,6 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
     toast.success("Letra preenchida. Confira antes de salvar.");
   };
 
-  // Se o artista no Spotify é escrito diferente do cadastro, sugere a grafia do Spotify (um toque para usar).
   const spotifyTrack = api.song.spotifyTrack.useQuery(initialData?.spotifyTrackId ?? "", {
     enabled: Boolean(initialData?.spotifyTrackId),
     staleTime: 10 * 60_000,

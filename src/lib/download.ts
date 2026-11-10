@@ -1,4 +1,3 @@
-/** Baixa um objeto como arquivo .json (ex.: cópia dos dados pessoais). */
 export function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);

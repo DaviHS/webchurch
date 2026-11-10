@@ -33,14 +33,12 @@ export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [type, setType] = useState("");
-  // Dia tocado no calendário para criar um evento (vira a data inicial do formulário).
   const [createDate, setCreateDate] = useState<Date | null>(null);
   const [printEventId, setPrintEventId] = useState<number | null>(null);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [chosenScope, setChosenScope] = useState<EventScope | null>(null);
   const [today] = useState(() => startOfDay(new Date()));
 
-  // Sem escolha da pessoa, abre em "Próximos" se houver algum evento daqui para a frente; senão, em "Passados".
   const upcomingProbe = api.event.list.useQuery({ scope: "upcoming", today, limit: 1 }, { staleTime: 60_000 });
   const scopeKnown = chosenScope !== null || upcomingProbe.isSuccess || upcomingProbe.isError;
   const scope: EventScope = chosenScope ?? (upcomingProbe.data?.total === 0 ? "past" : "upcoming");
@@ -150,11 +148,9 @@ export default function EventsPage() {
 
   const events = data?.events ?? [];
   const isPast = scope === "past";
-  // O próximo evento vira um destaque no topo (só na primeira página e sem filtros); o resto vem na grade.
   const featured = scope === "upcoming" && page === 1 && !isFiltered ? events[0] : undefined;
   const gridEvents = featured ? events.slice(1) : events;
 
-  // Evento novo já sugere o próximo domingo e repete o horário e o local do último culto da lista.
   const lastCult = events.find((event) => event.type === "cult");
   const nextSunday = addDays(today, (7 - getDay(today)) % 7);
   const createDefaults = {

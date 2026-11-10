@@ -10,14 +10,12 @@ export const READING_FONTS = [
 
 export type ReadingFont = (typeof READING_FONTS)[number]["value"];
 
-/** Tamanhos do texto, em pixels. */
 export const READING_SIZES = [14, 16, 18, 20, 24, 28, 32] as const;
 
 export type ReadingLayout = "flow" | "lines";
 
 export interface ReadingPrefs {
   font: ReadingFont;
-  /** Posição em READING_SIZES. */
   size: number;
   layout: ReadingLayout;
 }
@@ -79,13 +77,10 @@ function update(patch: Partial<ReadingPrefs>) {
   memoryRaw = raw;
   try {
     localStorage.setItem(STORAGE_KEY, raw);
-  } catch {
-    // Sem armazenamento local, a escolha vale só até recarregar a página.
-  }
+  } catch {}
   listeners.forEach((listener) => listener());
 }
 
-/** Letra, tamanho e disposição do texto bíblico. Ficam guardados neste aparelho. */
 export function useReadingPrefs(): [ReadingPrefs, (patch: Partial<ReadingPrefs>) => void] {
   const prefs = useSyncExternalStore(subscribe, getSnapshot, () => DEFAULT_READING_PREFS);
   return [prefs, update];

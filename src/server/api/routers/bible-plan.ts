@@ -21,7 +21,6 @@ function assertPlan(key: string) {
   return plan;
 }
 
-/** A data de hoje vem do aparelho (fuso da pessoa), mas não pode estar longe da data do servidor. */
 function assertPlausibleDate(value: string) {
   const sent = Date.parse(`${value}T12:00:00Z`);
   if (Number.isNaN(sent) || Math.abs(sent - Date.now()) > 36 * 60 * 60 * 1000) {
@@ -53,7 +52,6 @@ export const bibleReadingPlanProcedures = {
     return { ok: true };
   }),
 
-  /** Apaga o andamento e deixa começar o plano de novo. */
   leavePlan: protectedProcedure.input(z.object({ planKey })).mutation(async ({ ctx, input }) => {
     const userId = userIdOf(ctx);
     await db.batch([

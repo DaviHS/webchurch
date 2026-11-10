@@ -39,7 +39,6 @@ function resetEmail(link: string) {
 }
 
 export const passwordResetRouter = createTRPCRouter({
-  /** Sempre responde igual, exista ou não o e-mail, para não revelar quem tem cadastro. */
   request: publicProcedure.input(z.object({ email: z.string().trim().toLowerCase().email().max(100) })).mutation(async ({ input }) => {
     const [user] = await db
       .select({ id: users.id, email: users.email, status: users.status, resetTokenExpires: users.resetTokenExpires })
@@ -49,7 +48,6 @@ export const passwordResetRouter = createTRPCRouter({
 
     if (user?.status !== "active") return { success: true };
 
-    // Já enviamos há instantes: não gera outro (evita uso do formulário para disparar e-mails em série).
     const sentAt = user.resetTokenExpires ? user.resetTokenExpires.getTime() - TOKEN_TTL_MS : 0;
     if (Date.now() - sentAt < RESEND_COOLDOWN_MS) return { success: true };
 
@@ -82,7 +80,6 @@ export const passwordResetRouter = createTRPCRouter({
       const now = new Date();
       const passwordHash = await hash(input.newPassword, 10);
 
-      // Consome o token numa única gravação condicional: só vale uma vez, mesmo com pedidos simultâneos.
       const [user] = await db
         .update(users)
         .set({ passwordHash, passwordUpdatedAt: now, updatedAt: now, resetToken: null, resetTokenExpires: now })

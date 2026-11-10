@@ -12,12 +12,10 @@ import type { EventData } from "@/types";
 
 const PREVIEW = 5;
 
-/** O próximo evento em destaque: quando é, o repertório em prévia e os atalhos para apresentar ou abrir. */
 export function NextEventCard({ event, onViewDetails }: { event: EventData; onViewDetails: (event: EventData) => void }) {
   const { data } = api.event.getById.useQuery(event.id, { staleTime: 30_000 });
   const songs = [...(data?.songs ?? [])].sort((a, b) => a.order - b.order);
   const hasSongs = event.songCount > 0;
-  // Apresentar só faz sentido com música ou passagem bíblica no evento.
   const hasContent = hasSongs || event.passageCount > 0;
 
   return (

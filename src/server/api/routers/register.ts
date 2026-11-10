@@ -23,7 +23,6 @@ export const registerRouter = createTRPCRouter({
         throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com este e-mail." });
       }
 
-      // O hash fica pronto antes de gravar qualquer coisa, para não deixar o cadastro pela metade se ele falhar.
       const passwordHash = await hash(password, 10);
       const cleanedData = cleanEmptyStrings(memberData);
 
@@ -62,7 +61,6 @@ export const registerRouter = createTRPCRouter({
           message: "Cadastro enviado. A liderança vai analisar e liberar o seu acesso.",
         };
       } catch (error) {
-        // Se a conta não foi criada (e-mail repetido na mesma hora, falha do banco...), não deixa o membro sozinho no cadastro.
         await db.delete(members).where(eq(members.id, newMember.id));
         const duplicated = error instanceof Error && /unique|duplicate/i.test(error.message);
         throw new TRPCError({

@@ -23,11 +23,9 @@ interface LyricsDialogProps {
   song: Song;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Abre o formulário de edição da música (some se a pessoa não pode editar). */
   onEdit?: (song: Song) => void;
 }
 
-/** Tamanhos da letra, do menor ao maior (classes do Tailwind). */
 const SIZES = ["text-sm", "text-base", "text-lg", "text-xl", "text-2xl"] as const;
 const DEFAULT_SIZE = 1;
 

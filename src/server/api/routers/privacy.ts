@@ -85,16 +85,11 @@ async function loadMemberData(memberId: number, includeFinance: boolean) {
 }
 
 export const privacyRouter = createTRPCRouter({
-  /** Cópia dos dados de um membro (JSON). Fica registrada no histórico, por ser dado pessoal. */
   exportMember: manageMembers.input(z.object({ id: z.number().int() })).mutation(async ({ input, ctx }) => {
     const data = await loadMemberData(input.id, ctx.access.permissions.has("finance.access"));
     return { version: EXPORT_VERSION, exportedAt: stamp(), ...data };
   }),
 
-  /**
-   * Apaga os dados pessoais do membro mantendo o que o sistema precisa para contar a história
-   * (ministérios, eventos e lançamentos financeiros seguem existindo, sem identificar a pessoa).
-   */
   anonymizeMember: manageMembers.input(z.object({ id: z.number().int() })).mutation(async ({ input }) => {
     const [member] = await db.select().from(members).where(eq(members.id, input.id)).limit(1);
     if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado" });
@@ -133,7 +128,6 @@ export const privacyRouter = createTRPCRouter({
         .update(memberMinistries)
         .set({ notes: null, isActive: false, leftAt: sql`coalesce(${memberMinistries.leftAt}, now())` })
         .where(eq(memberMinistries.memberId, input.id)),
-      // O histórico guardava o nome na descrição do alvo e os dados enviados no cadastro/edição.
       db
         .update(auditLogs)
         .set({ target: "Membro removido", input: null })
@@ -172,7 +166,6 @@ export const privacyRouter = createTRPCRouter({
     return { anonymized: true, hadAccess: Boolean(linkedUser) };
   }),
 
-  /** Os dados da própria pessoa que está logada. */
   exportMyData: protectedProcedure.query(async ({ ctx }) => {
     const userId = Number(ctx.session.user.id);
     if (!Number.isInteger(userId)) throw new TRPCError({ code: "UNAUTHORIZED" });

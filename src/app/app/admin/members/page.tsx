@@ -86,7 +86,6 @@ function MembersContent() {
 
   const { data: pendingCount } = api.user.getPendingCount.useQuery();
 
-  // Só aparece o filtro do que existe: situação com membros (a escolhida fica sempre) e ministério com gente.
   const visibleStatuses = STATUS_OPTIONS.filter((option) => (facets?.statuses[option.value] ?? 0) > 0 || option.value === statusFilter);
   const ministriesWithPeople = facets?.ministries ?? [];
 

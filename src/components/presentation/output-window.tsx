@@ -95,8 +95,6 @@ export function OutputWindow({ role }: { role: OutputRole }) {
     return () => window.removeEventListener("keydown", listener);
   }, []);
 
-  // Ao abrir, tenta a tela cheia sozinho. Se o navegador recusar, o primeiro toque ou tecla na janela entra
-  // em tela cheia (uma vez só, para não brigar com o Esc de quem quiser sair).
   useEffect(() => {
     const stopAuto = autoFullscreen();
     const onFirstInteraction = () => enterFullscreen();

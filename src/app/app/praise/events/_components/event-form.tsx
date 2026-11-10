@@ -20,7 +20,6 @@ interface EventFormProps {
   id: string;
   onSubmit: (data: EventFormData) => void;
   initialData?: EventData | null;
-  /** Valores sugeridos para um evento novo (próximo domingo, horário e local do último culto). */
   defaults?: Partial<EventFormInput>;
 }
 
@@ -45,7 +44,6 @@ function toMinutes(time: string | null | undefined): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
-/** Avisa (sem bloquear) quando já existe outro evento no mesmo dia, com destaque para horário sobreposto. */
 function ConflictWarning({ control, excludeId }: { control: Control<EventFormInput>; excludeId?: number }) {
   const [date, startTime, endTime] = useWatch({ control, name: ["date", "startTime", "endTime"] });
   const day = date ? new Date(date) : null;
@@ -100,7 +98,6 @@ export function EventForm({ id, onSubmit, initialData, defaults }: EventFormProp
   });
 
   const typeOptions = initialData?.type === "template" ? eventTypes : SELECTABLE_EVENT_TYPES;
-  // Pregador, versículo e descrição ficam recolhidos num evento novo, mas abertos ao editar se já tiverem algo.
   const hasDetails = Boolean(initialData?.preacher ?? initialData?.bibleVerse ?? initialData?.description);
 
   return (

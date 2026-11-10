@@ -9,18 +9,15 @@ interface ErrorStateProps {
   icon: ReactNode;
   title: string;
   description: string;
-  /** Código para achar o erro nos registros do servidor. */
   code?: string;
   onRetry?: () => void;
   homeHref?: string;
-  /** Segundos até voltar sozinho para o início (para dar tempo de ler a mensagem). Sem valor, não volta. */
   redirectAfter?: number;
 }
 
 export function ErrorState({ icon, title, description, code, onRetry, homeHref = "/app", redirectAfter }: ErrorStateProps) {
   const router = useRouter();
   const pathname = usePathname();
-  // Na própria tela inicial não adianta voltar: seria um laço de erro.
   const redirects = redirectAfter !== undefined && pathname !== homeHref;
   const [left, setLeft] = useState(redirectAfter ?? 0);
 
@@ -55,7 +52,6 @@ export function ErrorState({ icon, title, description, code, onRetry, homeHref =
   );
 }
 
-/** Código curto do erro (digest do Next), quando houver, para achar nos registros do servidor. */
 export function errorCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null || !("digest" in error)) return undefined;
   const digest = (error as { digest?: unknown }).digest;

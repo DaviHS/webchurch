@@ -32,7 +32,6 @@ export function SlideText({ text, maxHeight = 86, maxFont = 11, className, style
   const lines = body.split("\n");
   const longest = Math.max(1, ...lines.map((line) => line.length));
   const LINE_HEIGHT = 1.25;
-  // Com referência embaixo, o texto cede um pouco de altura para ela.
   const byHeight = (reference ? maxHeight * 0.82 : maxHeight) / (lines.length * LINE_HEIGHT);
   const byWidth = 92 / (longest * 0.52);
 

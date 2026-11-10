@@ -10,7 +10,6 @@ interface StatCardProps {
   description?: React.ReactNode
   icon: LucideIcon
   href?: string
-  /** Em vez de abrir outra página, faz alguma coisa ao tocar (ex.: abrir uma janela). */
   onClick?: () => void
   isLoading?: boolean
   valueClassName?: string

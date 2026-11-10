@@ -106,7 +106,6 @@ try {
     process.exitCode = 1;
   } else {
     oauth2Client.setCredentials(tokens);
-    // O id da playlist fica no banco (tabela app_settings).
     const stored = DATABASE_URL
       ? await neon(DATABASE_URL).query("select value from app_settings where key = 'youtube_playlist_id'")
       : [];

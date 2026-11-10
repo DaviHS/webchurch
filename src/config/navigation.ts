@@ -39,11 +39,9 @@ export const STANDALONE_LINKS: NavLink[] = [];
 
 const READ_LINK: NavLink = { title: "Leitura", url: BIBLE_LINK.url, icon: BookOpen };
 
-/** Grupo da Bíblia no menu. Sem internet só "Leitura" continua disponível (veja nav-main). */
 export const BIBLE_SECTION: NavSection = { title: "Bíblia", icon: BookOpen, items: [READ_LINK, PLAN_LINK] };
 export const BIBLE_OFFLINE_SECTION: NavSection = { ...BIBLE_SECTION, items: [READ_LINK] };
 
-/** Finanças fica fora do menu por enquanto. Para voltar a mostrar, troque para true. A página continua existindo (só some do menu). */
 const SHOW_FINANCE = false;
 
 export const NAV_SECTIONS: NavSection[] = [

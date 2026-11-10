@@ -17,8 +17,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       closeButton
       visibleToasts={3}
-      // No celular o aviso vai para o topo, abaixo do cabeçalho: embaixo ele ficava por cima da
-      // navegação, do botão "+" e da barra de seleção da Bíblia.
       position={isMobile ? "top-center" : "bottom-right"}
       mobileOffset={{ top: "calc(4.75rem + env(safe-area-inset-top))" }}
       toastOptions={{

@@ -2,14 +2,12 @@ import { z } from "zod";
 
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
-/** O Spotify aceita até 100 faixas por chamada de escrita. */
 const WRITE_BATCH = 100;
 
 type SpotifyIdType = "track" | "artist" | "playlist" | "album";
 
 export type SpotifyFailure = "not_configured" | "auth" | "api";
 
-/** Tira "(feat. ...)", "[...]" e participações do nome do artista; fica só o primeiro nome. */
 function cleanArtistForSearch(artist: string | null | undefined): string {
   return (artist ?? "")
     .replace(/[([].*?[)\]]/g, " ")
@@ -18,14 +16,12 @@ function cleanArtistForSearch(artist: string | null | undefined): string {
     .trim();
 }
 
-/** "Música (Live)", "Música - Ao Vivo", "Música - Acústico": compara só o nome da música. */
 const withoutVersionSuffix = (name: string) =>
   name
     .replace(/\s*[([][^)\]]*[)\]]/g, "")
     .replace(/\s+-\s+.*$/, "")
     .trim();
 
-/** Comparação de títulos: sem acento, sem pontuação e sem o artigo do começo ("O Poder do Teu Amor" = "Poder do Teu Amor"). */
 const normalizeTitle = (value: string) => normalizeForMatch(value).replace(/^(o|a|os|as) /, "");
 
 const normalizeForMatch = (value: string) =>
@@ -60,9 +56,7 @@ export interface SpotifyPlaylistInfo {
 }
 
 export interface SpotifyStatus {
-  /** Credenciais do aplicativo e playlist definidos. */
   configured: boolean;
-  /** Dá para escrever na playlist (o token do dono está válido). */
   ok: boolean;
   reason?: SpotifyFailure;
   message?: string;
@@ -119,12 +113,10 @@ class SpotifyService {
   private appToken: CachedToken | null = null;
   private userToken: CachedToken | null = null;
 
-  /** Dá para buscar e ler (as credenciais do aplicativo bastam). */
   isConfigured(): boolean {
     return Boolean(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
   }
 
-  /** Dá para alterar a playlist (precisa do token do dono). */
   canWrite(): boolean {
     return this.isConfigured() && Boolean(process.env.SPOTIFY_REFRESH_TOKEN);
   }
@@ -151,7 +143,6 @@ class SpotifyService {
     return { value: token.access_token, expiresAt: Date.now() + (token.expires_in - 60) * 1000 };
   }
 
-  /** Token do aplicativo: serve para buscar faixas e ler playlists públicas. */
   private async getAppToken(): Promise<string> {
     if (!this.appToken || Date.now() >= this.appToken.expiresAt) {
       this.appToken = await this.fetchToken({ grant_type: "client_credentials" });
@@ -159,7 +150,6 @@ class SpotifyService {
     return this.appToken.value;
   }
 
-  /** Token do dono da playlist: necessário para adicionar e remover faixas. */
   private async getUserToken(): Promise<string> {
     const refresh = process.env.SPOTIFY_REFRESH_TOKEN;
     if (!refresh) throw new SpotifyIntegrationError("not_configured", "SPOTIFY_REFRESH_TOKEN não configurado");
@@ -194,11 +184,6 @@ class SpotifyService {
     return null;
   }
 
-  /**
-   * Procura a faixa pelo título e artista. O filtro `artist:` do Spotify não aceita "(feat. fulano)" nem vários nomes
-   * no mesmo campo, então o artista é limpo antes; se ainda assim não achar, tenta texto livre e só aceita
-   * um resultado cujo nome bata com o título.
-   */
   async searchTrack(title: string, artist?: string | null): Promise<SpotifyTrack | null> {
     const cleanTitle = title.trim();
     const mainArtist = cleanArtistForSearch(artist);
@@ -208,9 +193,6 @@ class SpotifyService {
 
     if (!mainArtist) return (await search(cleanTitle, 1))[0] ?? null;
 
-    // O Spotify também casa o termo com o nome do ÁLBUM ("Aleluia" devolve faixas do álbum "Aleluia"), então nunca
-    // se aceita o primeiro resultado sem conferir: o nome da faixa precisa ser o título (ignorando "(Live)", "- Ao Vivo"),
-    // ou o primeiro trecho de um medley "A / B", e o artista precisa ser parecido.
     const titles = [cleanTitle, ...(cleanTitle.includes("/") ? [cleanTitle.split("/")[0]!.trim()] : [])];
     const wanted = titles.map(normalizeTitle);
     const wantedArtist = normalizeForMatch(mainArtist);
@@ -229,7 +211,6 @@ class SpotifyService {
     return null;
   }
 
-  /** Nome da faixa e dos artistas, como o Spotify mostra. */
   async getTrack(trackId: string): Promise<{ name: string; artists: string[] }> {
     const data = await this.request<SpotifyTrack>(`/tracks/${trackId}`, await this.getAppToken());
     return { name: data.name, artists: data.artists.map((artist) => artist.name) };
@@ -259,7 +240,6 @@ class SpotifyService {
     return ids;
   }
 
-  /** Adiciona as faixas que ainda não estão na playlist. Devolve quantas entraram. */
   async addTracks(playlistId: string, trackIds: string[]): Promise<number> {
     if (trackIds.length === 0) return 0;
     const present = await this.listPlaylistTrackIds(playlistId);
@@ -274,7 +254,6 @@ class SpotifyService {
     return missing.length;
   }
 
-  /** Cria uma playlist nova (privada) na conta da igreja e coloca as faixas na ordem dada. */
   async createPlaylist(name: string, description: string, trackIds: string[]): Promise<{ id: string; url: string; added: number }> {
     const token = await this.getUserToken();
     const playlist = await this.request<{ id: string; external_urls: { spotify: string } }>("/me/playlists", token, {
@@ -291,7 +270,6 @@ class SpotifyService {
     return { id: playlist.id, url: playlist.external_urls.spotify, added: ordered.length };
   }
 
-  /** Troca todo o conteúdo da playlist pelas faixas dadas, na ordem dada (lista vazia esvazia a playlist). */
   async replacePlaylistTracks(playlistId: string, trackIds: string[]): Promise<void> {
     const token = await this.getUserToken();
     const ordered = [...new Set(trackIds)].map((id) => `spotify:track:${id}`);
@@ -301,7 +279,6 @@ class SpotifyService {
     }
   }
 
-  /** Exclui a playlist (no Spotify, "excluir" é deixar de seguir). Se ela já não existe, não dá erro. */
   async deletePlaylist(playlistId: string): Promise<void> {
     try {
       await this.request(`/playlists/${playlistId}/followers`, await this.getUserToken(), { method: "DELETE" });

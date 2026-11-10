@@ -73,7 +73,6 @@ const FIELD_TABS: Partial<Record<keyof MemberFormInput, TabValue>> = {
 
 const NO_FUNCTION = "none";
 
-/** Campos de cada aba: "Próximo" confere só os da aba atual, e o ponto vermelho usa a mesma lista. */
 const TAB_FIELDS: Record<TabValue, (keyof MemberFormInput)[]> = {
   personal: ["firstName", "lastName", "email", "phone", "whatsapp", "birthDate", "gender", "maritalStatus", "profession"],
   address: ["zipCode", "city", "state", "address"],
@@ -213,7 +212,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     defaultValues,
   });
 
-  // Ao completar o CEP (8 dígitos), busca o endereço e preenche cidade, estado e, se estiver vazio, a rua e o bairro.
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "notfound" | "error">("idle");
   const lastLookedUp = useRef<string | null>(null);
   const cepRequest = useRef<AbortController | null>(null);
@@ -267,7 +265,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
 
   const { errors, isDirty } = form.formState;
 
-  // Link para a pessoa criar a própria senha (no lugar de uma senha padrão igual para todos).
   const [invite, setInvite] = useState<{ url: string; closeFormAfter: boolean } | null>(null);
   const inviteMutation = api.user.inviteLink.useMutation({
     onError: (error) => toastError(error.message),
@@ -364,7 +361,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
         toastError("Para criar o acesso, informe o e-mail do membro");
         return;
       }
-      // Antes de criar, avisa se já existe alguém com o mesmo nome, e-mail ou telefone.
       const duplicates = await utils.member.findDuplicates
         .fetch({ firstName: data.firstName, lastName: data.lastName, email: data.email, phone: data.phone })
         .catch(() => []);
@@ -434,7 +430,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
     createUserMutation.isPending ||
     updateUserMutation.isPending;
 
-  // Fechar (Cancelar, tocar fora, Esc) pergunta antes de jogar fora o que já foi preenchido.
   const requestClose = async () => {
     if (isDirty && !isSaving) {
       const discard = await confirm({
@@ -451,7 +446,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
   const activeIndex = TABS.findIndex((tab) => tab.value === activeTab);
   const nextTab = TABS[activeIndex + 1];
 
-  // Só avança se a aba atual está certa; o erro aparece onde a pessoa está.
   const goNextTab = async () => {
     if (!nextTab) return;
     if (activeTab === "personal" && !form.getValues("gender")) {
@@ -699,7 +693,6 @@ export function MemberFormDialog({ member, open, onOpenChange, mode: requestedMo
                         value={status ?? "active"}
                         onValueChange={(value) => {
                           form.setValue("status", value as MemberStatus, { shouldDirty: true });
-                          // "Membro desde" começa com a data de hoje só para quem entra como ativo.
                           const since = form.getValues("memberSince");
                           if (value !== "active" && since === todayIsoDate()) form.setValue("memberSince", "", { shouldDirty: true });
                           if (value === "active" && !since && mode === "create") form.setValue("memberSince", todayIsoDate(), { shouldDirty: true });

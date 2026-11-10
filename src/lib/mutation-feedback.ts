@@ -2,7 +2,6 @@ import { toast } from "sonner";
 import { errorMessage, toastError } from "@/lib/toast";
 
 interface FeedbackMessages<TData> {
-  /** Só para operações lentas: mostra "carregando" e troca o mesmo aviso pelo resultado. */
   loading?: string;
   success?: string | ((data: TData) => string);
   error: string;

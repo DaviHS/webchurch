@@ -5,8 +5,6 @@ import { createServer } from "node:http";
 import readline from "node:readline/promises";
 
 const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET } = process.env;
-// O Spotify não aceita "localhost": o endereço de retorno precisa usar o IP 127.0.0.1
-// e estar cadastrado, exatamente igual, no painel do aplicativo (developer.spotify.com).
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI ?? "http://127.0.0.1:8888/callback";
 const SCOPES = "playlist-modify-public playlist-modify-private";
 

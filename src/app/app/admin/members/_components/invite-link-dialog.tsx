@@ -20,13 +20,10 @@ interface InviteLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   url: string | null;
-  /** Nome para a mensagem do WhatsApp. */
   name: string;
-  /** Telefone (de preferência o do WhatsApp) para abrir a conversa já com a pessoa. */
   phone?: string | null;
 }
 
-/** Mostra o link para a pessoa criar a própria senha, com atalhos para copiar e mandar pelo WhatsApp. */
 export function InviteLinkDialog({ open, onOpenChange, url, name, phone }: InviteLinkDialogProps) {
   const number = whatsappNumber(phone);
   const message = `Olá, ${name}! Seu acesso ao sistema da Igreja Central foi criado. Crie a sua senha por este link (vale por 7 dias e só pode ser usado uma vez): ${url ?? ""}`;

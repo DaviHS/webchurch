@@ -20,7 +20,6 @@ import { MinistryMemberItem } from "./ministry-member-item";
 
 interface MinistryFunctionsDialogProps {
   ministry: Ministry | null;
-  /** Aba que abre primeiro: o card leva para Membros, o menu para Funções. */
   initialTab?: "functions" | "members";
   open: boolean;
   onOpenChange: (open: boolean) => void;

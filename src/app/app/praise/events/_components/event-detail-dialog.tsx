@@ -90,7 +90,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
   const withoutLyrics = songs.filter((item) => item.song && !item.song.lyrics?.trim()).map((item) => item.song?.title ?? "");
   const hasMessage = Boolean(event.preacher) || Boolean(event.bibleVerse);
 
-  // Repertório em texto, pronto para colar no WhatsApp (negrito com asteriscos).
   const copyRepertoire = async () => {
     const lines = [...songs]
       .sort((a, b) => a.order - b.order)
@@ -108,7 +107,6 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
     }
   };
 
-  // Devolve a promessa para quem chamou poder esperar a lista atualizada (e atualiza também as contagens dos cards).
   const handleUpdate = () => Promise.all([utils.event.getById.invalidate(event.id), utils.event.list.invalidate()]);
 
   return (

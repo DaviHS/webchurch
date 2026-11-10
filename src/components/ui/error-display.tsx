@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 interface ErrorDisplayProps {
   message: string
   title?: string
-  /** Quando informado, mostra o botão "Tentar de novo". */
   onRetry?: () => void
   className?: string
 }

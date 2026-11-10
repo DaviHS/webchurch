@@ -20,7 +20,6 @@ interface SongSearchInputProps {
   allSongs: Song[];
   isLoading: boolean;
   placeholder?: string;
-  /** Resultados na própria página (dentro de uma folha), em vez de uma lista flutuante. */
   inline?: boolean;
 }
 

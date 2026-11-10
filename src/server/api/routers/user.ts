@@ -60,7 +60,6 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com esse e-mail." })
       }
 
-      // Sem senha informada, cria uma aleatória que ninguém conhece: a pessoa define a dela pelo link de primeiro acesso.
       const passwordHash = await hash(input.password ?? randomBytes(24).toString("base64url"), 10)
       const now = new Date()
 
@@ -71,7 +70,6 @@ export const userRouter = createTRPCRouter({
           email: input.email,
           passwordHash,
           passwordCreatedAt: now,
-          // Quem cria o acesso já está liberando: não precisa passar pela fila de aprovações.
           status: "active",
           approvedAt: now,
         })
@@ -80,10 +78,6 @@ export const userRouter = createTRPCRouter({
       return newUser
     }),
 
-  /**
-   * Gera o link para a pessoa criar (ou refazer) a própria senha. Vale por 7 dias e só uma vez.
-   * Quem criou o acesso manda o link (por WhatsApp, por exemplo): ninguém usa uma senha padrão conhecida.
-   */
   inviteLink: manageUsers
     .input(z.object({ userId: z.number(), origin: z.string().url().max(200).optional() }))
     .mutation(async ({ input }) => {
@@ -207,7 +201,6 @@ export const userRouter = createTRPCRouter({
   approve: manageUsers
     .input(z.object({ id: z.number(), ministryId: z.number().optional(), functionId: z.number().optional() }))
     .mutation(async ({ input }) => {
-      // Valida o ministério (e a função dele) antes de liberar o acesso, para não aprovar pela metade.
       if (input.ministryId !== undefined) {
         const [ministry] = await db.select({ id: ministries.id }).from(ministries).where(and(eq(ministries.id, input.ministryId), eq(ministries.isActive, true))).limit(1)
         if (!ministry) throw new TRPCError({ code: "BAD_REQUEST", message: "Ministério não encontrado ou inativo." })
@@ -246,7 +239,6 @@ export const userRouter = createTRPCRouter({
         }
       }
 
-      // Avisa a pessoa por e-mail. Se o envio falhar (ou não estiver configurado), a aprovação vale do mesmo jeito.
       const [member] = updatedUser.memberId
         ? await db.select({ firstName: members.firstName }).from(members).where(eq(members.id, updatedUser.memberId)).limit(1)
         : [];
@@ -260,7 +252,6 @@ export const userRouter = createTRPCRouter({
     }),
 
   reject: manageUsers
-    // O motivo fica registrado no histórico de auditoria junto com a ação (sem coluna nova no banco).
     .input(z.object({ id: z.number(), reason: z.string().trim().max(200).optional() }))
     .mutation(async ({ input }) => {
       const [updatedUser] = await db
@@ -304,7 +295,6 @@ export const userRouter = createTRPCRouter({
       .where(eq(users.status, "pending"))
       .orderBy(asc(users.createdAt));
 
-    // Outro cadastro com o mesmo nome ou telefone (o e-mail já é único): evita aprovar uma pessoa que já está na igreja.
     return await Promise.all(
       rows.map(async (row) => {
         if (!row.memberId || !row.firstName || !row.lastName) return { ...row, duplicates: [] as { id: number; name: string; reason: string }[] }
@@ -330,7 +320,6 @@ export const userRouter = createTRPCRouter({
     )
   }),
 
-  /** Solicitações rejeitadas (acesso inativo que nunca foi aprovado), para poder reconsiderar. */
   getRejected: manageUsers.query(async () => {
     return await db
       .select({
@@ -348,7 +337,6 @@ export const userRouter = createTRPCRouter({
       .orderBy(desc(users.updatedAt))
   }),
 
-  /** Devolve uma solicitação rejeitada para a fila de pendentes. */
   reconsider: manageUsers.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const [updatedUser] = await db
       .update(users)

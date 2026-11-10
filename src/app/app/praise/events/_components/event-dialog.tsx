@@ -23,7 +23,6 @@ interface EventDialogProps {
   onSubmit: (data: EventFormData) => void;
   initialData?: EventData | null;
   isLoading?: boolean;
-  /** Valores sugeridos para um evento novo. */
   defaults?: Partial<EventFormInput>;
 }
 

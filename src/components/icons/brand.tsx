@@ -25,7 +25,6 @@ export function Instagram(props: IconProps) {
   );
 }
 
-/** Ícone cheio do YouTube (retângulo vermelho com o triângulo branco). */
 export function Youtube(props: IconProps) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" aria-hidden {...props}>
@@ -35,7 +34,6 @@ export function Youtube(props: IconProps) {
   );
 }
 
-/** Ícone cheio do Spotify (círculo verde com as três ondas). */
 export function Spotify(props: IconProps) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" aria-hidden {...props}>

@@ -120,7 +120,6 @@ export default function ReportsPage() {
         [index + 1, toCsvField(item.title), toCsvField(item.artist ?? ""), item.count, formatDate(item.lastPlayed)].join(","),
       ),
     ].join("\r\n");
-    // O BOM no começo faz o Excel abrir o arquivo em UTF-8, com os acentos corretos.
     const blob = new Blob([String.fromCharCode(0xfeff), csvContent], { type: "text/csv;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");

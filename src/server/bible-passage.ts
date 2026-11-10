@@ -4,10 +4,6 @@ import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
 import { formatReference, parseReference } from "@/lib/bible";
 
-/**
- * Algumas fontes (a ACF importada, por exemplo) trazem "Verszeile ohne Text" em versículos cujo texto já está
- * junto do versículo anterior. Mostramos um aviso em português no lugar do texto de marcação.
- */
 const EMPTY_VERSE = /^s*Verszeile ohne Texts*$/i;
 export const EMPTY_VERSE_NOTE = "(texto reunido ao versículo anterior)";
 

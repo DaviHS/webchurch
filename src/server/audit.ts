@@ -2,9 +2,7 @@ import { lt } from "drizzle-orm";
 import { db } from "@/server/db";
 import { auditLogs } from "@/server/db/schema";
 
-/** Por quanto tempo o histórico de alterações é guardado (ele contém nomes e dados enviados nos formulários). */
 export const AUDIT_RETENTION_MONTHS = 24;
-/** Em vez de uma tarefa agendada, a limpeza roda de vez em quando junto com um registro novo. */
 const PURGE_CHANCE = 0.02;
 
 const SECRET_KEY = /password|senha|token|secret/i;
@@ -12,7 +10,6 @@ const MAX_STRING = 200;
 const MAX_ITEMS = 20;
 const MAX_DEPTH = 3;
 
-/** Reduz a entrada da mutação a algo pequeno e sem segredos para guardar no histórico. */
 export function sanitizeAuditInput(value: unknown, depth = 0): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}…` : value;
@@ -47,7 +44,6 @@ export async function recordAudit(entry: { userId: number | null; userLabel: str
     });
     if (Math.random() < PURGE_CHANCE) await purgeOldAudit();
   } catch (error) {
-    // O histórico nunca deve impedir a ação em si.
     console.error("[audit] falha ao registrar", error);
   }
 }

@@ -20,7 +20,6 @@ import { formatPhone } from "@/lib/phone";
 
 type RegisterStep = "access" | "contact" | "church";
 
-// Os campos obrigatórios ficam nos dois primeiros passos; "Igreja" é opcional.
 const STEPS: { value: RegisterStep; label: string; fields: (keyof RegisterInput)[] }[] = [
   { value: "access", label: "Acesso", fields: ["firstName", "lastName", "email", "password", "confirmPassword"] },
   { value: "contact", label: "Contato", fields: ["phone", "phoneIsWhatsapp", "gender", "birthDate", "zipCode", "city", "state", "address"] },
@@ -87,7 +86,6 @@ export function RegisterForm() {
   });
   const { errors } = form.formState;
 
-  // Ao completar o CEP (8 dígitos), busca o endereço e preenche cidade, estado e, se estiver vazio, a rua e o bairro.
   const zipCodeField = form.register("zipCode");
   const phoneField = form.register("phone");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "notfound" | "error">("idle");
@@ -146,7 +144,6 @@ export function RegisterForm() {
     toastError("Corrija os campos indicados antes de continuar");
   };
 
-  // Só avança se os campos do passo atual estão certos; assim o erro aparece onde a pessoa está.
   const goNext = async () => {
     const current = STEPS[stepIndex];
     const next = STEPS[stepIndex + 1];

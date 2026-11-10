@@ -73,7 +73,6 @@ export const bibleRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const version = await findVersion(input.version);
       const config = sql.raw(version.language === "pt" ? "'portuguese'" : "'english'");
-      // unaccent nos dois lados: "pao" encontra "pão".
       const match = sql`to_tsvector(${config}, unaccent(${bibleVerses.text})) @@ websearch_to_tsquery(${config}, unaccent(${input.query}))`;
       const scope =
         input.scope === "ot" ? lte(bibleVerses.bookId, 39) : input.scope === "nt" ? gte(bibleVerses.bookId, 40) : undefined;

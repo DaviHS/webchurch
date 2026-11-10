@@ -221,6 +221,9 @@ export function openOutputWindow(role: OutputRole, screen: ScreenRef | null): Wi
     } catch {
     }
   }
-  window.focus();
+  try {
+    win?.focus();
+  } catch {
+  }
   return win;
 }

@@ -44,7 +44,6 @@ function balanceStanza(lines: string[]): string[] {
   return chunks;
 }
 
-/** Marca o slide de abertura da música: título centralizado e artista embaixo (estilo Holyrics). */
 export const TITLE_MARK = "\u0001";
 
 export const titleSlide = (title: string, artist: string | null) => `${TITLE_MARK}${title}\n${artist ?? ""}`.trimEnd();
@@ -55,7 +54,6 @@ export function parseTitleSlide(text: string): { title: string; artist: string }
   return { title, artist: rest.join(" ").trim() };
 }
 
-/** Separa o texto do slide bíblico da referência (ex.: "João 3:16 · ARA") mostrada embaixo. */
 export const REFERENCE_MARK = "\u0002";
 
 export function splitReference(text: string): { body: string; reference: string | null } {
@@ -64,13 +62,11 @@ export function splitReference(text: string): { body: string; reference: string 
   return { body: text.slice(0, index), reference: text.slice(index + REFERENCE_MARK.length) };
 }
 
-/** Texto sem as marcas, para miniaturas e listas. */
 export function plainSlideText(text: string): string {
   const title = parseTitleSlide(text);
   return title ? [title.title, title.artist].filter(Boolean).join(" · ") : splitReference(text).body;
 }
 
-/** Quantidade de estrofes da letra (sem contar o slide de título). */
 export const lyricSlideCount = (song: Pick<DeckSong, "slides" | "kind">) =>
   song.kind === "song" && song.slides.length > 0 ? song.slides.length - 1 : song.slides.length;
 
@@ -174,7 +170,6 @@ export function passageToDeckSong(passage: PassageSource, uid: string, versesPer
     id: 0,
     title: `${passage.title} · ${passage.version.code}`,
     artist: passage.version.name,
-    // Embaixo de cada slide vai a referência com a tradução, para o público saber onde se lê e em qual versão.
     slides: groups.map(
       (group, index) =>
         wrapText(

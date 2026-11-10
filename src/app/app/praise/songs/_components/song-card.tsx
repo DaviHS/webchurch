@@ -15,7 +15,6 @@ import type { Song } from "@/types";
 
 interface SongCardProps {
   song: Song;
-  /** Termo da busca: se o acerto veio da letra, o card mostra o trecho. */
   search?: string;
   onEdit: (song: Song) => void;
   onDelete: (song: Song) => void;

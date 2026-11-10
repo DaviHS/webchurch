@@ -31,11 +31,9 @@ const NO_LEADER = "none";
 interface EventSongsManagerProps {
   eventId: number;
   songs: EventSong[];
-  /** Pode devolver uma promessa: a ação só termina (e o bloqueio da tela só sai) quando a lista nova chegar. */
   onUpdate: () => unknown;
 }
 
-/** "Última vez: há 7 dias", em destaque quando foi nas últimas duas semanas (para evitar repetir o repertório). */
 function LastPlayedHint({ date }: { date: Date | undefined }) {
   if (!date) return null;
   const recent = differenceInCalendarDays(new Date(), date) <= 14;
@@ -81,7 +79,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   const [leaderId, setLeaderId] = useState(NO_LEADER);
   const [notes, setNotes] = useState("");
   const [songSearch, setSongSearch] = useState("");
-  // A ordem nova aparece na hora, como se já tivesse sido gravada; a gravação segue em segundo plano.
   const [optimisticIds, setOptimisticIds] = useState<number[] | null>(null);
   const latestOrder = useRef<number[] | null>(null);
   const saving = useRef(false);
@@ -100,7 +97,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
   );
   const sortedSongs = [...songs].sort((a, b) => a.order - b.order);
   const byId = new Map(sortedSongs.map((item) => [item.id, item]));
-  // Músicas que chegaram do servidor depois da troca (adicionadas agora) vão para o fim.
   const displaySongs = optimisticIds
     ? [...optimisticIds.flatMap((id) => byId.get(id) ?? []), ...sortedSongs.filter((item) => !optimisticIds.includes(item.id))]
     : sortedSongs;
@@ -164,7 +160,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
     if (confirmed) removeSongMutation.mutate(song.id);
   };
 
-  // Grava em segundo plano. Se a pessoa mexer de novo durante a gravação, só a ordem mais recente é enviada em seguida.
   const flushOrder = async () => {
     if (saving.current) return;
     saving.current = true;
@@ -178,7 +173,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
         }
       }
     } catch {
-      // O aviso de erro já foi mostrado; volta para a ordem que está salva.
       latestOrder.current = null;
       await onUpdate();
     } finally {
@@ -253,7 +247,6 @@ export function EventSongsManager({ eventId, songs, onUpdate }: EventSongsManage
                           >
                             {canEdit && (
                               <>
-                                {/* No celular: setas (mais seguras no toque). No computador: alça para arrastar. */}
                                 <div className="flex shrink-0 flex-col gap-1 sm:hidden">
                                   <Button
                                     variant="outline"

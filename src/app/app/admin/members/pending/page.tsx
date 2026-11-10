@@ -33,7 +33,6 @@ type PendingUser = {
 
 type Access = { ministryId?: number; functionId?: number };
 
-/** "hoje", "ontem" ou "há N dias": quem está esperando há mais tempo salta aos olhos. */
 function waiting(createdAt: Date, now: number) {
   const days = Math.max(0, Math.floor((now - new Date(createdAt).getTime()) / DAY_MS));
   return { days, label: days === 0 ? "hoje" : days === 1 ? "ontem" : `há ${days} dias` };

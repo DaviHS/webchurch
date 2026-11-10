@@ -59,7 +59,6 @@ export const reportRouter = createTRPCRouter({
       return result;
     }),
 
-  /** Execuções no período e no período anterior de mesma duração, para comparar. */
   comparePeriods: protectedProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), songIds: z.array(z.number()).optional() }))
     .query(async ({ input }) => {
@@ -82,10 +81,6 @@ export const reportRouter = createTRPCRouter({
       return { current, previous, previousStart, previousEnd };
     }),
 
-  /**
-   * Músicas que não tocaram nenhuma vez no período escolhido (o mesmo filtro do relatório), das que estão há mais
-   * tempo sem tocar para as mais recentes; as que nunca tocaram vêm numa lista à parte.
-   */
   forgottenSongs: protectedProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), songIds: z.array(z.number()).optional() }))
     .query(async ({ input }) => {
@@ -101,14 +96,12 @@ export const reportRouter = createTRPCRouter({
         .having(sql`${inPeriod} = 0`)
         .orderBy(sql`${lastPlayed} asc nulls last`, songs.title);
       const all = rows.map((row) => ({ ...row, lastPlayed: row.lastPlayed ? new Date(row.lastPlayed) : null }));
-      // Duas listas separadas: assim as nunca tocadas não ficam escondidas atrás das muito antigas.
       return {
         forgotten: all.filter((song) => song.lastPlayed !== null),
         neverPlayed: all.filter((song) => song.lastPlayed === null),
       };
     }),
 
-  /** Última vez em que cada música tocou (até hoje), para avisar na hora de escalar. */
   lastPlayed: protectedProcedure
     .input(z.object({ songIds: z.array(z.number()).min(1).max(100) }))
     .query(async ({ input }) => {

@@ -52,7 +52,6 @@ export function MobileNavigation() {
   const { can, isLoading: permissionsLoading } = usePermissions()
   const quickActions = online ? QUICK_ACTIONS.filter((action) => can(action.permission)) : []
 
-  // O "Mais" só existe se houver algo liberado fora dos atalhos principais.
   const hasMore =
     !permissionsLoading &&
     NAV_SECTIONS.some((section) => section.items.some((link) => !MOBILE_PRIMARY_URLS.includes(link.url) && canSee(link, can)))
@@ -60,7 +59,6 @@ export function MobileNavigation() {
   const secondaryActive =
     active !== null && !MOBILE_PRIMARY_URLS.includes(active.link.url) && !STANDALONE_LINKS.includes(active.link)
 
-  // Sem internet a barra some: todas as telas dela dependem do servidor, e a Bíblia tem atalho no cabeçalho.
   if (!online) return null
 
   return (

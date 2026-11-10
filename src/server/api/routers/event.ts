@@ -16,11 +16,8 @@ import { cleanEmptyStrings } from "@/lib/formatters";
 import { loadPassage } from "@/server/bible-passage";
 import { spotifyService } from "@/lib/spotify";
 import { deleteSetting, getSetting, setSetting } from "@/server/settings";
+import { cleanupOldEventPlaylists } from "@/server/spotify-cleanup";
 
-/**
- * Mantém a playlist do Spotify do evento igual ao repertório: chamada depois de adicionar, remover ou reordenar músicas.
- * Sem playlist criada, não faz nada. Se o Spotify falhar, o repertório já foi salvo: só registra o erro.
- */
 async function syncEventPlaylist(eventId: number): Promise<void> {
   try {
     const playlist = await savedPlaylist(eventId);
@@ -37,7 +34,6 @@ async function syncEventPlaylist(eventId: number): Promise<void> {
   }
 }
 
-/** A playlist do Spotify de cada evento fica guardada nas configurações (sem coluna nova na tabela de eventos). */
 const playlistKey = (eventId: number) => `event_spotify_playlist:${eventId}`;
 
 async function savedPlaylist(eventId: number): Promise<{ id: string; url: string } | null> {
@@ -82,15 +78,14 @@ export const eventRouter = createTRPCRouter({
             eventTypes.includes(v as EventType) ? (v as EventType) : undefined
           ),
         search: z.string().optional(),
-        /** "upcoming": de hoje em diante, do mais próximo ao mais distante. "past": antes de hoje, do mais recente. */
         scope: z.enum(["upcoming", "past"]).optional(),
-        /** Início do dia de hoje no aparelho de quem consulta (evita depender do fuso do servidor). */
         today: z.date().optional(),
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(10),
       })
     )
     .query(async ({ input }) => {
+      await cleanupOldEventPlaylists();
       const { startDate, endDate, type, search, scope, today, page, limit } = input;
       const offset = (page - 1) * limit;
 
@@ -117,8 +112,6 @@ export const eventRouter = createTRPCRouter({
       const [data, total] = await Promise.all([
         db.select({
             ...getTableColumns(events),
-            // Com uma tabela só, o Drizzle escreve "id" sem o nome da tabela, o que apontaria para event_songs.id.
-            // Por isso o texto fixo "events"."id".
             songCount: sql<number>`(select count(*)::int from event_songs where event_songs.event_id = "events"."id")`,
             noLyricsCount: sql<number>`(select count(*)::int from event_songs es join songs s on s.id = es.song_id where es.event_id = "events"."id" and coalesce(length(trim(s.lyrics)), 0) = 0)`,
             passageCount: sql<number>`(select count(*)::int from event_passages where event_passages.event_id = "events"."id")`,
@@ -143,7 +136,6 @@ export const eventRouter = createTRPCRouter({
       };
     }),
 
-  /** Tipos de evento que existem no escopo (próximos ou passados), para mostrar só os filtros que servem. */
   typesInScope: protectedProcedure
     .input(z.object({ scope: z.enum(["upcoming", "past"]), today: z.date().optional() }))
     .query(async ({ input }) => {
@@ -262,6 +254,8 @@ export const eventRouter = createTRPCRouter({
     }),
 
   delete: editEvents.input(z.number()).mutation(async ({ input }) => {
+    const playlist = await savedPlaylist(input);
+    if (playlist) await spotifyService.deletePlaylist(playlist.id).catch(() => undefined);
     await db.batch([
       db.delete(eventSongs).where(eq(eventSongs.eventId, input)),
       db.delete(eventParticipants).where(eq(eventParticipants.eventId, input)),
@@ -280,7 +274,6 @@ export const eventRouter = createTRPCRouter({
       return eventSong;
     }),
 
-  /** Grava a nova ordem do repertório de uma vez (1, 2, 3…), para não ficar pela metade se uma chamada falhar. */
   reorderSongs: editEvents
     .input(z.object({ eventId: z.number(), orderedIds: z.array(z.number()).min(1).max(200) }))
     .mutation(async ({ input }) => {
@@ -295,7 +288,6 @@ export const eventRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Coloca uma música no fim do repertório do evento (usado pelos relatórios, sem precisar abrir o evento). */
   addSongToEnd: editEvents
     .input(z.object({ eventId: z.number(), songId: z.number() }))
     .mutation(async ({ input }) => {
@@ -349,7 +341,6 @@ export const eventRouter = createTRPCRouter({
     const [removed] = await db.delete(eventSongs).where(eq(eventSongs.id, input)).returning({ eventId: eventSongs.eventId });
     if (!removed) return { success: true };
 
-    // As demais músicas sobem para fechar o buraco: a ordem volta a ser 1, 2, 3...
     const remaining = await db
       .select({ id: eventSongs.id, order: eventSongs.order })
       .from(eventSongs)
@@ -375,10 +366,8 @@ export const eventRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  /** A playlist do Spotify já criada para o evento, se houver. */
   spotifyPlaylist: protectedProcedure.input(z.number()).query(({ input }) => savedPlaylist(input)),
 
-  /** Exclui a playlist do Spotify criada para o evento. */
   deleteSpotifyPlaylist: editEvents.input(z.number()).mutation(async ({ input: eventId }) => {
     const playlist = await savedPlaylist(eventId);
     if (!playlist) return { deleted: false };
@@ -394,7 +383,6 @@ export const eventRouter = createTRPCRouter({
     return { deleted: true };
   }),
 
-  /** Cria no Spotify uma playlist com o repertório do evento, na ordem do culto. Músicas sem faixa ficam de fora. */
   createSpotifyPlaylist: editEvents
     .input(z.object({ eventId: z.number(), name: z.string().trim().min(1).max(100) }))
     .mutation(async ({ input }) => {
@@ -577,10 +565,6 @@ export const eventRouter = createTRPCRouter({
       return newEvent;
     }),
 
-  /**
-   * Copia um evento (músicas e passagens) para o próximo mesmo dia da semana livre: um culto de domingo vai para o
-   * próximo domingo, a partir de hoje, que ainda não tenha um evento do mesmo tipo.
-   */
   duplicate: editEvents.input(z.number()).mutation(async ({ input }) => {
     const [source] = await db.select().from(events).where(eq(events.id, input));
     if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Evento não encontrado" });

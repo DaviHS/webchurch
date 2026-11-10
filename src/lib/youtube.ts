@@ -95,7 +95,6 @@ const normalizeText = (value: string) =>
 
 const words = (value: string) => normalizeText(value).split(" ").filter((word) => word.length > 1);
 
-/** Escolhe o resultado mais parecido com a música; prefere versão oficial/áudio e evita covers e playbacks. */
 export function pickBestVideo(items: youtube_v3.Schema$SearchResult[], title: string, artist?: string | null): string | null {
   const titleWords = words(title);
   const artistWords = artist ? words(artist) : [];
@@ -107,7 +106,6 @@ export function pickBestVideo(items: youtube_v3.Schema$SearchResult[], title: st
     const haystack = normalizeText(`${item.snippet?.title ?? ""} ${item.snippet?.channelTitle ?? ""}`);
     const has = (word: string) => haystack.split(" ").includes(word);
     const titleHit = titleWords.length ? titleWords.filter(has).length / titleWords.length : 0;
-    // O título precisa aparecer quase todo: evita pegar outra música do mesmo artista.
     if (titleHit < 0.7) continue;
     const artistHit = artistWords.length ? artistWords.filter(has).length / artistWords.length : 0;
     let score = titleHit * 10 + artistHit * 5;
@@ -126,7 +124,6 @@ class YouTubeService {
 
   private playlistIdCache: { value: string | undefined; loadedAt: number } | null = null;
 
-  /** Id da playlist, guardado no banco (tabela app_settings). Fica em memória por 1 minuto. */
   async getPlaylistId(): Promise<string | undefined> {
     if (!this.playlistIdCache || Date.now() - this.playlistIdCache.loadedAt > PLAYLIST_ID_TTL_MS) {
       this.playlistIdCache = { value: (await getSetting(SETTING_YOUTUBE_PLAYLIST_ID)) ?? undefined, loadedAt: Date.now() };
@@ -179,10 +176,6 @@ class YouTubeService {
     return extractYouTubeVideoId(url);
   }
 
-  /**
-   * Procura o vídeo da música. Olha vários resultados (não só o primeiro) e fica com o que mais
-   * combina com título e artista; sem achar com os dois, tenta de novo só com o título.
-   */
   async searchVideo(title: string, artist?: string | null): Promise<string | null> {
     const queries = artist ? [`${title} ${artist}`, title] : [title];
     for (const q of queries) {
@@ -210,6 +203,22 @@ class YouTubeService {
       }
     }
     return durations;
+  }
+
+  async findUnavailable(videoIds: readonly string[]): Promise<Set<string>> {
+    const unique = [...new Set(videoIds)];
+    const unavailable = new Set<string>();
+
+    for (let i = 0; i < unique.length; i += 50) {
+      const chunk = unique.slice(i, i + 50);
+      const response = await this.call((client) => client.videos.list({ part: ["status"], id: chunk, maxResults: 50 }));
+      const alive = new Set<string>();
+      for (const video of response.data.items ?? []) {
+        if (video.id && video.status?.privacyStatus !== "private") alive.add(video.id);
+      }
+      for (const id of chunk) if (!alive.has(id)) unavailable.add(id);
+    }
+    return unavailable;
   }
 
   private async findPlaylistItemId(videoId: string): Promise<string | null> {
