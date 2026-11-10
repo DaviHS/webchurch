@@ -46,6 +46,7 @@ export interface SpotifyTrack {
   id: string;
   name: string;
   artists: { id: string; name: string }[];
+  duration_ms?: number;
   external_urls: { spotify: string };
 }
 
@@ -223,9 +224,13 @@ class SpotifyService {
     return null;
   }
 
-  async getTrack(trackId: string): Promise<{ name: string; artists: string[] }> {
+  async getTrack(trackId: string): Promise<{ name: string; artists: string[]; durationSeconds?: number }> {
     const data = await this.request<SpotifyTrack>(`/tracks/${trackId}`, await this.getAppToken());
-    return { name: data.name, artists: data.artists.map((artist) => artist.name) };
+    return {
+      name: data.name,
+      artists: data.artists.map((artist) => artist.name),
+      durationSeconds: data.duration_ms ? Math.round(data.duration_ms / 1000) : undefined,
+    };
   }
 
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylistInfo> {

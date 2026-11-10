@@ -109,6 +109,22 @@ async function durationFromVideo(videoId: string | null, warnings: string[]): Pr
   }
 }
 
+const FALLBACK_DURATION_SECONDS = 1;
+
+async function durationFromSpotify(trackId: string | null, warnings: string[]): Promise<number | undefined> {
+  if (!trackId || !spotifyService.isConfigured()) return undefined;
+  try {
+    return (await spotifyService.getTrack(trackId)).durationSeconds;
+  } catch (error) {
+    warnings.push(integrationWarning("não foi possível obter a duração da faixa do Spotify", error));
+    return undefined;
+  }
+}
+
+async function resolveDuration(videoId: string | null, trackId: string | null, warnings: string[]): Promise<number> {
+  return (await durationFromVideo(videoId, warnings)) ?? (await durationFromSpotify(trackId, warnings)) ?? FALLBACK_DURATION_SECONDS;
+}
+
 interface SpotifyFields {
   spotifyUrl: string | null;
   spotifyTrackId: string | null;
@@ -369,7 +385,7 @@ export const songRouter = createTRPCRouter({
     ]);
 
     const [duration] = await Promise.all([
-      input.duration ? Promise.resolve(input.duration) : durationFromVideo(youtube.youtubeVideoId, warnings),
+      input.duration ? Promise.resolve(input.duration) : resolveDuration(youtube.youtubeVideoId, spotify.spotifyTrackId, warnings),
       syncPlaylistVideo(null, input.skipPlaylist ? null : youtube.youtubeVideoId, undefined, warnings),
       syncSpotifyTrack(null, input.skipPlaylist ? null : spotify.spotifyTrackId, undefined, warnings),
     ]);
@@ -453,9 +469,7 @@ export const songRouter = createTRPCRouter({
 
       const effectiveDuration = data.duration ?? currentSong.duration;
       if (!effectiveDuration) {
-        const videoId = "youtubeVideoId" in updateData ? (updateData.youtubeVideoId ?? null) : currentSong.youtubeVideoId;
-        const fromVideo = await durationFromVideo(videoId, warnings);
-        if (fromVideo) updateData.duration = fromVideo;
+        updateData.duration = await resolveDuration(finalVideoId, finalTrackId, warnings);
       }
 
       const [song] = await db
@@ -560,7 +574,7 @@ export const songRouter = createTRPCRouter({
     try {
       const playlist = await youtubeService.syncPlaylist(withVideo.filter((row) => !row.skipPlaylist).map((row) => row.videoId));
 
-      const missingDuration = withVideo.filter((row) => !row.duration);
+      const missingDuration = withVideo.filter((row) => !row.duration || row.duration <= FALLBACK_DURATION_SECONDS);
       const durations = await youtubeService.getVideoDurations(missingDuration.map((row) => row.videoId));
       const updates = missingDuration.flatMap((row) => {
         const seconds = durations.get(row.videoId);

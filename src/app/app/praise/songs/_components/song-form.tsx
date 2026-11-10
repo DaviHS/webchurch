@@ -209,7 +209,7 @@ export function SongForm({ onSubmit, initialData, isLoading = false, onCancel }:
               aria-invalid={Boolean(errors.duration)}
             />
             {errors.duration && <p className="text-xs text-destructive">{errors.duration.message}</p>}
-            <p className="text-xs text-muted-foreground">Ex.: 03:30. Em branco, usa a duração do vídeo do YouTube.</p>
+            <p className="text-xs text-muted-foreground">Ex.: 03:30. Opcional: em branco, usa a duração do YouTube, depois a do Spotify, ou 00:01.</p>
           </div>
         </div>
 

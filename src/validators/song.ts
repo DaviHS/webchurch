@@ -20,7 +20,7 @@ export const songFormSchema = z.object({
   spotifyUrl: z.string().optional(),
   skipPlaylist: z.boolean().optional().default(false),
   duration: z.string()
-    .regex(/^\d{1,2}:\d{2}$/, "Formato inválido. Use mm:ss (ex: 03:30)")
+    .regex(/^(\d{1,2}:\d{2})?$/, "Formato inválido. Use mm:ss (ex: 03:30)")
     .optional()
     .default(""),
 })
