@@ -32,6 +32,7 @@ const ACTIONS: Record<string, string> = {
   "event.createTemplate": "Criou modelo de evento",
   "event.createFromTemplate": "Criou evento a partir de modelo",
   "event.duplicate": "Duplicou evento",
+  "event.applySpotifySync": "Atualizou o repertório a partir do Spotify",
 
   "member.create": "Cadastrou membro",
   "member.update": "Editou membro",

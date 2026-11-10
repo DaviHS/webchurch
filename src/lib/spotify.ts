@@ -79,9 +79,21 @@ interface SearchResponse {
   tracks?: { items?: SpotifyTrack[] };
 }
 
+interface PlaylistItem {
+  id: string | null;
+  name?: string;
+  artists?: { name: string }[];
+}
+
 interface PlaylistPage {
-  items: { track?: { id: string | null } | null; item?: { id: string | null } | null }[];
+  items: { track?: PlaylistItem | null; item?: PlaylistItem | null }[];
   next: string | null;
+}
+
+export interface PlaylistTrack {
+  id: string;
+  name: string;
+  artist: string;
 }
 
 interface PlaylistResponse {
@@ -238,6 +250,21 @@ class SpotifyService {
       next = page.next;
     }
     return ids;
+  }
+
+  async listPlaylistTracks(playlistId: string): Promise<PlaylistTrack[]> {
+    const token = await this.getUserToken();
+    const tracks: PlaylistTrack[] = [];
+    let next: string | null = `/playlists/${playlistId}/tracks?limit=100`;
+    while (next) {
+      const page: PlaylistPage = await this.request<PlaylistPage>(next, token);
+      for (const entry of page.items) {
+        const item = entry.track ?? entry.item;
+        if (item?.id) tracks.push({ id: item.id, name: item.name ?? "", artist: item.artists?.map((artist) => artist.name).join(", ") ?? "" });
+      }
+      next = page.next;
+    }
+    return tracks;
   }
 
   async addTracks(playlistId: string, trackIds: string[]): Promise<number> {

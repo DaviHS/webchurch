@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Clock, Copy, ExternalLink, Info, Printer, Trash2, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
+import { RefreshCw, BookOpen, Calendar, Clock, Copy, ExternalLink, Info, Printer, Trash2, Loader2, MapPin, Music, Projector, User, Users, type LucideIcon } from "lucide-react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Spotify } from "@/components/icons/brand";
@@ -27,6 +27,7 @@ import { eventTypeBadge, eventTypeLabel } from "@/lib/labels";
 import { api } from "@/trpc/react";
 import type { EventData, EventWithDetails } from "@/types";
 import { PrintRepertoireDialog } from "./print-repertoire-dialog";
+import { SpotifySyncDialog } from "./spotify-sync-dialog";
 import { EventParticipantsManager } from "./event-participants-manager";
 import { EventSongsManager } from "./event-songs-manager";
 import { EventPassagesManager } from "./event-passages-manager";
@@ -53,6 +54,7 @@ function InfoField({ label, icon: Icon, children }: { label: string; icon?: Luci
 export function EventDetailDialog({ event, open, onOpenChange, isLoading = false }: EventDetailDialogProps) {
   const [activeTab, setActiveTab] = useState("info");
   const [printOpen, setPrintOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const utils = api.useUtils();
   const canEdit = usePermissions().can("events.edit");
   const confirm = useConfirm();
@@ -297,6 +299,15 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
                       {canEdit && (
                         <button
                           type="button"
+                          onClick={() => setSyncOpen(true)}
+                          className="inline-flex min-h-10 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          <RefreshCw className="size-4" /> Atualizar repertório pelo Spotify
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
                           onClick={() => void handleDeletePlaylist()}
                           disabled={deletePlaylist.isPending}
                           className="inline-flex min-h-10 items-center gap-1 font-medium text-destructive underline-offset-4 hover:underline disabled:opacity-50"
@@ -326,6 +337,7 @@ export function EventDetailDialog({ event, open, onOpenChange, isLoading = false
         )}
       </ResponsiveDialogContent>
       <PrintRepertoireDialog eventId={event.id} open={printOpen} onOpenChange={setPrintOpen} />
+      {canEdit && <SpotifySyncDialog eventId={event.id} open={syncOpen} onOpenChange={setSyncOpen} onApplied={handleUpdate} />}
     </ResponsiveDialog>
   );
 }

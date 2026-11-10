@@ -34,6 +34,19 @@ async function syncEventPlaylist(eventId: number): Promise<void> {
   }
 }
 
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+const baseTitle = (name: string) =>
+  normalizeText(name.replace(/\s*[([][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "")).replace(/^(o|a|os|as) /, "");
+
+type SyncItem = { id: string; name: string; artist: string; status: "match" | "version" | "new"; songId: number | null; songTitle: string | null };
+
 const playlistKey = (eventId: number) => `event_spotify_playlist:${eventId}`;
 
 async function savedPlaylist(eventId: number): Promise<{ id: string; url: string } | null> {
@@ -382,6 +395,101 @@ export const eventRouter = createTRPCRouter({
     await deleteSetting(playlistKey(eventId));
     return { deleted: true };
   }),
+
+  previewSpotifySync: editEvents.input(z.number()).query(async ({ input: eventId }) => {
+    const playlist = await savedPlaylist(eventId);
+    if (!playlist) throw new TRPCError({ code: "NOT_FOUND", message: "Este evento não tem playlist no Spotify." });
+
+    let tracks;
+    try {
+      tracks = await spotifyService.listPlaylistTracks(playlist.id);
+    } catch (error) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: error instanceof Error ? error.message : "Não foi possível ler a playlist no Spotify.",
+      });
+    }
+
+    const [catalog, current] = await Promise.all([
+      db.select({ id: songs.id, title: songs.title, artist: songs.artist, trackId: songs.spotifyTrackId }).from(songs),
+      db
+        .select({ songId: eventSongs.songId, title: songs.title })
+        .from(eventSongs)
+        .innerJoin(songs, eq(eventSongs.songId, songs.id))
+        .where(eq(eventSongs.eventId, eventId)),
+    ]);
+    const byTrack = new Map(catalog.flatMap((song) => (song.trackId ? [[song.trackId, song] as const] : [])));
+
+    const seen = new Set<string>();
+    const items = tracks.flatMap((track): SyncItem[] => {
+      if (seen.has(track.id)) return [];
+      seen.add(track.id);
+      const exact = byTrack.get(track.id);
+      if (exact) return [{ ...track, status: "match", songId: exact.id, songTitle: exact.title }];
+      const base = baseTitle(track.name);
+      const sameTitle = base ? catalog.filter((song) => baseTitle(song.title) === base) : [];
+      const artist = normalizeText(track.artist);
+      const version = sameTitle.find((song) => song.artist && artist.includes(normalizeText(song.artist))) ?? sameTitle[0];
+      if (version) return [{ ...track, status: "version", songId: version.id, songTitle: version.title }];
+      return [{ ...track, status: "new", songId: null, songTitle: null }];
+    });
+
+    const keptIds = new Set(items.flatMap((item) => (item.songId ? [item.songId] : [])));
+    const removed = current.filter((row) => !keptIds.has(row.songId));
+    return { items, removed };
+  }),
+
+  applySpotifySync: editEvents
+    .input(
+      z.object({
+        eventId: z.number(),
+        items: z
+          .array(
+            z.object({
+              songId: z.number().nullable(),
+              create: z.object({ title: z.string().trim().min(1).max(200), artist: z.string().trim().max(100), trackId: z.string().min(1).max(50) }).nullable(),
+            }),
+          )
+          .max(300),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.items.some((item) => item.create) && !ctx.access.permissions.has("songs.edit")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cadastrar músicas novas exige a permissão de editar músicas." });
+      }
+
+      const orderedSongIds: number[] = [];
+      for (const item of input.items) {
+        let songId = item.songId;
+        if (songId === null && item.create) {
+          const [created] = await db
+            .insert(songs)
+            .values({
+              title: item.create.title,
+              artist: item.create.artist || null,
+              category: "praise",
+              spotifyTrackId: item.create.trackId,
+              spotifyUrl: `https://open.spotify.com/track/${item.create.trackId}`,
+            })
+            .returning({ id: songs.id });
+          songId = created?.id ?? null;
+        }
+        if (songId !== null && !orderedSongIds.includes(songId)) orderedSongIds.push(songId);
+      }
+
+      const existing = await db.select({ id: eventSongs.id, songId: eventSongs.songId }).from(eventSongs).where(eq(eventSongs.eventId, input.eventId));
+      const wanted = new Set(orderedSongIds);
+      const toRemove = existing.filter((row) => !wanted.has(row.songId)).map((row) => row.id);
+      const kept = new Map(existing.filter((row) => wanted.has(row.songId)).map((row) => [row.songId, row.id]));
+
+      if (toRemove.length > 0) await db.delete(eventSongs).where(inArray(eventSongs.id, toRemove));
+      for (const [index, songId] of orderedSongIds.entries()) {
+        const rowId = kept.get(songId);
+        if (rowId) await db.update(eventSongs).set({ order: index + 1 }).where(eq(eventSongs.id, rowId));
+        else await db.insert(eventSongs).values({ eventId: input.eventId, songId, order: index + 1 });
+      }
+      return { total: orderedSongIds.length, removed: toRemove.length };
+    }),
 
   createSpotifyPlaylist: editEvents
     .input(z.object({ eventId: z.number(), name: z.string().trim().min(1).max(100) }))
