@@ -8,6 +8,7 @@ export const AUDIT_AREAS: Record<string, string> = {
   finance: "Finanças",
   auth: "Login e senha",
   privacy: "Privacidade",
+  site: "Configurações",
 };
 
 const ACTIONS: Record<string, string> = {
@@ -57,6 +58,8 @@ const ACTIONS: Record<string, string> = {
   "user.approve": "Aprovou cadastro",
   "user.reject": "Rejeitou cadastro",
   "user.reconsider": "Reconsiderou cadastro rejeitado",
+
+  "site.update": "Alterou as configurações da igreja",
 
   "access.setFunctionPermissions": "Alterou as permissões de uma função",
 

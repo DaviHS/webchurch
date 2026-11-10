@@ -1,151 +1,89 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Menu, X } from 'lucide-react'
-import { signOut, useSession } from "next-auth/react"
-import Image from "next/image"
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Menu, X } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
-export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { data: session } = useSession()
+interface NavbarProps {
+  name: string;
+  showServices: boolean;
+  showHistory: boolean;
+  showGallery: boolean;
+}
+
+export default function Navbar({ name, showServices, showHistory, showGallery }: NavbarProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session } = useSession();
+
+  const links = [
+    { href: "#inicio", label: "Início" },
+    { href: "#sobre", label: "Sobre" },
+    ...(showServices ? [{ href: "#cultos", label: "Cultos" }] : []),
+    ...(showHistory ? [{ href: "#historia", label: "História" }] : []),
+    ...(showGallery ? [{ href: "#galeria", label: "Galeria" }] : []),
+    { href: "#contato", label: "Contato" },
+  ];
+
+  const memberArea = (onClick?: () => void) => (
+    <>
+      <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
+        <Link href="/app" onClick={onClick}>
+          Área do Membro
+        </Link>
+      </Button>
+      {session && (
+        <Button variant="ghost" onClick={() => void signOut()} className="text-white hover:bg-white/10">
+          Sair
+        </Button>
+      )}
+    </>
+  );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-primary shadow-md">
-      <div className="mx-auto w-full max-w-(--breakpoint-xl) px-4 flex h-16 items-center justify-between">
+    <header className="fixed left-0 right-0 top-0 z-50 w-full border-b bg-primary shadow-md">
+      <div className="mx-auto flex h-16 w-full max-w-(--breakpoint-xl) items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="relative w-20 h-20">
-            <Image
-              src="/logo.png"
-              alt="Logo da Igreja Central"
-              fill
-              className="object-contain"
-              priority
-            />
+          <div className="relative h-20 w-20">
+            <Image src="/logo.png" alt={`Logo da ${name}`} fill className="object-contain" priority />
           </div>
-          <span className="text-xl font-bold text-white">Igreja Central</span>
+          <span className="text-xl font-bold text-white">{name}</span>
         </div>
-        
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="#inicio" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            Início
-          </Link>
-          <Link href="#sobre" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            Sobre
-          </Link>
-          <Link href="#cultos" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            Cultos
-          </Link>
-          <Link href="#historia" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            História
-          </Link>
-          <Link href="#galeria" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            Galeria
-          </Link>
-          <Link href="#contato" className="text-sm font-medium hover:text-secondary text-white transition-colors">
-            Contato
-          </Link>
+
+        <nav className="hidden items-center gap-6 md:flex">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className="text-sm font-medium text-white transition-colors hover:text-secondary">
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-4">
-          {session ? (
-            <>
-              <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                <Link href="/app">Área do Membro</Link>
-              </Button>
-              <Button variant="ghost" onClick={() => void signOut()} className="text-white hover:bg-white/10">
-                Sair
-              </Button>
-            </>
-          ) : (
-            <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-              <Link href="/app">Área do Membro</Link>
-            </Button>
-          )}
-        </div>
+        <div className="hidden items-center gap-4 md:flex">{memberArea()}</div>
 
-        <button 
-          className="block md:hidden p-2" 
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Menu"
-        >
+        <button className="block p-2 md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Menu">
           {isMenuOpen ? <X className="text-white" /> : <Menu className="text-white" />}
         </button>
       </div>
 
       {isMenuOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-primary shadow-lg md:hidden pb-4">
+        <div className="absolute left-0 right-0 top-16 bg-primary pb-4 shadow-lg md:hidden">
           <nav className="flex flex-col gap-2 px-4">
-            <Link
-              href="#inicio"
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Início
-            </Link>
-            <Link 
-              href="#sobre" 
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors" 
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Sobre
-            </Link>
-            <Link
-              href="#cultos"
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Cultos
-            </Link>
-            <Link
-              href="#historia"
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              História
-            </Link>
-            <Link
-              href="#galeria"
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Galeria
-            </Link>
-            <Link
-              href="#contato"
-              className="py-2 text-sm font-medium hover:text-secondary text-white transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contato
-            </Link>
-            <div className="mt-2 flex flex-col gap-2">
-              {session ? (
-                <>
-                  <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                    <Link href="/app" onClick={() => setIsMenuOpen(false)}>
-                      Área do Membro
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => void signOut()} 
-                    className="text-white hover:bg-white/10"
-                  >
-                    Sair
-                  </Button>
-                </>
-              ) : (
-                <Button asChild variant="outline" className="bg-white text-primary hover:bg-white/90">
-                  <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
-                    Área do Membro
-                  </Link>
-                </Button>
-              )}
-            </div>
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="py-2 text-sm font-medium text-white transition-colors hover:text-secondary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="mt-2 flex flex-col gap-2">{memberArea(() => setIsMenuOpen(false))}</div>
           </nav>
         </div>
       )}
     </header>
-  )
+  );
 }

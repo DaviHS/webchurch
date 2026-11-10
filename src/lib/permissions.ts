@@ -20,7 +20,10 @@ export const PERMISSION_GROUPS = [
   },
   {
     title: "Sistema",
-    items: [{ key: "audit.view", label: "Ver o histórico de alterações", description: "Consultar quem alterou o quê no sistema." }],
+    items: [
+      { key: "audit.view", label: "Ver o histórico de alterações", description: "Consultar quem alterou o quê no sistema." },
+      { key: "settings.manage", label: "Editar as configurações da igreja", description: "Nome, cultos, contato e textos do site." },
+    ],
   },
 ] as const;
 

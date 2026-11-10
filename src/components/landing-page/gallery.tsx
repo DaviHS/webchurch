@@ -1,29 +1,31 @@
-import Image from "next/image"
+import Image from "next/image";
+import type { SiteSettings } from "@/lib/site-settings";
 
-export default function Gallery() {
+export default function Gallery({ settings }: { settings: SiteSettings }) {
+  if (settings.galleryImages.length === 0) return null;
+
   return (
-    <section id="galeria" className="py-16 md:py-24 bg-gray-50">
+    <section id="galeria" className="bg-gray-50 py-16 md:py-24">
       <div className="container">
-        <div className="flex flex-col items-center text-center mb-12">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-primary mb-4">Galeria</h2>
-          <p className="max-w-[800px] text-gray-600 md:text-xl">
-            Momentos especiais de nossa comunidade em cultos, eventos e atividades.
-          </p>
+        <div className="mb-12 flex flex-col items-center text-center">
+          <h2 className="mb-4 text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">Galeria</h2>
+          <p className="max-w-[800px] text-gray-700 md:text-xl">Momentos especiais de nossa comunidade em cultos, eventos e atividades.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((item) => (
-            <div key={item} className="relative aspect-square overflow-hidden rounded-lg">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {settings.galleryImages.map((src, index) => (
+            <div key={src} className="relative aspect-square overflow-hidden rounded-lg">
               <Image
-                src={`/placeholder.svg?height=600&width=600&text=Foto ${item}`}
-                alt={`Foto da igreja ${item}`}
+                src={src}
+                alt={`Foto da igreja ${index + 1}`}
                 fill
-                className="object-cover hover:scale-105 transition-transform duration-300"
+                unoptimized
+                className="object-cover transition-transform duration-300 hover:scale-105"
               />
             </div>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
