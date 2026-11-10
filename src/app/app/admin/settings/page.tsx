@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ExternalLink, Loader2, Plus, Save, Settings, Trash2 } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
+import { ImagePlus, Loader2, Plus, Save, Settings, Trash2 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { mutationFeedback } from "@/lib/mutation-feedback";
 import { siteSettingsSchema, type SiteSettings } from "@/lib/site-settings";
 import { toastError } from "@/lib/toast";
+import { useUploadThing } from "@/lib/uploadthing";
 import { api } from "@/trpc/react";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -30,7 +32,14 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
   const utils = api.useUtils();
   const [saved, setSaved] = useState(initial);
   const [form, setForm] = useState(initial);
-  const dirty = JSON.stringify(form) !== JSON.stringify(saved);
+  const [pending, setPending] = useState<{ id: string; file: File; preview: string }[]>([]);
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved) || pending.length > 0;
+  const fileInput = useRef<HTMLInputElement>(null);
+  const { startUpload, isUploading: uploading } = useUploadThing("galleryImage", {
+    onUploadError: (error) => {
+      toastError(error.message);
+    },
+  });
 
   const save = api.site.update.useMutation(
     mutationFeedback({
@@ -45,13 +54,45 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
   const updateAt = <K extends "services" | "history" | "aboutCards">(key: K, index: number, patch: Partial<SiteSettings[K][number]>) =>
     set(key, form[key].map((item, i) => (i === index ? { ...item, ...patch } : item)) as SiteSettings[K]);
 
-  const handleSave = () => {
+  const discardPending = () => {
+    for (const item of pending) URL.revokeObjectURL(item.preview);
+    setPending([]);
+  };
+
+  const handleCancel = () => {
+    discardPending();
+    setForm(saved);
+  };
+
+  const handleSave = async () => {
     const parsed = siteSettingsSchema.safeParse(form);
     if (!parsed.success) {
       toastError(parsed.error.issues[0]?.message ?? "Confira os campos");
       return;
     }
-    save.mutate(parsed.data, { onSuccess: () => setSaved(parsed.data) });
+
+    let data = parsed.data;
+    if (pending.length > 0) {
+      const uploaded = await startUpload(pending.map((item) => item.file));
+      if (!uploaded) return;
+      const withPhotos = siteSettingsSchema.safeParse({
+        ...data,
+        galleryImages: [...data.galleryImages, ...uploaded.map((file) => file.serverData.url)],
+      });
+      if (!withPhotos.success) {
+        toastError(withPhotos.error.issues[0]?.message ?? "Confira os campos");
+        return;
+      }
+      data = withPhotos.data;
+    }
+
+    save.mutate(data, {
+      onSuccess: () => {
+        discardPending();
+        setSaved(data);
+        setForm(data);
+      },
+    });
   };
 
   return (
@@ -60,19 +101,6 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
         title="Configurações"
         icon={Settings}
         description="Textos e contatos que aparecem na página inicial pública da igreja."
-        actions={
-          <>
-            <Button asChild variant="outline">
-              <a href="/" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1" /> Ver página inicial
-              </a>
-            </Button>
-            <Button onClick={handleSave} disabled={!dirty || save.isPending}>
-              {save.isPending ? <Loader2 className="mr-1 animate-spin" /> : <Save className="mr-1" />}
-              {dirty ? "Salvar alterações" : "Salvo"}
-            </Button>
-          </>
-        }
       />
 
       <Tabs defaultValue="general">
@@ -261,28 +289,100 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
           <Card>
             <CardHeader>
               <CardTitle>Galeria de fotos</CardTitle>
-              <CardDescription>Um link de foto por linha (até 12). Sem fotos, a galeria não aparece na página.</CardDescription>
+              <CardDescription>
+                Até 12 fotos, de até 8 MB cada. As fotos só são enviadas quando você clicar em Salvar. Sem fotos, a galeria não aparece na página.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                rows={6}
-                aria-label="Links das fotos"
-                placeholder="https://…/foto.jpg"
-                defaultValue={form.galleryImages.join("\n")}
-                onChange={(event) =>
-                  set(
-                    "galleryImages",
-                    event.target.value
-                      .split("\n")
-                      .map((line) => line.trim())
-                      .filter(Boolean),
-                  )
-                }
+            <CardContent className="space-y-4">
+              {form.galleryImages.length + pending.length > 0 && (
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {form.galleryImages.map((url) => (
+                    <li key={url} className="relative aspect-square overflow-hidden rounded-md border">
+                      <Image src={url} alt="Foto da galeria" fill unoptimized className="object-cover" />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="absolute right-1 top-1 size-8"
+                        aria-label="Remover foto"
+                        onClick={() => set("galleryImages", form.galleryImages.filter((item) => item !== url))}
+                      >
+                        <Trash2 className="text-destructive" />
+                      </Button>
+                    </li>
+                  ))}
+                  {pending.map((item) => (
+                    <li key={item.id} className="relative aspect-square overflow-hidden rounded-md border border-dashed border-primary">
+                      <Image src={item.preview} alt="Nova foto, ainda não enviada" fill unoptimized className="object-cover" />
+                      <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-xs font-medium">Nova</span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="absolute right-1 top-1 size-8"
+                        aria-label="Remover foto nova"
+                        onClick={() => {
+                          URL.revokeObjectURL(item.preview);
+                          setPending((current) => current.filter((other) => other.id !== item.id));
+                        }}
+                      >
+                        <Trash2 className="text-destructive" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  if (files.length === 0) return;
+                  if (form.galleryImages.length + pending.length + files.length > 12) {
+                    toastError("A galeria aceita no máximo 12 fotos.");
+                    return;
+                  }
+                  if (files.some((file) => file.size > 8 * 1024 * 1024)) {
+                    toastError("Cada foto pode ter até 8 MB.");
+                    return;
+                  }
+                  setPending((current) => [
+                    ...current,
+                    ...files.map((file) => ({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) })),
+                  ]);
+                }}
               />
+              <Button type="button" variant="outline" disabled={form.galleryImages.length + pending.length >= 12} onClick={() => fileInput.current?.click()}>
+                <ImagePlus className="mr-1" />
+                Adicionar fotos
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {dirty && (
+        <div
+          role="region"
+          aria-label="Alterações não salvas"
+          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border bg-card p-3 shadow-lg md:bottom-6"
+        >
+          <span className="text-sm font-medium">Alterações não salvas</span>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={save.isPending || uploading} onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" disabled={save.isPending || uploading} onClick={() => void handleSave()}>
+              {save.isPending || uploading ? <Loader2 className="mr-1 animate-spin" /> : <Save className="mr-1" />}
+              {uploading ? "Enviando fotos…" : "Salvar"}
+            </Button>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 }
