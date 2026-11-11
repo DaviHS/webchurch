@@ -5,6 +5,7 @@ import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { presentationCommands, presentationSessions } from "@/server/db/schema";
+import { cleanupPresentationSessions, sessionExpiry } from "@/server/presentation-cleanup";
 import {
   REMOTE_CODE_LENGTH,
   remoteCodeSchema,
@@ -15,7 +16,6 @@ import {
   type RemoteOutline,
 } from "@/components/presentation/remote-protocol";
 
-const expiresInEightHours = sql`now() + interval '8 hours'`;
 const sessionIsAlive = sql`${presentationSessions.expiresAt} > now()`;
 
 const notFound = () =>
@@ -53,8 +53,7 @@ export const remoteRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
     const userId = Number(ctx.session.user.id);
 
-    await db.delete(presentationSessions).where(sql`${presentationSessions.expiresAt} <= now()`);
-    await db.delete(presentationCommands).where(sql`${presentationCommands.createdAt} < now() - interval '10 minutes'`);
+    await cleanupPresentationSessions();
 
     const [existing] = await db
       .select({ id: presentationSessions.id, code: presentationSessions.code })
@@ -71,7 +70,7 @@ export const remoteRouter = createTRPCRouter({
     if (existing) {
       await db
         .update(presentationSessions)
-        .set({ title: input.title, expiresAt: expiresInEightHours })
+        .set({ title: input.title, expiresAt: sessionExpiry })
         .where(eq(presentationSessions.id, existing.id));
       return { code: existing.code, lastCommandId: await lastCommandId(existing.id) };
     }
@@ -84,7 +83,7 @@ export const remoteRouter = createTRPCRouter({
           userId,
           deckKey: input.deckKey,
           title: input.title,
-          expiresAt: expiresInEightHours,
+          expiresAt: sessionExpiry,
         })
         .onConflictDoNothing({ target: presentationSessions.code })
         .returning({ code: presentationSessions.code });
@@ -93,14 +92,15 @@ export const remoteRouter = createTRPCRouter({
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível gerar o código. Tente de novo." });
   }),
 
-  listSessions: protectedProcedure.query(() =>
-    db
+  listSessions: protectedProcedure.query(async () => {
+    await cleanupPresentationSessions();
+    return db
       .select({ code: presentationSessions.code, title: presentationSessions.title })
       .from(presentationSessions)
       .where(and(sessionIsAlive, sql`${presentationSessions.updatedAt} > now() - interval '2 minutes'`))
       .orderBy(desc(presentationSessions.updatedAt))
-      .limit(10),
-  ),
+      .limit(10);
+  }),
 
   publish: protectedProcedure
     .input(z.object({ code: remoteCodeSchema, state: remoteStateSchema, outline: remoteOutlineSchema.optional() }))
@@ -112,7 +112,7 @@ export const remoteRouter = createTRPCRouter({
           state: input.state,
           title: input.state.title,
           updatedAt: sql`now()`,
-          expiresAt: expiresInEightHours,
+          expiresAt: sessionExpiry,
           ...(input.outline
             ? { outline: input.outline, outlineRev: sql`${presentationSessions.outlineRev} + 1` }
             : {}),
