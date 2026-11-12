@@ -111,7 +111,7 @@ export function MobileNavigation() {
 
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border/80 bg-card/95 px-2 pt-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+        className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border/80 bg-card px-2 pt-2 pb-[env(safe-area-inset-bottom)]"
       >
         {PRIMARY.map((link) => {
           const isActive = active?.link === link

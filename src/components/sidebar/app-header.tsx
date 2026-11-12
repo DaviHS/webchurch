@@ -28,7 +28,8 @@ export function AppHeader() {
   const onBible = pathname === BIBLE_LINK.url || pathname.startsWith(`${BIBLE_LINK.url}/`)
 
   return (
-    <header className="sticky top-2 z-20 print:hidden mx-4 my-2 flex h-14 shrink-0 items-center gap-2 rounded-md bg-card/95 px-3 shadow-sm ring-1 ring-border backdrop-blur-md sm:px-4">
+    <div className="sticky top-0 z-20 shrink-0 bg-background px-4 py-2 print:hidden">
+    <header className="flex h-14 items-center gap-2 rounded-md bg-card px-3 shadow-sm ring-1 ring-border sm:px-4">
       <SidebarTrigger className={headerIconButton} />
       <Separator orientation="vertical" className="mx-1 h-5!" />
 
@@ -92,5 +93,6 @@ export function AppHeader() {
         </button>
       </div>
     </header>
+    </div>
   )
 }
