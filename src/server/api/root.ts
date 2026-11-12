@@ -15,6 +15,7 @@ import { auditRouter } from "@/server/api/routers/audit";
 import { privacyRouter } from "@/server/api/routers/privacy";
 import { passwordResetRouter } from "@/server/api/routers/password-reset";
 import { siteRouter } from "@/server/api/routers/site";
+import { notificationRouter } from "@/server/api/routers/notification";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
@@ -33,6 +34,7 @@ export const appRouter = createTRPCRouter({
   privacy: privacyRouter,
   passwordReset: passwordResetRouter,
   site: siteRouter,
+  notification: notificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

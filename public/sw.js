@@ -1,4 +1,4 @@
-const VERSION = "v4";
+const VERSION = "v5";
 const STATIC_CACHE = `static-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
@@ -46,7 +46,41 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const isStaticAsset = (url) => url.pathname.startsWith("/_next/static/");
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Igreja Central", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: data.url || "/app" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "/app", self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const open = windows.find((client) => client.url.startsWith(self.location.origin));
+      if (open) {
+        await open.focus();
+        if ("navigate" in open) await open.navigate(target);
+        return;
+      }
+      await self.clients.openWindow(target);
+    })()
+  );
+});
+
+const isStaticAsset =(url) => url.pathname.startsWith("/_next/static/");
 const isMedia = (request, url) =>
   ["image", "font"].includes(request.destination) ||
   url.pathname.startsWith("/icons/") ||

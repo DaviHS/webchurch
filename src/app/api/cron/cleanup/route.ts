@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyTodayBirthdays } from "@/server/birthday-notify";
 import { cleanupPresentationSessions } from "@/server/presentation-cleanup";
 import { cleanupOldEventPlaylists } from "@/server/spotify-cleanup";
 
@@ -12,5 +13,6 @@ export async function GET(request: Request) {
 
   const presentation = await cleanupPresentationSessions();
   await cleanupOldEventPlaylists();
-  return NextResponse.json({ ok: true, presentation });
+  const birthdays = await notifyTodayBirthdays();
+  return NextResponse.json({ ok: true, presentation, birthdays });
 }

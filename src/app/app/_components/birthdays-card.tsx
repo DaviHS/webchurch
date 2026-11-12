@@ -13,6 +13,7 @@ import {
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
 import { StatCard } from "@/components/stat-card";
+import { PushToggle } from "@/components/notifications/push-toggle";
 import { whatsappNumber } from "@/lib/birthdays";
 import { localToday } from "@/lib/bible-plans";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,8 @@ export function BirthdaysStatCard() {
             <ResponsiveDialogTitle>Aniversariantes de {monthName}</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>Membros ativos, por dia do mês.</ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
-          <ResponsiveDialogBody className="pb-4">
+          <ResponsiveDialogBody className="space-y-3 pb-4">
+            <PushToggle />
             {data && data.length > 0 ? (
               <ul className="space-y-2">
                 {data.map((person) => {
