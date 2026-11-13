@@ -8,10 +8,11 @@ import { StatCard } from "@/components/stat-card";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
-import { Music, Calendar, BarChart3, Home, CalendarClock } from "lucide-react";
+import { Music, Calendar, BarChart3, Home } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { BirthdaysStatCard } from "./_components/birthdays-card";
+import { UpcomingEventsCard } from "./_components/upcoming-events-card";
 import { usePermissions } from "@/hooks/use-permissions";
 import { RankBadge } from "./praise/_components/rank-badge";
 
@@ -92,14 +93,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Próximos eventos</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-          <EmptyState icon={CalendarClock} title="Em breve" description="Os próximos eventos agendados aparecerão aqui." />
-        </CardContent>
-      </Card>
+      <UpcomingEventsCard />
     </PageContainer>
   );
 }
