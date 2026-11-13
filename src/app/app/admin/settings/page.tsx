@@ -104,7 +104,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
       />
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
+        <TabsList className="flex h-auto w-full overflow-x-auto sm:w-fit [&>*]:flex-1 [&>*]:shrink-0">
           <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="services">Cultos</TabsTrigger>
           <TabsTrigger value="history">História</TabsTrigger>
@@ -369,7 +369,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
         <div
           role="region"
           aria-label="Alterações não salvas"
-          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border bg-card p-3 shadow-lg md:bottom-6"
+          className="fixed inset-x-4 bottom-[calc(9.75rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border bg-card p-3 shadow-lg md:bottom-6"
         >
           <span className="text-sm font-medium">Alterações não salvas</span>
           <div className="flex gap-2">
