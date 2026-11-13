@@ -2,6 +2,7 @@
 
 import { AlignJustify, List, Minus, Plus, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DEFAULT_READING_PREFS,
@@ -100,6 +101,13 @@ export function ReadingSettings({ className, version }: { className?: string; ve
             ))}
           </div>
         </div>
+        <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+          <span>
+            Escolher o versículo
+            <span className="block text-xs text-muted-foreground">Após o capítulo, ao usar “Ir para”.</span>
+          </span>
+          <Switch checked={prefs.pickVerse} onCheckedChange={(checked) => update({ pickVerse: checked })} />
+        </label>
         <OfflineVersions currentVersion={version} />
       </PopoverContent>
     </Popover>

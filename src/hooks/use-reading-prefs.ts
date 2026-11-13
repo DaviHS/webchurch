@@ -18,10 +18,11 @@ export interface ReadingPrefs {
   font: ReadingFont;
   size: number;
   layout: ReadingLayout;
+  pickVerse: boolean;
 }
 
 const STORAGE_KEY = "bible-reading";
-export const DEFAULT_READING_PREFS: ReadingPrefs = { font: "sans", size: 1, layout: "flow" };
+export const DEFAULT_READING_PREFS: ReadingPrefs = { font: "sans", size: 1, layout: "flow", pickVerse: false };
 
 const listeners = new Set<() => void>();
 let cachedRaw: string | null = null;
@@ -47,6 +48,7 @@ function parse(raw: string | null): ReadingPrefs {
           ? value.size
           : DEFAULT_READING_PREFS.size,
       layout: value.layout === "lines" ? "lines" : "flow",
+      pickVerse: value.pickVerse === true,
     };
   } catch {
     return DEFAULT_READING_PREFS;

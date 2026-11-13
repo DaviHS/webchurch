@@ -15,6 +15,7 @@ import {
 import { BIBLE_BOOKS, getBook, type BibleBookInfo } from "@/lib/bible";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+import { useReadingPrefs } from "@/hooks/use-reading-prefs";
 
 interface Location {
   bookId: number;
@@ -77,6 +78,7 @@ function VerseGrid({
 }
 
 function PickerBody({ current, version, onPick }: Omit<PassagePickerDialogProps, "open" | "onOpenChange">) {
+  const [{ pickVerse }] = useReadingPrefs();
   const [step, setStep] = useState<Step>("book");
   const [book, setBook] = useState<BibleBookInfo | undefined>(getBook(current.bookId));
   const [chapter, setChapter] = useState<number>(current.chapter);
@@ -149,6 +151,10 @@ function PickerBody({ current, version, onPick }: Omit<PassagePickerDialogProps,
               type="button"
               className={numberButton(book.id === current.bookId && number === current.chapter)}
               onClick={() => {
+                if (!pickVerse && book) {
+                  onPick({ bookId: book.id, chapter: number }, null);
+                  return;
+                }
                 setChapter(number);
                 setStep("verse");
               }}
@@ -171,12 +177,13 @@ function PickerBody({ current, version, onPick }: Omit<PassagePickerDialogProps,
 }
 
 export function PassagePickerDialog({ open, onOpenChange, current, version, onPick }: PassagePickerDialogProps) {
+  const [{ pickVerse }] = useReadingPrefs();
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent size="md">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Ir para</ResponsiveDialogTitle>
-          <ResponsiveDialogDescription>Escolha o livro, o capítulo e, se quiser, o versículo.</ResponsiveDialogDescription>
+          <ResponsiveDialogDescription>{pickVerse ? "Escolha o livro, o capítulo e, se quiser, o versículo." : "Escolha o livro e o capítulo."}</ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         {open && <PickerBody current={current} version={version} onPick={onPick} />}
       </ResponsiveDialogContent>
