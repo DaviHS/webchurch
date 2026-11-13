@@ -2,6 +2,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { PresentationState } from "./protocol";
 import { SlideText } from "./slide-text";
+import { themeById } from "./themes";
 
 interface ProjectorViewProps {
   state: PresentationState | null;
@@ -11,14 +12,16 @@ interface ProjectorViewProps {
 export function ProjectorView({ state, className }: ProjectorViewProps) {
   const mode = state?.mode ?? "logo";
   const text = mode === "live" ? (state?.live?.text ?? null) : null;
+  const theme = themeById(state?.theme);
 
   return (
     <div
       className={cn(
         "@container/slide relative flex h-full w-full items-center justify-center overflow-hidden [container-type:size]",
-        mode === "black" ? "bg-black" : "bg-[radial-gradient(ellipse_at_center,#0a5a42_0%,#003F2D_55%,#00261b_100%)]",
+        mode === "black" && "bg-black",
         className
       )}
+      style={mode === "black" ? undefined : { background: theme.background }}
     >
       {mode === "logo" && (
         <Image
@@ -35,7 +38,8 @@ export function ProjectorView({ state, className }: ProjectorViewProps) {
         <SlideText
           key={text}
           text={text}
-          className="px-[4cqw] text-white [text-shadow:0_0.06em_0.18em_rgb(0_0_0/0.55)] animate-in fade-in duration-300"
+          className="px-[4cqw] animate-in fade-in duration-300"
+          style={{ color: theme.text, textShadow: theme.shadow }}
         />
       )}
     </div>

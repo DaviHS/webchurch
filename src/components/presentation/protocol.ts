@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { THEME_IDS } from "./themes";
 
 export const PRESENTATION_CHANNEL = "webchurch-presentation";
 
@@ -42,6 +43,7 @@ const stateMessageSchema = z.object({
   nextSongTitle: z.string().nullable(),
   stageMessage: z.string(),
   timerStartedAt: z.number().nullable(),
+  theme: z.enum(THEME_IDS).optional(),
 });
 export type PresentationState = z.infer<typeof stateMessageSchema>;
 

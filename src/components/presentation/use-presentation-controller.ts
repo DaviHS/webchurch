@@ -17,6 +17,7 @@ import {
   type Position,
 } from "./deck";
 import { useNow } from "./hooks";
+import { useProjectionTheme } from "./use-projection-theme";
 import {
   CONNECTION_TIMEOUT_MS,
   HEARTBEAT_MS,
@@ -87,6 +88,7 @@ export function usePresentationController(baseDeck: Deck | null) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [lastSeen, setLastSeen] = useState<Record<OutputRole, number>>({ projector: 0, stage: 0 });
   const now = useNow();
+  const [theme, setTheme] = useProjectionTheme();
 
   const deck: Deck | null = useMemo(
     () => (baseDeck ? { ...baseDeck, songs: [...baseDeck.songs, ...state.adHocSongs] } : null),
@@ -122,8 +124,9 @@ export function usePresentationController(baseDeck: Deck | null) {
       nextSongTitle: live && deck ? (deck.songs[live.song + 1]?.title ?? null) : null,
       stageMessage: state.stageMessage,
       timerStartedAt: state.timerStartedAt,
+      theme,
     };
-  }, [deck, live, next, state.mode, state.stageMessage, state.timerStartedAt]);
+  }, [deck, live, next, state.mode, state.stageMessage, state.timerStartedAt, theme]);
 
   const handleCommand = (command: PresentationCommand) => {
     if (!deck) return;
@@ -198,6 +201,8 @@ export function usePresentationController(baseDeck: Deck | null) {
     next,
     mode: broadcastState.mode,
     broadcastState,
+    theme,
+    setTheme,
     stageMessage: state.stageMessage,
     timerStartedAt: state.timerStartedAt,
     connections,

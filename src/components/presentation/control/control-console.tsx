@@ -33,6 +33,7 @@ import { buildDeck, passageToDeckSong, samePosition, type DeckSong, type DeckSon
 import { loadCachedDeck, saveCachedDeck } from "../deck-cache";
 import { formatElapsed } from "../hooks";
 import { ProjectorView } from "../projector-view";
+import { ThemePicker } from "./theme-picker";
 import { OUTPUT_LABELS, OUTPUT_ROLES, type OutputRole, type ProjectorMode } from "../protocol";
 import {
   detectScreensIfPermitted,
@@ -182,6 +183,8 @@ function SidePanel({ controller }: { controller: PresentationController }) {
             <ProjectorView state={controller.broadcastState} />
           </div>
         </section>
+
+        <ThemePicker value={controller.theme} onChange={controller.setTheme} />
 
         <section className="space-y-1.5">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
