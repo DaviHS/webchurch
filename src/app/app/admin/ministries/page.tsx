@@ -237,7 +237,7 @@ export default function MinistriesPage() {
             {visibleMinistries.map(({ ministry, memberCount, functionCount }) => {
               const names = functionsByMinistry.get(ministry.id) ?? [];
               return (
-                <Card key={ministry.id} className="relative flex cursor-pointer flex-col transition-shadow hover:shadow-md">
+                <Card key={ministry.id} className="relative flex cursor-pointer flex-col transition-colors hover:border-primary/40">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="min-w-0 break-words text-lg">
@@ -327,7 +327,7 @@ export default function MinistriesPage() {
               else functionDialog.openEdit(item);
             };
             return (
-              <Card key={item.id} className={cn("relative transition-shadow hover:shadow-md", clickable && "cursor-pointer")}>
+              <Card key={item.id} className={cn("relative transition-colors hover:border-primary/40", clickable && "cursor-pointer")}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="min-w-0 break-words text-lg">

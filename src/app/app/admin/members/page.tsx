@@ -318,7 +318,7 @@ function MembersContent() {
       ) : (
         <div className="grid gap-3 sm:gap-4">
           {members.map(({ members: m, users: u }) => (
-            <Card key={m.id} className="relative cursor-pointer transition-shadow hover:shadow-md">
+            <Card key={m.id} className="relative cursor-pointer transition-colors hover:border-primary/40">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex items-start justify-between gap-2">

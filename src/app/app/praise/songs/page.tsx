@@ -4,7 +4,6 @@ import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Loader2, Merge, Music, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import {
   ResponsiveDialog,
@@ -177,8 +176,8 @@ export default function SongsPage() {
         <SpotifyStatus />
       </div>
 
-      <Card>
-        <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+      <section className="space-y-4">
+        <div>
           <SongFilters
             search={search}
             onSearchChange={setSearch}
@@ -194,9 +193,9 @@ export default function SongsPage() {
             noYoutubeCount={facets?.noYoutubeCount ?? 0}
             noSpotifyCount={facets?.noSpotifyCount ?? 0}
           />
-        </CardHeader>
+        </div>
 
-        <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+        <div className="space-y-4">
           {isError && !data ? (
             <ErrorDisplay title="Não foi possível carregar as músicas" message={listError.message} onRetry={() => void refetch()} className="mt-0" />
           ) : isLoading ? (
@@ -232,8 +231,8 @@ export default function SongsPage() {
           ) : (
             <SongEmptyState onCreateClick={canEdit ? songDialog.openCreate : undefined} filtered={isFiltered} />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </PageContainer>
   );
 }

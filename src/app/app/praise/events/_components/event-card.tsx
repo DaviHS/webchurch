@@ -33,7 +33,7 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails, onDuplicate,
   const hasContent = event.songCount + event.passageCount > 0;
 
   return (
-    <Card className="flex h-full flex-col transition-shadow [@media(hover:hover)]:hover:shadow-md">
+    <Card className="flex h-full flex-col transition-colors [@media(hover:hover)]:hover:border-primary/40">
       <div className="flex items-start gap-1 p-1 pr-2">
         <button
           type="button"
@@ -45,7 +45,7 @@ export function EventCard({ event, onEdit, onDelete, onViewDetails, onDuplicate,
             <span title={event.title} className="min-w-0 truncate text-base font-semibold leading-tight">
               {event.title}
             </span>
-            <Badge variant={eventTypeBadge(event.type)} className="shrink-0 px-1.5 py-0 text-[11px]">
+            <Badge variant={eventTypeBadge(event.type)} className="shrink-0 px-1.5 py-0 text-xs">
               {eventTypeLabel(event.type)}
             </Badge>
           </span>

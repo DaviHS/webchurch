@@ -70,7 +70,7 @@ export function BirthdaysStatCard() {
                     <li key={person.id} className={cn("flex items-center gap-3 rounded-md border p-3", passed && "opacity-60")}>
                       <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-md bg-primary/10 text-primary">
                         <span className="text-lg font-bold leading-none tabular-nums">{pad(person.day)}</span>
-                        <span className="text-[11px] uppercase tabular-nums">/{pad(Number(today.slice(5, 7)))}</span>
+                        <span className="text-xs uppercase tabular-nums">/{pad(Number(today.slice(5, 7)))}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold sm:text-base">

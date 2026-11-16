@@ -12,7 +12,7 @@ export default function About({ settings }: { settings: SiteSettings }) {
       <div className="container">
         <div className="mb-12 flex flex-col items-center text-center">
           <h2 className="mb-4 text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">Sobre Nossa Igreja</h2>
-          {settings.aboutIntro && <p className="max-w-[800px] text-gray-700 md:text-xl">{settings.aboutIntro}</p>}
+          {settings.aboutIntro && <p className="max-w-[800px] text-foreground/80 md:text-xl">{settings.aboutIntro}</p>}
         </div>
 
         <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -25,7 +25,7 @@ export default function About({ settings }: { settings: SiteSettings }) {
                     <Icon className="h-8 w-8 text-primary" />
                   </div>
                   <h3 className="mb-2 text-xl font-bold">{card.title}</h3>
-                  <p className="text-gray-700">{card.text}</p>
+                  <p className="text-foreground/80">{card.text}</p>
                 </CardContent>
               </Card>
             );

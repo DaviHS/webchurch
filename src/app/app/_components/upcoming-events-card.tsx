@@ -47,7 +47,7 @@ export function UpcomingEventsCard() {
                 >
                   <span className="flex items-center gap-2">
                     <span className="min-w-0 truncate text-sm font-semibold sm:text-base">{event.title}</span>
-                    <Badge variant={eventTypeBadge(event.type)} className="shrink-0 px-1.5 py-0 text-[11px]">
+                    <Badge variant={eventTypeBadge(event.type)} className="shrink-0 px-1.5 py-0 text-xs">
                       {eventTypeLabel(event.type)}
                     </Badge>
                   </span>

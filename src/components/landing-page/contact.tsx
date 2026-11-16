@@ -12,7 +12,7 @@ export default function Contact({ settings }: { settings: SiteSettings }) {
       <div className="container">
         <div className="mb-12 flex flex-col items-center text-center">
           <h2 className="mb-4 text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">Entre em Contato</h2>
-          <p className="max-w-[800px] text-gray-700 md:text-xl">Estamos à disposição para responder suas dúvidas e receber seu contato.</p>
+          <p className="max-w-[800px] text-foreground/80 md:text-xl">Estamos à disposição para responder suas dúvidas e receber seu contato.</p>
         </div>
 
         <div className="mx-auto max-w-2xl space-y-8">
@@ -44,8 +44,8 @@ export default function Contact({ settings }: { settings: SiteSettings }) {
                 <div>
                   <p className="font-medium">Endereço</p>
                   <a href={mapsLink(settings)} target="_blank" rel="noopener noreferrer" className="group">
-                    {settings.street && <p className="text-gray-700 transition-colors duration-200 group-hover:text-primary">{settings.street}</p>}
-                    {settings.city && <p className="text-gray-700 transition-colors duration-200 group-hover:text-primary">{settings.city}</p>}
+                    {settings.street && <p className="text-foreground/80 transition-colors duration-200 group-hover:text-primary">{settings.street}</p>}
+                    {settings.city && <p className="text-foreground/80 transition-colors duration-200 group-hover:text-primary">{settings.city}</p>}
                     <p className="text-sm font-medium text-primary">Como chegar</p>
                   </a>
                 </div>
@@ -57,7 +57,7 @@ export default function Contact({ settings }: { settings: SiteSettings }) {
                 <Mail className="mr-3 mt-1 h-5 w-5 shrink-0 text-primary" />
                 <div>
                   <p className="font-medium">E-mail</p>
-                  <a href={`mailto:${settings.email}`} className="text-gray-700 hover:text-primary">
+                  <a href={`mailto:${settings.email}`} className="text-foreground/80 hover:text-primary">
                     {settings.email}
                   </a>
                 </div>

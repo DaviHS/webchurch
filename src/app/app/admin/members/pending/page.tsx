@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { AlertTriangle, Check, Clock, MessageCircle, RotateCcw, UserCheck, Users, X } from "lucide-react";
 import { api } from "@/trpc/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -168,12 +167,12 @@ export default function PendingUsersPage() {
       </Tabs>
 
       {tab === "pending" ? (
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle>Usuários pendentes de aprovação</CardTitle>
-            <CardDescription>Confira os dados, escolha o ministério (opcional) e aprove ou rejeite</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold sm:text-lg">Usuários pendentes de aprovação</h2>
+            <p className="text-sm text-muted-foreground">Confira os dados, escolha o ministério (opcional) e aprove ou rejeite</p>
+          </div>
+          <div>
             {isLoading ? (
               <LoadingState message="Carregando solicitações..." />
             ) : !pendingUsers || pendingUsers.length === 0 ? (
@@ -358,15 +357,15 @@ export default function PendingUsersPage() {
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       ) : (
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle>Solicitações rejeitadas</CardTitle>
-            <CardDescription>Se foi engano, devolva para as pendentes e aprove</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold sm:text-lg">Solicitações rejeitadas</h2>
+            <p className="text-sm text-muted-foreground">Se foi engano, devolva para as pendentes e aprove</p>
+          </div>
+          <div>
             {loadingRejected ? (
               <LoadingState message="Carregando..." />
             ) : !rejectedUsers || rejectedUsers.length === 0 ? (
@@ -393,8 +392,8 @@ export default function PendingUsersPage() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
     </PageContainer>
   );

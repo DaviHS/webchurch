@@ -14,7 +14,7 @@ import "@/styles/globals.css";
 
 export default function RootLayout({ children }: Readonly<PropsWithChildren>) {
   return (
-    <html lang="pt-BR" className={`${fontSans.className} ${fontBook.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${fontSans.variable} ${fontBook.variable}`} suppressHydrationWarning>
       <body>
         <TRPCReactProvider>
           <SessionProvider>

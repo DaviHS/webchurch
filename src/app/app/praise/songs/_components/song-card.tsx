@@ -40,7 +40,7 @@ export function SongCard({ song, search = "", onEdit, onDelete, onViewLyrics, on
   const played = song.playCount ?? 0;
 
   return (
-    <Card className="flex h-full flex-col transition-shadow [@media(hover:hover)]:hover:shadow-md">
+    <Card className="flex h-full flex-col transition-colors [@media(hover:hover)]:hover:border-primary/40">
       <CardContent className="flex flex-1 items-center gap-1 p-1 pr-2">
         <button
           type="button"
@@ -62,7 +62,7 @@ export function SongCard({ song, search = "", onEdit, onDelete, onViewLyrics, on
               <span>Nunca tocada</span>
             )}
             {!hasLyrics && (
-              <Badge variant="warning" className="px-1.5 py-0 text-[11px]">
+              <Badge variant="warning" className="px-1.5 py-0 text-xs">
                 Sem letra
               </Badge>
             )}

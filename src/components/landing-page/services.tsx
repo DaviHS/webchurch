@@ -6,11 +6,11 @@ export default function Services({ settings }: { settings: SiteSettings }) {
   if (settings.services.length === 0) return null;
 
   return (
-    <section id="cultos" className="bg-gray-50 py-16 md:py-24">
+    <section id="cultos" className="bg-muted/50 py-16 md:py-24">
       <div className="container">
         <div className="mb-12 flex flex-col items-center text-center">
           <h2 className="mb-4 text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">Nossos Cultos</h2>
-          <p className="max-w-[800px] text-gray-700 md:text-xl">
+          <p className="max-w-[800px] text-foreground/80 md:text-xl">
             Venha participar de nossos cultos e atividades semanais. Temos programações para todas as idades e momentos especiais de adoração e comunhão.
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function Services({ settings }: { settings: SiteSettings }) {
                     </div>
                   )}
                 </div>
-                {service.description && <p className="mt-4 text-gray-700">{service.description}</p>}
+                {service.description && <p className="mt-4 text-foreground/80">{service.description}</p>}
               </CardContent>
             </Card>
           ))}

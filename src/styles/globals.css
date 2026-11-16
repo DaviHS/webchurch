@@ -17,7 +17,7 @@
 
 @theme {
   --font-sans:
-    Urbanist, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    var(--font-poppins), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
   --radius-lg: var(--radius);
@@ -112,19 +112,19 @@
   .light {
     color-scheme: light;
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 165 30% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 165 30% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 165 30% 8%;
     --primary: 162 100% 12.4%;
     --primary-foreground: 0 0% 100%;
     --secondary: 34 64% 70%;
     --secondary-foreground: 162 100% 12.4%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 150 14% 95.5%;
+    --muted-foreground: 160 8% 40%;
+    --accent: 150 14% 95.5%;
+    --accent-foreground: 165 30% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
     --success: 152 76% 30%;
@@ -133,8 +133,8 @@
     --warning-foreground: 0 0% 100%;
     --info: 205 85% 42%;
     --info-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 150 12% 89%;
+    --input: 150 12% 89%;
     --ring: 162 100% 12.4%;
     --radius: 0.5rem;
 
@@ -144,13 +144,13 @@
     --chart-4: 280 55% 55%;
     --chart-5: 0 70% 55%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-background: 150 14% 98%;
+    --sidebar-foreground: 165 12% 25%;
     --sidebar-primary: 162 100% 12.4%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 150 12% 94.5%;
+    --sidebar-accent-foreground: 165 30% 10%;
+    --sidebar-border: 150 12% 90%;
     --sidebar-ring: 162 100% 12.4%;
   }
 
@@ -196,202 +196,6 @@
     --sidebar-accent-foreground: 150 10% 95%;
     --sidebar-border: 165 12% 16%;
     --sidebar-ring: 158 55% 48%;
-  }
-}
-
-@layer utilities {
-  .lyrics-container {
-    font-family: 'Georgia', serif;
-    line-height: 1.8;
-    font-size: 1.1rem;
-    background: linear-gradient(
-      180deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted)) 100%
-    );
-    border-radius: var(--radius);
-    padding: 1.5rem;
-  }
-
-  .chord {
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    color: hsl(var(--primary));
-    font-weight: 700;
-    vertical-align: super;
-    margin: 0 0.1rem;
-    padding: 0.1rem 0.2rem;
-    background: hsl(var(--primary) / 0.1);
-    border-radius: 0.2rem;
-    position: relative;
-    top: -0.5em;
-  }
-
-  .lyrics-line {
-    margin-bottom: 0.75rem;
-    min-height: 1.5rem;
-    position: relative;
-  }
-
-  .lyrics-container span:not(.chord) {
-    color: hsl(var(--foreground));
-    font-weight: 450;
-  }
-
-  .chord:hover {
-    background: hsl(var(--primary) / 0.2);
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
-  }
-
-  .dark .lyrics-container {
-    background: linear-gradient(
-      180deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted) / 0.8) 100%
-    );
-  }
-
-  .dark .chord {
-    color: hsl(var(--primary) / 0.9);
-    background: hsl(var(--primary) / 0.15);
-  }
-
-  .dark .chord:hover {
-    background: hsl(var(--primary) / 0.25);
-  }
-
-  @media (max-width: 768px) {
-    .lyrics-container {
-      padding: 1rem;
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-
-    .chord {
-      font-size: 0.7rem;
-      top: -0.4em;
-    }
-
-    .lyrics-line {
-      margin-bottom: 0.5rem;
-    }
-  }
-
-  .lyrics-line {
-    animation: fadeInUp 0.3s ease-out;
-  }
-
-  .music-player {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted) / 0.9) 100%
-    );
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  }
-
-  .music-player .slider {
-    cursor: pointer;
-  }
-
-  .music-player .slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: hsl(var(--primary));
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .music-player .slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-  }
-
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  .music-player .play-button:active {
-    animation: pulse 0.3s ease;
-  }
-
-  @media (max-width: 640px) {
-    .music-player {
-      padding: 1rem;
-    }
-
-    .music-player .controls {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .music-player .volume-controls {
-      order: 3;
-      width: 100%;
-      justify-content: center;
-      margin-top: 0.5rem;
-    }
-  }
-
-  .music-player button:hover {
-    transform: translateY(-1px);
-    transition: transform 0.2s ease;
-  }
-
-  .music-player button:focus-visible {
-    outline: 2px solid hsl(var(--ring));
-    outline-offset: 2px;
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .html {
-    scroll-behavior: smooth;
-  }
-
-  .dropdown-search-results {
-    max-height: 300px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) hsl(var(--background));
-  }
-
-  .dropdown-search-results::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .dropdown-search-results::-webkit-scrollbar-track {
-    background: hsl(var(--background));
-  }
-
-  .dropdown-search-results::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 3px;
-  }
-
-  .dropdown-search-results::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
   }
 }
 

@@ -8,7 +8,6 @@ import { addDays, getDay, startOfDay } from "date-fns";
 import { skipToken } from "@tanstack/react-query";
 import { Calendar, CalendarDays, List, Plus, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { PageContainer, PageHeader } from "@/components/page-header";
@@ -232,8 +231,8 @@ export default function EventsPage() {
           onCreateOnDate={canEdit ? handleCreateOnDate : undefined}
         />
       ) : (
-        <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+        <section className="space-y-4">
+          <div>
             <EventFilters
               scope={scope}
               onScopeChange={handleScopeChange}
@@ -244,9 +243,9 @@ export default function EventsPage() {
               isSearching={search !== debouncedSearch}
               availableTypes={availableTypes}
             />
-          </CardHeader>
+          </div>
 
-          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <div className="space-y-4">
             {isError && !data ? (
               <ErrorDisplay title="Não foi possível carregar os eventos" message={listError.message} onRetry={() => void refetch()} className="mt-0" />
             ) : !isLoading && events.length === 0 ? (
@@ -311,8 +310,8 @@ export default function EventsPage() {
                 />
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
     </PageContainer>
   );
