@@ -13,7 +13,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { LiveBadge } from "../live-badge";
-import { lyricSlideCount, passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
+import { DEFAULT_VERSES_PER_SLIDE, lyricSlideCount, passageToDeckSong, type Deck, type DeckSong, type DeckSongSource, type Position } from "../deck";
 import { VersesPerSlideSelect } from "./slide-grid";
 
 interface SetlistProps {
@@ -31,7 +31,7 @@ function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
   const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
   const [version, setVersion] = useBibleVersion(versions);
   const [reference, setReference] = useState("");
-  const [perSlide, setPerSlide] = useState<number | null>(null);
+  const [perSlide, setPerSlide] = useState<number | null>(DEFAULT_VERSES_PER_SLIDE);
   const [loading, setLoading] = useState(false);
 
   const submit = async (event: React.FormEvent) => {

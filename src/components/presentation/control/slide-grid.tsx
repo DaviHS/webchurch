@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
@@ -16,6 +19,7 @@ interface SlideGridProps {
   onGoTo: (position: Position) => void;
   onVersesPerSlide: (uid: string, perSlide: number | null) => void;
   onPassage: (uid: string, passage: PassageSource) => void;
+  onEditSong: (songId: number) => void;
 }
 
 export function VersesPerSlideSelect({
@@ -74,7 +78,7 @@ function PassageVersionSelect({
   return (
     <Select value={current} onValueChange={(code) => void change(code)} disabled={loading}>
       <SelectTrigger className="w-full sm:w-28" aria-label="Versão da passagem">
-        <SelectValue />
+        <SelectValue>{current}</SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-80">
         {versions?.map((v) => (
@@ -87,9 +91,17 @@ function PassageVersionSelect({
   );
 }
 
-export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlide, onPassage }: SlideGridProps) {
+export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlide, onPassage, onEditSong }: SlideGridProps) {
   const song = deck.songs[songIndex];
   const liveRef = useRef<HTMLButtonElement>(null);
+  const canEditSongs = usePermissions().can("songs.edit");
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const songUid = song?.uid;
+
+  useEffect(() => {
+    rootRef.current?.closest("[data-radix-scroll-area-viewport]")?.scrollTo({ top: 0 });
+  }, [songUid]);
 
   useEffect(() => {
     liveRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -109,12 +121,18 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <div ref={rootRef} className="space-y-3">
+      <div className="sticky top-0 z-10 flex flex-wrap items-end justify-between gap-2 bg-background pb-2">
         <div className="min-w-0">
           <h2 className="text-lg font-bold leading-tight">{song.title}</h2>
           {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
         </div>
+        {song.kind === "song" && song.id > 0 && canEditSongs && (
+          <Button type="button" variant="outline" size="sm" onClick={() => onEditSong(song.id)}>
+            <Pencil />
+            Editar música
+          </Button>
+        )}
         {song.kind === "bible" && (
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {song.source && <PassageVersionSelect song={song} onPassage={onPassage} />}

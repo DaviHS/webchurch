@@ -44,6 +44,7 @@ const stateMessageSchema = z.object({
   stageMessage: z.string(),
   timerStartedAt: z.number().nullable(),
   theme: z.enum(THEME_IDS).optional(),
+  video: z.object({ id: z.string().min(11).max(11), playing: z.boolean(), blocked: z.boolean().optional() }).nullable().optional(),
 });
 export type PresentationState = z.infer<typeof stateMessageSchema>;
 
@@ -67,6 +68,11 @@ const operatorOfflineSchema = z.object({
   type: z.literal("OPERATOR_OFFLINE"),
 });
 
+const videoBlockedSchema = z.object({
+  type: z.literal("VIDEO_BLOCKED"),
+  id: z.string().min(11).max(11),
+});
+
 const closeMessageSchema = z.object({
   type: z.literal("CLOSE"),
 });
@@ -78,6 +84,7 @@ export const presentationMessageSchema = z.discriminatedUnion("type", [
   commandMessageSchema,
   operatorOfflineSchema,
   closeMessageSchema,
+  videoBlockedSchema,
 ]);
 
 export type PresentationMessage = z.infer<typeof presentationMessageSchema>;

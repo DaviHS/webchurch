@@ -116,7 +116,7 @@ export function OutputWindow({ role }: { role: OutputRole }) {
   return (
     <div className="fixed inset-0 cursor-none select-none" onClick={() => enterFullscreen()}>
       {role === "projector" ? (
-        <ProjectorView state={state} />
+        <ProjectorView state={state} onVideoError={(id) => post({ type: "VIDEO_BLOCKED", id })} />
       ) : (
         <StageView state={state} now={now} operatorOnline={state === null || operatorOnline} />
       )}

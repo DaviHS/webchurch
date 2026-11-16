@@ -37,6 +37,7 @@ interface ControllerState {
   stageMessage: string;
   timerStartedAt: number | null;
   adHocSongs: DeckSong[];
+  video: { id: string; playing: boolean; blocked?: boolean } | null;
 }
 
 type Action =
@@ -45,8 +46,13 @@ type Action =
   | { type: "setStageMessage"; message: string }
   | { type: "startTimer"; at: number }
   | { type: "stopTimer" }
+  | { type: "showVideo"; id: string }
+  | { type: "toggleVideo" }
+  | { type: "closeVideo" }
+  | { type: "videoBlocked"; id: string }
   | { type: "addSong"; song: DeckSong }
   | { type: "removeSong"; uid: string }
+  | { type: "refreshSong"; source: DeckSongSource }
   | { type: "replaceSong"; song: DeckSong; live: Position | null };
 
 const initialState: ControllerState = {
@@ -55,12 +61,13 @@ const initialState: ControllerState = {
   stageMessage: "",
   timerStartedAt: null,
   adHocSongs: [],
+  video: null,
 };
 
 function reducer(state: ControllerState, action: Action): ControllerState {
   switch (action.type) {
     case "goTo":
-      return { ...state, live: action.position, mode: "live" };
+      return { ...state, live: action.position, mode: "live", video: null };
     case "toggleMode":
       return { ...state, mode: state.mode === action.mode ? "live" : action.mode };
     case "setStageMessage":
@@ -69,10 +76,25 @@ function reducer(state: ControllerState, action: Action): ControllerState {
       return { ...state, timerStartedAt: action.at };
     case "stopTimer":
       return { ...state, timerStartedAt: null };
+    case "showVideo":
+      return { ...state, video: { id: action.id, playing: true } };
+    case "toggleVideo":
+      return state.video ? { ...state, video: { ...state.video, playing: !state.video.playing } } : state;
+    case "closeVideo":
+      return { ...state, video: null };
+    case "videoBlocked":
+      return state.video?.id === action.id ? { ...state, video: { id: action.id, playing: false, blocked: true } } : state;
     case "addSong":
       return { ...state, adHocSongs: [...state.adHocSongs, action.song] };
     case "removeSong":
       return { ...state, adHocSongs: state.adHocSongs.filter((song) => song.uid !== action.uid) };
+    case "refreshSong":
+      return {
+        ...state,
+        adHocSongs: state.adHocSongs.map((song) =>
+          song.kind === "song" && song.id === action.source.id ? toDeckSong(action.source, song.uid, true) : song,
+        ),
+      };
     case "replaceSong":
       return {
         ...state,
@@ -125,8 +147,9 @@ export function usePresentationController(baseDeck: Deck | null) {
       stageMessage: state.stageMessage,
       timerStartedAt: state.timerStartedAt,
       theme,
+      video: state.video,
     };
-  }, [deck, live, next, state.mode, state.stageMessage, state.timerStartedAt, theme]);
+  }, [deck, live, next, state.mode, state.stageMessage, state.timerStartedAt, theme, state.video]);
 
   const handleCommand = (command: PresentationCommand) => {
     if (!deck) return;
@@ -154,6 +177,9 @@ export function usePresentationController(baseDeck: Deck | null) {
           break;
         case "COMMAND":
           handleCommand(message.command);
+          break;
+        case "VIDEO_BLOCKED":
+          dispatch({ type: "videoBlocked", id: message.id });
           break;
         default:
           break;
@@ -203,6 +229,10 @@ export function usePresentationController(baseDeck: Deck | null) {
     broadcastState,
     theme,
     setTheme,
+    video: state.video,
+    showVideo: (id: string) => dispatch({ type: "showVideo", id }),
+    toggleVideoPlaying: () => dispatch({ type: "toggleVideo" }),
+    closeVideo: () => dispatch({ type: "closeVideo" }),
     stageMessage: state.stageMessage,
     timerStartedAt: state.timerStartedAt,
     connections,
@@ -228,6 +258,7 @@ export function usePresentationController(baseDeck: Deck | null) {
       reslicePassage(current, passageToDeckSong(passage, uid, current.versesPerSlide));
     },
     removeSong: (uid: string) => dispatch({ type: "removeSong", uid }),
+    refreshSong: (source: DeckSongSource) => dispatch({ type: "refreshSong", source }),
     closeOutputs: () => post({ type: "CLOSE" }),
   };
 }

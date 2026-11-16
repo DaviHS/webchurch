@@ -138,8 +138,9 @@ function wrapText(text: string, width: number): string {
 }
 
 export const VERSES_PER_SLIDE_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
+export const DEFAULT_VERSES_PER_SLIDE = 1;
 
-export function passageToDeckSong(passage: PassageSource, uid: string, versesPerSlide: number | null = null): DeckSong {
+export function passageToDeckSong(passage: PassageSource, uid: string, versesPerSlide: number | null = DEFAULT_VERSES_PER_SLIDE): DeckSong {
   const showNumbers = passage.verses.length > 1;
   const groups: PassageSource["verses"][] = [];
   let chars = 0;
@@ -168,8 +169,8 @@ export function passageToDeckSong(passage: PassageSource, uid: string, versesPer
   return {
     uid,
     id: 0,
-    title: `${passage.title} · ${passage.version.code}`,
-    artist: passage.version.name,
+    title: passage.title,
+    artist: null,
     slides: groups.map(
       (group, index) =>
         wrapText(

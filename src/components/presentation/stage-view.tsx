@@ -17,7 +17,7 @@ const MODE_BADGES: Partial<Record<ProjectorMode, { label: string; className: str
 };
 
 export function StageView({ state, now, operatorOnline, className }: StageViewProps) {
-  const badge = state ? MODE_BADGES[state.mode] : undefined;
+  const badge = state?.video && !state.video.blocked ? { label: "PROJETOR: VÍDEO", className: "bg-red-600 text-white" } : state ? MODE_BADGES[state.mode] : undefined;
   const elapsed = state?.timerStartedAt != null && now > 0 ? formatElapsed(now - state.timerStartedAt) : null;
 
   return (

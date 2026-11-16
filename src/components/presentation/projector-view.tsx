@@ -3,16 +3,39 @@ import { cn } from "@/lib/utils";
 import type { PresentationState } from "./protocol";
 import { SlideText } from "./slide-text";
 import { themeById } from "./themes";
+import { ProjectorVideo } from "./projector-video";
 
 interface ProjectorViewProps {
   state: PresentationState | null;
   className?: string;
+  preview?: boolean;
+  onVideoError?: (videoId: string) => void;
 }
 
-export function ProjectorView({ state, className }: ProjectorViewProps) {
+export function ProjectorView({ state, className, preview = false, onVideoError }: ProjectorViewProps) {
   const mode = state?.mode ?? "logo";
   const text = mode === "live" ? (state?.live?.text ?? null) : null;
   const theme = themeById(state?.theme);
+  const video = state?.video ?? null;
+
+  if (video && !video.blocked) {
+    return (
+      <div className={cn("relative h-full w-full overflow-hidden bg-black", className)}>
+        {preview ? (
+          <div
+            className="flex h-full w-full items-end bg-cover bg-center"
+            style={{ backgroundImage: `url(https://i.ytimg.com/vi/${video.id}/hqdefault.jpg)` }}
+          >
+            <span className="m-2 rounded bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">
+              {video.playing ? "Vídeo tocando no projetor" : "Vídeo pausado"}
+            </span>
+          </div>
+        ) : (
+          <ProjectorVideo videoId={video.id} playing={video.playing} onError={onVideoError} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

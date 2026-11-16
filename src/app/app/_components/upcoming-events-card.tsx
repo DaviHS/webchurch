@@ -42,7 +42,7 @@ export function UpcomingEventsCard() {
             {upcoming.map((event) => (
               <li key={event.id}>
                 <Link
-                  href="/app/praise/events"
+                  href={`/app/praise/events?evento=${event.id}`}
                   className="block space-y-1.5 rounded-md border p-3 transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="flex items-center gap-2">

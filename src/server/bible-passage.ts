@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { bibleVerses, bibleVersions } from "@/server/db/schema";
 import { formatReference, parseReference } from "@/lib/bible";
 
-const EMPTY_VERSE = /^s*Verszeile ohne Texts*$/i;
+const EMPTY_VERSE = /^\s*Verszeile ohne Text\s*$/i;
 export const EMPTY_VERSE_NOTE = "(texto reunido ao versículo anterior)";
 
 export const cleanVerses = <T extends { text: string }>(verses: T[]): T[] =>

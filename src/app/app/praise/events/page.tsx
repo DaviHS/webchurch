@@ -3,6 +3,7 @@
 import { formatDate } from "@/lib/formatters";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addDays, getDay, startOfDay } from "date-fns";
 import { skipToken } from "@tanstack/react-query";
 import { Calendar, CalendarDays, List, Plus, SearchX } from "lucide-react";
@@ -43,6 +44,10 @@ export default function EventsPage() {
   const scopeKnown = chosenScope !== null || upcomingProbe.isSuccess || upcomingProbe.isError;
   const scope: EventScope = chosenScope ?? (upcomingProbe.data?.total === 0 ? "past" : "upcoming");
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const router = useRouter();
+  const linkedParam = Number(useSearchParams().get("evento"));
+  const linkedEventId = Number.isInteger(linkedParam) && linkedParam > 0 ? linkedParam : null;
+  const detailEventId = selectedEvent?.id ?? linkedEventId;
 
   const confirm = useConfirm();
   const utils = api.useUtils();
@@ -62,7 +67,7 @@ export default function EventsPage() {
   const { data: availableTypes = [] } = api.event.typesInScope.useQuery({ scope, today }, { enabled: scopeKnown, staleTime: 60_000 });
 
   const { data: eventDetails, isLoading: isLoadingDetails } = api.event.getById.useQuery(
-    selectedEvent ? selectedEvent.id : skipToken
+    detailEventId ?? skipToken
   );
 
   const createEventMutation = api.event.create.useMutation(
@@ -178,7 +183,9 @@ export default function EventsPage() {
           event={eventToDisplay}
           open
           onOpenChange={(open) => {
-            if (!open) setSelectedEvent(null);
+            if (open) return;
+            setSelectedEvent(null);
+            if (linkedEventId !== null) router.replace("/app/praise/events");
           }}
           isLoading={isLoadingDetails}
         />
@@ -272,7 +279,16 @@ export default function EventsPage() {
               )
             ) : (
               <>
-                {featured && <NextEventCard event={featured} onViewDetails={setSelectedEvent} />}
+                {featured && (
+                  <NextEventCard
+                    event={featured}
+                    onViewDetails={setSelectedEvent}
+                    onEdit={eventDialog.openEdit}
+                    onDelete={handleDelete}
+                    onDuplicate={(event) => duplicateEventMutation.mutate(event.id)}
+                    onPrint={(event) => setPrintEventId(event.id)}
+                  />
+                )}
 
                 <EventGrid
                   events={gridEvents}

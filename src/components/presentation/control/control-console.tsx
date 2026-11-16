@@ -29,11 +29,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { buildDeck, passageToDeckSong, samePosition, type DeckSong, type DeckSongSource, type Position } from "../deck";
+import { buildDeck, DEFAULT_VERSES_PER_SLIDE, passageToDeckSong, samePosition, type DeckSong, type DeckSongSource, type Position } from "../deck";
 import { loadCachedDeck, saveCachedDeck } from "../deck-cache";
 import { formatElapsed } from "../hooks";
 import { ProjectorView } from "../projector-view";
 import { ThemePicker } from "./theme-picker";
+import { VideoPanel } from "./video-panel";
+import { EditSongDialog } from "./edit-song-dialog";
 import { OUTPUT_LABELS, OUTPUT_ROLES, type OutputRole, type ProjectorMode } from "../protocol";
 import {
   detectScreensIfPermitted,
@@ -72,7 +74,8 @@ const MODE_BUTTONS: { mode: Exclude<ProjectorMode, "live">; label: string; key: 
 const SHORTCUTS: [string, string][] = [
   ["→ / Espaço", "Próxima"],
   ["←", "Anterior"],
-  ["1–9", "Estrofe da música"],
+  ["Números", "Ir para o slide (ex.: 12)"],
+  ["Enter", "Confirmar o número"],
   ["B / L / C", "Preto / Logo / Sem letra"],
   ["Esc", "Voltar a letra"],
 ];
@@ -85,7 +88,9 @@ const CONSOLE_TABS: { value: ConsoleTab; label: string }[] = [
   { value: "outputs", label: "Saídas" },
 ];
 
-const isConsoleTab = (value: string): value is ConsoleTab => CONSOLE_TABS.some((tab) => tab.value === value);
+const NUMBER_WAIT_MS = 800;
+
+const isConsoleTab =(value: string): value is ConsoleTab => CONSOLE_TABS.some((tab) => tab.value === value);
 
 const PANEL_CLASS = "mt-0 min-h-0 data-[state=inactive]:hidden lg:data-[state=inactive]:block";
 
@@ -180,9 +185,16 @@ function SidePanel({ controller }: { controller: PresentationController }) {
             </span>
           </h2>
           <div className="aspect-video overflow-hidden rounded-md border shadow-sm">
-            <ProjectorView state={controller.broadcastState} />
+            <ProjectorView state={controller.broadcastState} preview />
           </div>
         </section>
+
+        <VideoPanel
+          video={controller.video}
+          onShow={controller.showVideo}
+          onTogglePlaying={controller.toggleVideoPlaying}
+          onClose={controller.closeVideo}
+        />
 
         <ThemePicker value={controller.theme} onChange={controller.setTheme} />
 
@@ -322,7 +334,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
     try {
       const passage = await utils.bible.getPassage.fetch({ version: target.version, reference: target.reference });
       controller.addPassage(
-        passageToDeckSong(passage, `bible:${passage.title}:${target.version}:${Date.now()}`, target.versesPerSlide ?? null),
+        passageToDeckSong(passage, `bible:${passage.title}:${target.version}:${Date.now()}`, target.versesPerSlide ?? DEFAULT_VERSES_PER_SLIDE),
       );
     } catch (error) {
       toastError(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
@@ -335,9 +347,21 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
     void loadInitialPassage(initialPassage);
   }, [initialPassage, baseDeck]);
 
+  const [editingSongId, setEditingSongId] = useState<number | null>(null);
+  const numberBuffer = useRef("");
+  const numberTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [typedNumber, setTypedNumber] = useState("");
+  const clearTypedNumber = () => {
+    if (numberTimer.current) clearTimeout(numberTimer.current);
+    numberTimer.current = null;
+    numberBuffer.current = "";
+    setTypedNumber("");
+  };
+
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (
       !deck ||
+      editingSongId !== null ||
       event.defaultPrevented ||
       isTypingTarget(event.target) ||
       event.ctrlKey ||
@@ -354,9 +378,32 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
     } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(pressed)) {
       event.preventDefault();
       controller.goPrevious();
-    } else if (/^[1-9]$/.test(pressed)) {
-      const slide = Number(pressed) - 1;
-      if ((deck.songs[selectedSong]?.slides.length ?? 0) > slide) controller.goTo({ song: selectedSong, slide });
+    } else if (/^[0-9]$/.test(pressed)) {
+      const total = deck.songs[selectedSong]?.slides.length ?? 0;
+      const song = selectedSong;
+      const commit = () => {
+        const slide = Number(numberBuffer.current) - 1;
+        clearTypedNumber();
+        if (slide >= 0 && slide < total) controller.goTo({ song, slide });
+      };
+      let typed = numberBuffer.current + pressed;
+      if (Number(typed) > total) typed = pressed;
+      if (Number(typed) < 1 || Number(typed) > total) {
+        clearTypedNumber();
+        return;
+      }
+      if (numberTimer.current) clearTimeout(numberTimer.current);
+      numberBuffer.current = typed;
+      setTypedNumber(typed);
+      if (Number(typed) * 10 > total) commit();
+      else numberTimer.current = setTimeout(commit, NUMBER_WAIT_MS);
+    } else if (pressed === "Enter" && numberBuffer.current !== "") {
+      event.preventDefault();
+      const slide = Number(numberBuffer.current) - 1;
+      clearTypedNumber();
+      if (slide >= 0 && slide < (deck.songs[selectedSong]?.slides.length ?? 0)) controller.goTo({ song: selectedSong, slide });
+    } else if (pressed === "Escape" && numberBuffer.current !== "") {
+      clearTypedNumber();
     } else if (pressed === "b" || pressed === "B") {
       controller.toggleMode("black");
     } else if (pressed === "l" || pressed === "L") {
@@ -371,7 +418,10 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
   useEffect(() => {
     const listener = (event: KeyboardEvent) => onKeyDown(event);
     window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
+    return () => {
+      window.removeEventListener("keydown", listener);
+      if (numberTimer.current) clearTimeout(numberTimer.current);
+    };
   }, []);
 
   const backHref = "eventId" in request ? "/app/praise/events" : "songId" in request ? "/app/praise/songs" : "/app/bible";
@@ -463,9 +513,9 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="mx-3 mt-2 grid h-11 shrink-0 grid-cols-3 lg:hidden">
+        <TabsList className="mx-3 mt-2 grid h-auto shrink-0 grid-cols-3 lg:hidden">
           {CONSOLE_TABS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="h-11 sm:h-9">
+            <TabsTrigger key={value} value={value} className="h-10 min-w-0 px-2 sm:h-9">
               {label}
             </TabsTrigger>
           ))}
@@ -483,8 +533,24 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
             />
           </TabsContent>
           <TabsContent value="slides" forceMount className={PANEL_CLASS}>
+            {typedNumber !== "" && (
+              <div
+                role="status"
+                className="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-md border bg-card px-4 py-2 text-sm font-semibold shadow-lg"
+              >
+                Ir para o slide <span className="tabular-nums text-primary">{typedNumber}</span>
+              </div>
+            )}
+            <EditSongDialog
+              songId={editingSongId}
+              onClose={() => setEditingSongId(null)}
+              onSaved={(song) => {
+                controller.refreshSong(song);
+                void utils.presentation.getDeck.invalidate();
+              }}
+            />
             <ScrollArea className="h-full pr-3">
-              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} onVersesPerSlide={controller.setVersesPerSlide} onPassage={controller.setPassageVersion} />
+              <SlideGrid deck={deck} songIndex={selectedSong} live={live} next={next} onGoTo={controller.goTo} onVersesPerSlide={controller.setVersesPerSlide} onPassage={controller.setPassageVersion} onEditSong={setEditingSongId} />
             </ScrollArea>
           </TabsContent>
           <TabsContent value="outputs" forceMount className={PANEL_CLASS}>

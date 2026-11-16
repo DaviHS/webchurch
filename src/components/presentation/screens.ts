@@ -201,6 +201,17 @@ export function outputWindowName(role: OutputRole): string {
   return `webchurch-output-${role}`;
 }
 
+export function openExternalWindow(url: string, name: string, screen: ScreenRef | null): Window | null {
+  const features = screen
+    ? ["popup", `left=${screen.left}`, `top=${screen.top}`, `width=${screen.width}`, `height=${screen.height}`, "fullscreen"].join(",")
+    : "popup,width=1280,height=720";
+  const win = window.open(url, name, features);
+  try {
+    win?.focus();
+  } catch {}
+  return win;
+}
+
 export function openOutputWindow(role: OutputRole, screen: ScreenRef | null): Window | null {
   const features = screen
     ? [

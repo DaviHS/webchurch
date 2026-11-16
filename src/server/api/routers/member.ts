@@ -267,7 +267,7 @@ export const memberRouter = createTRPCRouter({
     }),
 
   birthdaysOfMonth: manageMembers
-    .input(z.object({ today: z.string().regex(/^d{4}-d{2}-d{2}$/) }))
+    .input(z.object({ today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
     .query(async ({ input }) => {
       const rows = await db
         .select({
