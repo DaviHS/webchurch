@@ -194,6 +194,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           onShow={controller.showVideo}
           onTogglePlaying={controller.toggleVideoPlaying}
           onClose={controller.closeVideo}
+          onSeek={controller.seekVideo}
         />
 
         <ThemePicker value={controller.theme} onChange={controller.setTheme} />

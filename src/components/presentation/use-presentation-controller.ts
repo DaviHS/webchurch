@@ -233,6 +233,7 @@ export function usePresentationController(baseDeck: Deck | null) {
     showVideo: (id: string) => dispatch({ type: "showVideo", id }),
     toggleVideoPlaying: () => dispatch({ type: "toggleVideo" }),
     closeVideo: () => dispatch({ type: "closeVideo" }),
+    seekVideo: (delta: number) => post({ type: "VIDEO_SEEK", delta }),
     stageMessage: state.stageMessage,
     timerStartedAt: state.timerStartedAt,
     connections,

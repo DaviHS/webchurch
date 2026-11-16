@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { parseTitleSlide, splitReference } from "./deck";
 
+const CHAR_WIDTH_EM = 0.56;
+
 interface SlideTextProps {
   text: string;
   maxHeight?: number;
@@ -13,7 +15,7 @@ interface SlideTextProps {
 export function SlideText({ text, maxHeight = 86, maxFont = 11, className, style }: SlideTextProps) {
   const opening = parseTitleSlide(text);
   if (opening) {
-    const titleFont = Math.min(maxFont * 0.8, 92 / (Math.max(1, opening.title.length) * 0.52));
+    const titleFont = Math.min(maxFont * 0.8, 92 / (Math.max(1, opening.title.length) * CHAR_WIDTH_EM));
     return (
       <div className={cn("flex flex-col items-center justify-center text-center", className)} style={style}>
         <p className="text-balance font-bold leading-tight" style={{ fontSize: `${titleFont.toFixed(2)}cqmin` }}>
@@ -33,7 +35,7 @@ export function SlideText({ text, maxHeight = 86, maxFont = 11, className, style
   const longest = Math.max(1, ...lines.map((line) => line.length));
   const LINE_HEIGHT = 1.25;
   const byHeight = (reference ? maxHeight * 0.82 : maxHeight) / (lines.length * LINE_HEIGHT);
-  const byWidth = 92 / (longest * 0.52);
+  const byWidth = 92 / (longest * CHAR_WIDTH_EM);
 
   const paragraph = (
     <p

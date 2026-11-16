@@ -122,10 +122,10 @@ const superscript = (value: number) =>
     .map((digit) => SUPERSCRIPT_DIGITS[Number(digit)])
     .join("");
 
-function wrapText(text: string, width: number): string {
+function greedyLines(words: string[], width: number): string[] {
   const lines: string[] = [];
   let current = "";
-  for (const word of text.split(/[ \t\r\n]+/).filter(Boolean)) {
+  for (const word of words) {
     if (current !== "" && current.length + 1 + word.length > width) {
       lines.push(current);
       current = word;
@@ -134,7 +134,21 @@ function wrapText(text: string, width: number): string {
     }
   }
   if (current !== "") lines.push(current);
-  return lines.join("\n");
+  return lines;
+}
+
+export function wrapText(text: string, width: number): string {
+  const words = text.split(/[ \t\r\n]+/).filter(Boolean);
+  const widest = greedyLines(words, width);
+  let best = widest;
+  for (let target = Math.ceil(words.join(" ").length / widest.length); target < width; target++) {
+    const balanced = greedyLines(words, target);
+    if (balanced.length <= widest.length) {
+      best = balanced;
+      break;
+    }
+  }
+  return best.join("\n");
 }
 
 export const VERSES_PER_SLIDE_OPTIONS = [1, 2, 3, 4, 5, 6] as const;

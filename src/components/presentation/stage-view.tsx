@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { formatClock, formatElapsed } from "./hooks";
 import type { PresentationState, ProjectorMode } from "./protocol";
 import { SlideText } from "./slide-text";
+import { plainSlideText } from "./deck";
 
 interface StageViewProps {
   state: PresentationState | null;
@@ -18,6 +19,7 @@ const MODE_BADGES: Partial<Record<ProjectorMode, { label: string; className: str
 
 export function StageView({ state, now, operatorOnline, className }: StageViewProps) {
   const badge = state?.video && !state.video.blocked ? { label: "PROJETOR: VÍDEO", className: "bg-red-600 text-white" } : state ? MODE_BADGES[state.mode] : undefined;
+  const nextLine = state?.next ? (plainSlideText(state.next.text).split("\n")[0]?.trim() ?? null) : null;
   const elapsed = state?.timerStartedAt != null && now > 0 ? formatElapsed(now - state.timerStartedAt) : null;
 
   return (
@@ -55,7 +57,7 @@ export function StageView({ state, now, operatorOnline, className }: StageViewPr
         </div>
       )}
 
-      <main className="relative flex min-h-0 flex-[3] items-center justify-center">
+      <main className="relative flex min-h-0 flex-1 items-center justify-center">
         {badge && (
           <span className={cn("absolute right-[2cqw] top-[1.5cqh] rounded px-[1cqw] py-[0.4cqh] text-[2.2cqh] font-bold", badge.className)}>
             {badge.label}
@@ -64,7 +66,7 @@ export function StageView({ state, now, operatorOnline, className }: StageViewPr
         <div className="@container/slide h-full w-full [container-type:size]">
           <div className="flex h-full items-center justify-center">
             {state?.live ? (
-              <SlideText text={state.live.text} maxHeight={84} maxFont={13} className="px-[3cqw]" />
+              <SlideText text={state.live.text} maxHeight={88} maxFont={15} className="px-[3cqw]" />
             ) : (
               <p className="text-[5cqh] text-zinc-600">—</p>
             )}
@@ -72,17 +74,13 @@ export function StageView({ state, now, operatorOnline, className }: StageViewPr
         </div>
       </main>
 
-      <section className="flex min-h-0 flex-[1.4] flex-col border-t border-zinc-800 bg-zinc-900/60">
-        <p className="px-[2.5cqw] pt-[1cqh] text-[2.2cqh] font-semibold uppercase tracking-wider text-zinc-500">
-          {state?.next ? "Próxima" : state?.nextSongTitle ? `Próxima música: ${state.nextSongTitle}` : "Fim do repertório"}
+      <section className="flex shrink-0 flex-col items-center gap-[0.4cqh] border-t border-zinc-800 bg-zinc-900/60 px-[2.5cqw] py-[1.6cqh] text-center">
+        <p className="text-[2.2cqh] font-semibold uppercase tracking-wider text-zinc-500">
+          {nextLine ? "Próxima" : state?.nextSongTitle ? "Próxima música" : "Fim do repertório"}
         </p>
-        <div className="@container/slide min-h-0 flex-1 [container-type:size]">
-          <div className="flex h-full items-center justify-center">
-            {state?.next && (
-              <SlideText text={state.next.text} maxHeight={80} maxFont={16} className="px-[3cqw] font-medium text-zinc-400" />
-            )}
-          </div>
-        </div>
+        {(nextLine ?? state?.nextSongTitle) && (
+          <p className="w-full truncate text-[min(8cqh,5.5cqw)] font-semibold leading-tight text-zinc-300">{nextLine ?? state?.nextSongTitle}</p>
+        )}
       </section>
 
       {!operatorOnline && (

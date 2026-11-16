@@ -39,6 +39,7 @@ export function OutputWindow({ role }: { role: OutputRole }) {
   const [state, setState] = useState<PresentationState | null>(null);
   const [lastOperatorMessageAt, setLastOperatorMessageAt] = useState(0);
   const [operatorClosed, setOperatorClosed] = useState(false);
+  const [videoSeek, setVideoSeek] = useState<{ delta: number; nonce: number } | null>(null);
   const now = useNow();
   const isFullscreen = useIsFullscreen();
 
@@ -54,6 +55,9 @@ export function OutputWindow({ role }: { role: OutputRole }) {
           setState(message);
           setLastOperatorMessageAt(Date.now());
           setOperatorClosed(false);
+          break;
+        case "VIDEO_SEEK":
+          setVideoSeek((previous) => ({ delta: message.delta, nonce: (previous?.nonce ?? 0) + 1 }));
           break;
         case "OPERATOR_OFFLINE":
           setOperatorClosed(true);
@@ -116,7 +120,7 @@ export function OutputWindow({ role }: { role: OutputRole }) {
   return (
     <div className="fixed inset-0 cursor-none select-none" onClick={() => enterFullscreen()}>
       {role === "projector" ? (
-        <ProjectorView state={state} onVideoError={(id) => post({ type: "VIDEO_BLOCKED", id })} />
+        <ProjectorView state={state} videoSeek={videoSeek} onVideoError={(id) => post({ type: "VIDEO_BLOCKED", id })} />
       ) : (
         <StageView state={state} now={now} operatorOnline={state === null || operatorOnline} />
       )}

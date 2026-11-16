@@ -1,21 +1,25 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { ExternalLink, MonitorPlay, Pause, Play, X } from "lucide-react";
+import { ExternalLink, MonitorPlay, Pause, Play, RotateCcw, SkipBack, SkipForward, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractYouTubeVideoId, youtubeWatchUrl } from "@/lib/youtube-url";
 import { toastError } from "@/lib/toast";
 import { openExternalWindow, resolveScreen, useDetectedScreens, useScreenAssignments } from "../screens";
 
+const SEEK_STEP = 10;
+const SEEK_RESTART = 1_000_000;
+
 interface VideoPanelProps {
   video: { id: string; playing: boolean; blocked?: boolean } | null;
   onShow: (videoId: string) => void;
   onTogglePlaying: () => void;
   onClose: () => void;
+  onSeek: (delta: number) => void;
 }
 
-export function VideoPanel({ video, onShow, onTogglePlaying, onClose }: VideoPanelProps) {
+export function VideoPanel({ video, onShow, onTogglePlaying, onClose, onSeek }: VideoPanelProps) {
   const [link, setLink] = useState("");
   const externalWindow = useRef<Window | null>(null);
   const screens = useDetectedScreens();
@@ -75,15 +79,29 @@ export function VideoPanel({ video, onShow, onTogglePlaying, onClose }: VideoPan
       </form>
 
       {video && !video.blocked && (
-        <div className="flex items-center gap-2 rounded-md bg-red-500/10 px-2 py-1.5 text-sm">
-          <span className="min-w-0 flex-1 truncate font-medium">{video.playing ? "Vídeo no projetor" : "Vídeo pausado"}</span>
-          <Button type="button" size="sm" variant="outline" onClick={onTogglePlaying}>
-            {video.playing ? <Pause /> : <Play />}
-            {video.playing ? "Pausar" : "Tocar"}
-          </Button>
-          <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" onClick={onClose} aria-label="Fechar o vídeo">
-            <X />
-          </Button>
+        <div className="space-y-2 rounded-md bg-red-500/10 p-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate font-medium">{video.playing ? "Vídeo no projetor" : "Vídeo pausado"}</span>
+            <Button type="button" size="icon-sm" variant="ghost" className="shrink-0" onClick={onClose} aria-label="Fechar o vídeo">
+              <X />
+            </Button>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            <Button type="button" size="sm" variant="outline" onClick={() => onSeek(-SEEK_RESTART)} aria-label="Voltar ao início" title="Voltar ao início">
+              <RotateCcw />
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => onSeek(-SEEK_STEP)} aria-label="Voltar 10 segundos" title="Voltar 10 segundos">
+              <SkipBack />
+              10s
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={onTogglePlaying} aria-label={video.playing ? "Pausar" : "Tocar"}>
+              {video.playing ? <Pause /> : <Play />}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => onSeek(SEEK_STEP)} aria-label="Avançar 10 segundos" title="Avançar 10 segundos">
+              10s
+              <SkipForward />
+            </Button>
+          </div>
         </div>
       )}
 

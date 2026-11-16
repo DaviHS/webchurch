@@ -10,9 +10,10 @@ interface ProjectorViewProps {
   className?: string;
   preview?: boolean;
   onVideoError?: (videoId: string) => void;
+  videoSeek?: { delta: number; nonce: number } | null;
 }
 
-export function ProjectorView({ state, className, preview = false, onVideoError }: ProjectorViewProps) {
+export function ProjectorView({ state, className, preview = false, onVideoError, videoSeek }: ProjectorViewProps) {
   const mode = state?.mode ?? "logo";
   const text = mode === "live" ? (state?.live?.text ?? null) : null;
   const theme = themeById(state?.theme);
@@ -31,7 +32,7 @@ export function ProjectorView({ state, className, preview = false, onVideoError 
             </span>
           </div>
         ) : (
-          <ProjectorVideo videoId={video.id} playing={video.playing} onError={onVideoError} />
+          <ProjectorVideo videoId={video.id} playing={video.playing} seek={videoSeek} onError={onVideoError} />
         )}
       </div>
     );

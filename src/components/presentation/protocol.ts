@@ -73,6 +73,11 @@ const videoBlockedSchema = z.object({
   id: z.string().min(11).max(11),
 });
 
+const videoSeekSchema = z.object({
+  type: z.literal("VIDEO_SEEK"),
+  delta: z.number(),
+});
+
 const closeMessageSchema = z.object({
   type: z.literal("CLOSE"),
 });
@@ -85,6 +90,7 @@ export const presentationMessageSchema = z.discriminatedUnion("type", [
   operatorOfflineSchema,
   closeMessageSchema,
   videoBlockedSchema,
+  videoSeekSchema,
 ]);
 
 export type PresentationMessage = z.infer<typeof presentationMessageSchema>;
