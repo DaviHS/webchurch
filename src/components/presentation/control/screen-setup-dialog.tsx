@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Loader2, Monitor, MonitorSmartphone, Projector, Tv } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Monitor, MonitorSmartphone, Projector, Tv } from "lucide-react";
+import {
+  detectPolicyBrowser,
+  downloadTextFile,
+  fullscreenPolicyFile,
+  POLICY_BROWSERS,
+  removePolicyFile,
+  type PolicyBrowser,
+} from "../fullscreen-policy";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -102,6 +110,34 @@ function ScreenLayout({
   );
 }
 
+function FullscreenPolicySection() {
+  const download = (browser: PolicyBrowser) => {
+    downloadTextFile(`${browser}-tela-cheia-automatica.reg`, fullscreenPolicyFile(browser, window.location.origin));
+  };
+  const suggested = typeof navigator === "undefined" ? "chrome" : detectPolicyBrowser(navigator.userAgent);
+
+  return (
+    <div className="space-y-2 rounded-md border p-3 text-sm">
+      <p className="font-medium">Tela cheia automática neste computador</p>
+      <p className="text-muted-foreground">
+        Baixe o arquivo do navegador usado aqui, dê dois cliques nele, confirme e reinicie o navegador. Só precisa fazer uma vez
+        por computador, com Windows e permissão de administrador.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(POLICY_BROWSERS) as PolicyBrowser[]).map((browser) => (
+          <Button key={browser} type="button" size="sm" variant={browser === suggested ? "default" : "outline"} onClick={() => download(browser)}>
+            <Download />
+            {POLICY_BROWSERS[browser].label}
+          </Button>
+        ))}
+        <Button type="button" size="sm" variant="ghost" onClick={() => downloadTextFile("remover-tela-cheia-automatica.reg", removePolicyFile())}>
+          Desfazer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ScreenSetupDialog({ open, onOpenChange }: ScreenSetupDialogProps) {
   const screens = useDetectedScreens();
   const assignments = useScreenAssignments();
@@ -195,6 +231,8 @@ export function ScreenSetupDialog({ open, onOpenChange }: ScreenSetupDialogProps
               );
             })}
           </div>
+
+          <FullscreenPolicySection />
         </ResponsiveDialogBody>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
