@@ -80,7 +80,7 @@ function PassageVersionSelect({
       <SelectTrigger className="w-full sm:w-28" aria-label="Versão da passagem">
         <SelectValue>{current}</SelectValue>
       </SelectTrigger>
-      <SelectContent className="max-h-80">
+      <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
         {versions?.map((v) => (
           <SelectItem key={v.code} value={v.code}>
             {v.code} · {v.name}
@@ -122,7 +122,7 @@ export function SlideGrid({ deck, songIndex, live, next, onGoTo, onVersesPerSlid
 
   return (
     <div ref={rootRef} className="space-y-3">
-      <div className="sticky top-0 z-10 flex flex-wrap items-end justify-between gap-2 bg-background pb-2">
+      <div data-tour="slides-header" className="sticky top-0 z-10 flex flex-wrap items-end justify-between gap-2 bg-background pb-2">
         <div className="min-w-0">
           <h2 className="text-lg font-bold leading-tight">{song.title}</h2>
           {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}

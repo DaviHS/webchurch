@@ -77,7 +77,7 @@ export function EventPassagesManager({ eventId, passages, onUpdate }: EventPassa
               <SelectTrigger className="w-full" aria-label="Versão">
                 <SelectValue placeholder="Versão" />
               </SelectTrigger>
-              <SelectContent className="max-h-80">
+              <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
                 {versions?.map((v) => (
                   <SelectItem key={v.code} value={v.code}>
                     {v.code}

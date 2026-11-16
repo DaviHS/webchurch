@@ -26,8 +26,13 @@ interface SetlistProps {
   onRemoveSong: (uid: string) => void;
 }
 
-function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
-  const utils = api.useUtils();
+export interface PassageRequest {
+  reference: string;
+  version: string;
+  perSlide: number | null;
+}
+
+export function AddPassage({ onAdd }: { onAdd: (request: PassageRequest) => Promise<void> }) {
   const { data: versions } = api.bible.versions.useQuery(undefined, { staleTime: Infinity });
   const [version, setVersion] = useBibleVersion(versions);
   const [reference, setReference] = useState("");
@@ -40,8 +45,7 @@ function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
     if (!value || !version || loading) return;
     setLoading(true);
     try {
-      const passage = await utils.bible.getPassage.fetch({ version, reference: value });
-      onAdd(passageToDeckSong(passage, `bible:${passage.title}:${version}:${Date.now()}`, perSlide));
+      await onAdd({ reference: value, version, perSlide });
       setReference("");
     } catch (error) {
       toastError(error instanceof Error ? error.message : "Não foi possível carregar a passagem.");
@@ -84,7 +88,7 @@ function AddPassage({ onAdd }: { onAdd: (song: DeckSong) => void }) {
   );
 }
 
-function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
+export function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
   const [term, setTerm] = useState("");
   const debouncedTerm = useDebounce(term, 300);
   const search = debouncedTerm.trim();
@@ -130,6 +134,11 @@ function AddSongSearch({ onAdd }: { onAdd: (song: DeckSongSource) => void }) {
 }
 
 export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onAddPassage, onRemoveSong }: SetlistProps) {
+  const utils = api.useUtils();
+  const addPassage = async ({ reference, version, perSlide }: PassageRequest) => {
+    const passage = await utils.bible.getPassage.fetch({ version, reference });
+    onAddPassage(passageToDeckSong(passage, `bible:${passage.title}:${version}:${Date.now()}`, perSlide));
+  };
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repertório</h2>
@@ -188,7 +197,7 @@ export function Setlist({ deck, live, selectedSong, onSelect, onAddSong, onAddPa
         </ol>
       </ScrollArea>
       <AddSongSearch onAdd={onAddSong} />
-      <AddPassage onAdd={onAddPassage} />
+      <AddPassage onAdd={addPassage} />
     </div>
   );
 }

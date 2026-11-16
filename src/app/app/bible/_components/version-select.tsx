@@ -39,7 +39,7 @@ export function VersionSelect({
       <SelectTrigger className={className} aria-label={label}>
         <SelectValue>{value}</SelectValue>
       </SelectTrigger>
-      <SelectContent className="max-h-80">
+      <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
         {languages.map((language) => (
           <SelectGroup key={language}>
             <SelectLabel>{LANGUAGE_LABELS[language] ?? language}</SelectLabel>

@@ -7,7 +7,10 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Loader2,
+  Megaphone,
+  MessageSquareWarning,
   Music,
+  Plus,
   Square,
   Type,
 } from "lucide-react";
@@ -26,6 +29,9 @@ import {
   type RemoteOutline,
 } from "../remote-protocol";
 import { RemotePicker } from "./remote-picker";
+import { AddPassage, AddSongSearch, type PassageRequest } from "../control/setlist";
+import { MessageSection } from "../control/message-section";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "remote-code";
 const TAP_GUARD_MS = 250;
@@ -106,6 +112,7 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
     { enabled: code !== null && stateQuery.data !== undefined, staleTime: Infinity },
   );
   const send = api.remote.sendCommand.useMutation();
+  const [adding, setAdding] = useState(false);
 
   const state = stateQuery.data?.state ?? null;
   const outline = outlineQuery.data ?? NO_OUTLINE;
@@ -154,6 +161,19 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
     if (!tapAllowed(lastTap)) return;
     send.mutate({ code, command });
   };
+
+  const sendNow = (command: RemoteCommand, success?: string) =>
+    send.mutateAsync({ code, command }).then(
+      () => {
+        if (success) toast.success(success);
+      },
+      (error: unknown) => {
+        toast.error(error instanceof Error ? error.message : "Não foi possível enviar ao computador.");
+      },
+    );
+
+  const addPassage = ({ reference, version, perSlide }: PassageRequest) =>
+    sendNow({ type: "addPassage", reference, version, perSlide }, "Passagem enviada. Ela entra no fim do repertório.");
 
   const selectSong = (index: number) => {
     setPin({ song: index, liveSong });
@@ -221,9 +241,44 @@ export function RemoteController({ initialCode }: { initialCode: string | null }
               {state?.next?.text ?? "Fim do repertório."}
             </p>
           </section>
+
+          <MessageSection
+            icon={<Megaphone className="h-3.5 w-3.5" />}
+            title="Aviso no projetor"
+            placeholder="Ex.: Favor silenciar os celulares"
+            value={state?.projectorMessage ?? ""}
+            onChange={(message) => void sendNow({ type: "projectorMessage", message })}
+          />
+
+          <MessageSection
+            icon={<MessageSquareWarning className="h-3.5 w-3.5" />}
+            title="Aviso no retorno"
+            placeholder="Ex.: Repetir refrão"
+            value={state?.stageMessage ?? ""}
+            onChange={(message) => void sendNow({ type: "stageMessage", message })}
+          />
         </TabsContent>
 
-        <TabsContent value="repertoire" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
+        <TabsContent value="repertoire" className="mt-0 min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          {adding ? (
+            <section className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">Adicionar ao repertório</h2>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
+                  Fechar
+                </Button>
+              </div>
+              <AddSongSearch
+                onAdd={(song) => void sendNow({ type: "addSong", songId: song.id }, `“${song.title}” enviada. Ela entra no fim do repertório.`)}
+              />
+              <AddPassage onAdd={addPassage} />
+            </section>
+          ) : (
+            <Button type="button" variant="outline" className="w-full" onClick={() => setAdding(true)}>
+              <Plus />
+              Adicionar música ou passagem
+            </Button>
+          )}
           {outline.length === 0 && <p className="text-sm text-muted-foreground">Carregando repertório…</p>}
           <ol className="space-y-1.5">
             {outline.map((item, index) => {

@@ -8,8 +8,10 @@ import {
   ChevronRight,
   CloudOff,
   Image as ImageIcon,
+  CircleHelp,
   Keyboard,
   Loader2,
+  Megaphone,
   MessageSquareWarning,
   MonitorCog,
   Projector,
@@ -19,12 +21,10 @@ import {
   TimerOff,
   Tv,
   Type,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,9 @@ import { ProjectorView } from "../projector-view";
 import { ThemePicker } from "./theme-picker";
 import { VideoPanel } from "./video-panel";
 import { EditSongDialog } from "./edit-song-dialog";
+import { MessageSection } from "./message-section";
+import { buildControlTourSteps, ControlTour } from "./control-tour";
+import type { Step } from "react-joyride";
 import { OUTPUT_LABELS, OUTPUT_ROLES, type OutputRole, type ProjectorMode } from "../protocol";
 import {
   detectScreensIfPermitted,
@@ -120,6 +123,7 @@ function OutputControls({ controller, remote }: { controller: PresentationContro
 
   return (
     <div className="hidden flex-wrap items-center gap-2 md:flex">
+      <div data-tour="outputs" className="flex flex-wrap items-center gap-2">
       {OUTPUT_ROLES.map((role) => {
         const Icon = OUTPUT_ICONS[role];
         const connected = controller.connections[role];
@@ -139,11 +143,12 @@ function OutputControls({ controller, remote }: { controller: PresentationContro
           </Button>
         );
       })}
-      <Button type="button" size="sm" variant="ghost" onClick={() => setSetupOpen(true)}>
+      </div>
+      <Button type="button" size="sm" variant="ghost" data-tour="screens" onClick={() => setSetupOpen(true)}>
         <MonitorCog className="mr-1 h-4 w-4" />
         Telas
       </Button>
-      <Button type="button" size="sm" variant={remote.code ? "outline" : "ghost"} onClick={() => setRemoteOpen(true)}>
+      <Button type="button" size="sm" variant={remote.code ? "outline" : "ghost"} data-tour="remote" onClick={() => setRemoteOpen(true)}>
         <span className={cn("h-2 w-2 rounded-full", remote.code ? "bg-emerald-500" : "bg-muted-foreground/40")} />
         <Smartphone className="mr-1 h-4 w-4" />
         Celular
@@ -155,8 +160,7 @@ function OutputControls({ controller, remote }: { controller: PresentationContro
 }
 
 function SidePanel({ controller }: { controller: PresentationController }) {
-  const [draft, setDraft] = useState("");
-  const { mode, timerStartedAt, now, stageMessage } = controller;
+  const { mode, timerStartedAt, now, stageMessage, projectorMessage } = controller;
 
   return (
     <ScrollArea className="h-full pr-2">
@@ -177,7 +181,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           <p className="text-xs text-muted-foreground">Abra o projetor e o retorno no computador ligado às telas.</p>
         </section>
 
-        <section className="space-y-1.5">
+        <section data-tour="preview" className="space-y-1.5">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <Projector className="h-3.5 w-3.5" /> Projetor
             <span className={cn("ml-auto rounded px-1.5 text-xs font-bold", mode === "live" ? "bg-red-500 text-white" : "bg-muted")}>
@@ -189,6 +193,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           </div>
         </section>
 
+        <div data-tour="video">
         <VideoPanel
           video={controller.video}
           onShow={controller.showVideo}
@@ -196,8 +201,11 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           onClose={controller.closeVideo}
           onSeek={controller.seekVideo}
         />
+        </div>
 
-        <ThemePicker value={controller.theme} onChange={controller.setTheme} />
+        <div data-tour="theme">
+          <ThemePicker value={controller.theme} onChange={controller.setTheme} />
+        </div>
 
         <section className="space-y-1.5">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -208,7 +216,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           </div>
         </section>
 
-        <section className="hidden grid-cols-3 gap-2 lg:grid">
+        <section data-tour="modes" className="hidden grid-cols-3 gap-2 lg:grid">
           {MODE_BUTTONS.map(({ mode: target, label, key, icon: Icon }) => (
             <Button
               key={target}
@@ -225,47 +233,23 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           ))}
         </section>
 
-        <section className="space-y-2">
-          <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <MessageSquareWarning className="h-3.5 w-3.5" /> Aviso no retorno
-          </h2>
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              controller.setStageMessage(draft.trim());
-            }}
-          >
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Ex.: Repetir refrão"
-              enterKeyHint="send"
-              aria-label="Aviso no retorno"
-            />
-            <Button type="submit" disabled={draft.trim() === ""}>
-              Enviar
-            </Button>
-          </form>
-          {stageMessage && (
-            <div className="flex items-center justify-between gap-2 rounded-md bg-yellow-400/20 px-2 py-1 text-sm">
-              <span className="truncate">Exibindo: “{stageMessage}”</span>
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => {
-                  controller.setStageMessage("");
-                  setDraft("");
-                }}
-                aria-label="Remover aviso"
-              >
-                <X />
-              </Button>
-            </div>
-          )}
-        </section>
+        <MessageSection
+          tourId="projector-message"
+          icon={<Megaphone className="h-3.5 w-3.5" />}
+          title="Aviso no projetor"
+          placeholder="Ex.: Favor silenciar os celulares"
+          value={projectorMessage}
+          onChange={controller.setProjectorMessage}
+        />
+
+        <MessageSection
+          tourId="stage-message"
+          icon={<MessageSquareWarning className="h-3.5 w-3.5" />}
+          title="Aviso no retorno"
+          placeholder="Ex.: Repetir refrão"
+          value={stageMessage}
+          onChange={controller.setStageMessage}
+        />
 
         <section className="flex items-center justify-between gap-2 rounded-md border p-2">
           <div>
@@ -285,7 +269,7 @@ function SidePanel({ controller }: { controller: PresentationController }) {
           )}
         </section>
 
-        <section className="hidden space-y-1 rounded-md border p-2 text-xs [@media(hover:hover)]:block">
+        <section data-tour="shortcuts" className="hidden space-y-1 rounded-md border p-2 text-xs [@media(hover:hover)]:block">
           <p className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-muted-foreground">
             <Keyboard className="h-3.5 w-3.5" /> Atalhos
           </p>
@@ -349,6 +333,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
   }, [initialPassage, baseDeck]);
 
   const [editingSongId, setEditingSongId] = useState<number | null>(null);
+  const [tourSteps, setTourSteps] = useState<Step[]>([]);
   const numberBuffer = useRef("");
   const numberTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [typedNumber, setTypedNumber] = useState("");
@@ -363,6 +348,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
     if (
       !deck ||
       editingSongId !== null ||
+      tourSteps.length > 0 ||
       event.defaultPrevented ||
       isTypingTarget(event.target) ||
       event.ctrlKey ||
@@ -478,6 +464,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <ControlTour steps={tourSteps} onFinish={() => setTourSteps([])} />
       <header className="flex shrink-0 items-center gap-2 border-b px-2 py-2 sm:gap-3 sm:px-4 md:flex-wrap">
         <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="Voltar ao app">
           <Link href={backHref} onClick={() => controller.closeOutputs()}>
@@ -497,6 +484,17 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
           </p>
         </div>
         <OutputControls controller={controller} remote={remote} />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="shrink-0"
+          onClick={() => setTourSteps(buildControlTourSteps())}
+          aria-label="Como usar esta tela"
+          title="Como usar esta tela"
+        >
+          <CircleHelp className="h-4 w-4" />
+        </Button>
         <div className="hidden items-center gap-1 lg:flex">
           <Button type="button" size="icon" variant="outline" onClick={controller.goPrevious} aria-label="Estrofe anterior">
             <ChevronLeft className="h-4 w-4" />
@@ -514,7 +512,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="mx-3 mt-2 grid h-auto shrink-0 grid-cols-3 lg:hidden">
+        <TabsList data-tour="tabs" className="mx-3 mt-2 grid h-auto shrink-0 grid-cols-3 lg:hidden">
           {CONSOLE_TABS.map(({ value, label }) => (
             <TabsTrigger key={value} value={value} className="h-10 min-w-0 px-2 sm:h-9">
               {label}
@@ -522,7 +520,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
           ))}
         </TabsList>
         <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] gap-4 p-3 lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:p-4">
-          <TabsContent value="setlist" forceMount className={PANEL_CLASS}>
+          <TabsContent value="setlist" forceMount className={PANEL_CLASS} data-tour="setlist">
             <Setlist
               deck={deck}
               live={live}
@@ -533,7 +531,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
               onRemoveSong={controller.removeSong}
             />
           </TabsContent>
-          <TabsContent value="slides" forceMount className={PANEL_CLASS}>
+          <TabsContent value="slides" forceMount className={PANEL_CLASS} data-tour="slides">
             {typedNumber !== "" && (
               <div
                 role="status"
@@ -561,6 +559,7 @@ export function ControlConsole({ request, initialPassage }: { request: DeckReque
       </Tabs>
 
       <nav
+        data-tour="mobile-controls"
         aria-label="Controles da apresentação"
         className="shrink-0 space-y-2 border-t bg-background px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden"
       >

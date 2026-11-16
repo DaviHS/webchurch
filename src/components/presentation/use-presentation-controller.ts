@@ -35,6 +35,7 @@ interface ControllerState {
   live: Position | null;
   mode: ProjectorMode;
   stageMessage: string;
+  projectorMessage: string;
   timerStartedAt: number | null;
   adHocSongs: DeckSong[];
   video: { id: string; playing: boolean; blocked?: boolean } | null;
@@ -44,6 +45,7 @@ type Action =
   | { type: "goTo"; position: Position }
   | { type: "toggleMode"; mode: Exclude<ProjectorMode, "live"> }
   | { type: "setStageMessage"; message: string }
+  | { type: "setProjectorMessage"; message: string }
   | { type: "startTimer"; at: number }
   | { type: "stopTimer" }
   | { type: "showVideo"; id: string }
@@ -59,6 +61,7 @@ const initialState: ControllerState = {
   live: null,
   mode: "logo",
   stageMessage: "",
+  projectorMessage: "",
   timerStartedAt: null,
   adHocSongs: [],
   video: null,
@@ -72,6 +75,8 @@ function reducer(state: ControllerState, action: Action): ControllerState {
       return { ...state, mode: state.mode === action.mode ? "live" : action.mode };
     case "setStageMessage":
       return { ...state, stageMessage: action.message };
+    case "setProjectorMessage":
+      return { ...state, projectorMessage: action.message };
     case "startTimer":
       return { ...state, timerStartedAt: action.at };
     case "stopTimer":
@@ -145,11 +150,12 @@ export function usePresentationController(baseDeck: Deck | null) {
           : null,
       nextSongTitle: live && deck ? (deck.songs[live.song + 1]?.title ?? null) : null,
       stageMessage: state.stageMessage,
+      projectorMessage: state.projectorMessage,
       timerStartedAt: state.timerStartedAt,
       theme,
       video: state.video,
     };
-  }, [deck, live, next, state.mode, state.stageMessage, state.timerStartedAt, theme, state.video]);
+  }, [deck, live, next, state.mode, state.stageMessage, state.projectorMessage, state.timerStartedAt, theme, state.video]);
 
   const handleCommand = (command: PresentationCommand) => {
     if (!deck) return;
@@ -235,6 +241,7 @@ export function usePresentationController(baseDeck: Deck | null) {
     closeVideo: () => dispatch({ type: "closeVideo" }),
     seekVideo: (delta: number) => post({ type: "VIDEO_SEEK", delta }),
     stageMessage: state.stageMessage,
+    projectorMessage: state.projectorMessage,
     timerStartedAt: state.timerStartedAt,
     connections,
     now,
@@ -243,6 +250,7 @@ export function usePresentationController(baseDeck: Deck | null) {
     goPrevious: () => handleCommand("previous"),
     toggleMode: (mode: Exclude<ProjectorMode, "live">) => dispatch({ type: "toggleMode", mode }),
     setStageMessage: (message: string) => dispatch({ type: "setStageMessage", message }),
+    setProjectorMessage: (message: string) => dispatch({ type: "setProjectorMessage", message }),
     startTimer: () => dispatch({ type: "startTimer", at: Date.now() }),
     stopTimer: () => dispatch({ type: "stopTimer" }),
     addSong: (source: DeckSongSource) =>

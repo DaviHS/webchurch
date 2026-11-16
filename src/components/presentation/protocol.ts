@@ -42,6 +42,7 @@ const stateMessageSchema = z.object({
     .nullable(),
   nextSongTitle: z.string().nullable(),
   stageMessage: z.string(),
+  projectorMessage: z.string().optional(),
   timerStartedAt: z.number().nullable(),
   theme: z.enum(THEME_IDS).optional(),
   video: z.object({ id: z.string().min(11).max(11), playing: z.boolean(), blocked: z.boolean().optional() }).nullable().optional(),

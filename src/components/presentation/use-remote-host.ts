@@ -2,11 +2,13 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { TRPCClientError } from "@trpc/client";
+import { toast } from "sonner";
 import { toastError } from "@/lib/toast";
 import { api } from "@/trpc/react";
-import { slideAt, slideLabel } from "./deck";
+import { passageToDeckSong, slideAt, slideLabel } from "./deck";
 import {
   REMOTE_HEARTBEAT_MS,
+  REMOTE_MESSAGE_MAX,
   REMOTE_POLL_MS,
   type RemoteCommand,
   type RemoteOutline,
@@ -33,7 +35,7 @@ export function useRemoteHost(controller: PresentationController) {
   const publishingRef = useRef(false);
   const dirtyRef = useRef(false);
 
-  const { deck, live, next, mode, broadcastState } = controller;
+  const { deck, live, next, mode, broadcastState, projectorMessage, stageMessage } = controller;
 
   const outline = useMemo<RemoteOutline>(
     () =>
@@ -63,8 +65,10 @@ export function useRemoteHost(controller: PresentationController) {
         ? { text: clip(slideAt(deck, next) ?? "", 2000), label: clip(slideLabel(deck, next), 100) }
         : null,
       position: live,
+      projectorMessage: clip(projectorMessage, REMOTE_MESSAGE_MAX),
+      stageMessage: clip(stageMessage, REMOTE_MESSAGE_MAX),
     };
-  }, [deck, mode, broadcastState.song, broadcastState.live, next, live]);
+  }, [deck, mode, broadcastState.song, broadcastState.live, next, live, projectorMessage, stageMessage]);
 
   const endSession = () => {
     setCode(null);
@@ -108,6 +112,27 @@ export function useRemoteHost(controller: PresentationController) {
     return () => clearInterval(timer);
   }, [code]);
 
+  const addSongById = async (songId: number) => {
+    try {
+      const song = await utils.song.getById.fetch(songId);
+      if (!song) throw new Error("Música não encontrada.");
+      controller.addSong({ id: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics });
+      toast.success(`“${song.title}” adicionada pelo celular`);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Não foi possível adicionar a música pedida pelo celular.");
+    }
+  };
+
+  const addPassage = async (reference: string, version: string, perSlide: number | null) => {
+    try {
+      const passage = await utils.bible.getPassage.fetch({ version, reference });
+      controller.addPassage(passageToDeckSong(passage, `bible:${passage.title}:${version}:${Date.now()}`, perSlide));
+      toast.success(`${passage.title} adicionada pelo celular`);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Não foi possível adicionar a passagem pedida pelo celular.");
+    }
+  };
+
   const apply = useEffectEvent((command: RemoteCommand) => {
     switch (command.type) {
       case "next":
@@ -119,8 +144,23 @@ export function useRemoteHost(controller: PresentationController) {
       case "goto":
         controller.goTo({ song: command.song, slide: command.slide });
         break;
-      default:
+      case "addSong":
+        void addSongById(command.songId);
+        break;
+      case "addPassage":
+        void addPassage(command.reference, command.version, command.perSlide);
+        break;
+      case "projectorMessage":
+        controller.setProjectorMessage(command.message.trim());
+        break;
+      case "stageMessage":
+        controller.setStageMessage(command.message.trim());
+        break;
+      case "black":
+      case "logo":
+      case "clear":
         controller.toggleMode(command.type);
+        break;
     }
   });
 
